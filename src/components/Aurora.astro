@@ -1,0 +1,48 @@
+<div class="aurora-bg">
+    <div class="aurora-layer"></div>
+    <div class="aurora-layer"></div>
+</div>
+
+<style>
+    .aurora-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 50%, #111 0%, #0a0a0a 100%);
+    }
+
+    .aurora-layer {
+        position: absolute;
+        width: 200%;
+        height: 200%;
+        top: -50%;
+        left: -50%;
+        background: radial-gradient(
+            ellipse at center,
+            rgba(212, 175, 55, 0.05) 0%,
+            rgba(0, 0, 0, 0) 70%
+        );
+        filter: blur(80px);
+        animation: aurora-drift 20s infinite alternate ease-in-out;
+        pointer-events: none;
+    }
+
+    .aurora-layer:nth-child(2) {
+        background: radial-gradient(
+            ellipse at center,
+            rgba(255, 255, 255, 0.02) 0%,
+            rgba(0, 0, 0, 0) 60%
+        );
+        animation-duration: 25s;
+        animation-delay: -5s;
+    }
+
+    @keyframes aurora-drift {
+        from { transform: translate(-5%, -5%) rotate(0deg); }
+        to { transform: translate(5%, 5%) rotate(5deg); }
+    }
+</style>

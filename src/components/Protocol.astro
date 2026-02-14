@@ -1,0 +1,60 @@
+---
+import CodeBlock from './CodeBlock.astro';
+---
+
+<section id="protocol">
+    <div class="container">
+        <h2 class="reveal" style="font-size: 4rem; margin-bottom: 4rem;">EXECUTION PROTOCOL</h2>
+        
+        <div style="display: grid; gap: 4rem;">
+            <div class="reveal">
+                <span class="step-number">PHASE 1: THE ENGINE</span>
+                <p>Clone your repository as a bare instance into a hidden directory.</p>
+                <CodeBlock code="git clone --bare git@github.com:user/repo.git .bare" />
+            </div>
+
+            <div class="reveal">
+                <span class="step-number">PHASE 2: THE BRAIN</span>
+                <p>Point the root directory to the hidden engine using a gitdir pointer.</p>
+                <CodeBlock code='echo "gitdir: ./.bare" > .git' />
+            </div>
+
+            <div class="reveal">
+                <span class="step-number">PHASE 2.5: THE PULSE</span>
+                <p>Configure remote tracking to enable standard fetching in a bare environment.</p>
+                <CodeBlock code='git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"' />
+            </div>
+
+            <div class="reveal">
+                <span class="step-number">PHASE 3: WORKTREE ALLOCATION</span>
+                <p>Spawn independent worktrees for your active branches.</p>
+                <CodeBlock code={`git worktree add main
+git worktree add -b feature-branch feature-directory`} />
+            </div>
+
+            <div class="reveal">
+                <span class="step-number">PHASE 4: INTEGRATION</span>
+                <p>When the mission is complete, integrate the worktree back into the main line.</p>
+                <CodeBlock code={`# 1. Commit and push from the feature worktree
+cd feature-directory && git commit -m 'feat: core update' && git push origin feature-branch
+
+# 2. Switch to main worktree and merge
+cd ../main && git merge feature-branch
+
+# 3. Clean up the worktree
+cd .. && git worktree remove feature-directory
+git branch -d feature-branch`} />
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .step-number {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1.25rem;
+        color: var(--gold);
+        margin-bottom: 1.5rem;
+        display: block;
+    }
+</style>

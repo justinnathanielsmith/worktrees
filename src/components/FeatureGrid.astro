@@ -1,0 +1,89 @@
+<section>
+    <div class="container">
+        <div class="grid">
+            <div class="grid-item reveal">
+                <span class="step-number">01 / SPEED</span>
+                <h3>Instant Switching</h3>
+                <p>No `git checkout` delays. Branches exist as parallel directories. Switch contexts as fast as you can `cd`.</p>
+            </div>
+            <div class="grid-item reveal">
+                <span class="step-number">02 / POWER</span>
+                <h3>Parallel Tasks</h3>
+                <p>Run heavy test suites on `main` while simultaneously developing on `feature-x`. No resource locking.</p>
+            </div>
+            <div class="grid-item reveal">
+                <span class="step-number">03 / FOCUS</span>
+                <h3>Clean Roots</h3>
+                <p>The Git engine stays hidden in `.bare`. Your workspace remains focused on the code that matters.</p>
+            </div>
+            <div class="grid-item reveal">
+                <span class="step-number">04 / AUDIT</span>
+                <h3>Side-by-Side</h3>
+                <p>Compare two branches in different IDE windows. Identify regressions by literally looking at both versions at once.</p>
+            </div>
+            <div class="grid-item reveal">
+                <span class="step-number">05 / ISOLATION</span>
+                <h3>Pure Deps</h3>
+                <p>Each worktree maintains its own build artifacts. No more `node_modules` corruption when switching branches.</p>
+            </div>
+            <div class="grid-item reveal">
+                <span class="step-number">06 / SAFETY</span>
+                <h3>Zero Stashing</h3>
+                <p>Stop losing work in the stash. Leave your half-finished features exactly where they are and jump to a hotfix instantly.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 0;
+        border-left: var(--border-width) solid var(--gray);
+        border-top: var(--border-width) solid var(--gray);
+    }
+
+    .grid-item {
+        padding: 5rem;
+        border-right: var(--border-width) solid var(--gray);
+        border-bottom: var(--border-width) solid var(--gray);
+        transition: var(--transition);
+        background: transparent;
+    }
+
+    .grid-item:hover {
+        background: var(--dark-gray);
+    }
+
+    .grid-item h3 {
+        font-size: 3rem;
+        margin-bottom: 1.5rem;
+        color: var(--white);
+    }
+
+    .grid-item:hover h3 {
+        color: var(--gold);
+    }
+
+    .grid-item p {
+        color: #666;
+        font-size: 1.1rem;
+    }
+
+    .step-number {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1.25rem;
+        color: var(--gray);
+        margin-bottom: 2.5rem;
+        display: block;
+    }
+
+    @media (max-width: 900px) {
+        .grid { 
+            border-left: none; 
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+        .grid-item { padding: 3rem; }
+    }
+</style>

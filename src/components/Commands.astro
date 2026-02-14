@@ -1,0 +1,51 @@
+<section id="maintenance">
+    <div class="container">
+        <h2 class="reveal" style="font-size: 4rem; margin-bottom: 4rem;">COMMAND REPERTOIRE</h2>
+        <div class="commands-grid">
+            <div class="reveal">
+                <h3 class="impact" style="color: var(--gold); margin-bottom: 1rem;">Worktree Management</h3>
+                <ul class="command-list">
+                    <li><code>git worktree list</code> — Inventory all active worktree folders.</li>
+                    <li><code>git worktree prune</code> — Clean up stale metadata.</li>
+                    <li><code>git worktree remove &lt;path&gt;</code> — Safely delete a worktree.</li>
+                </ul>
+            </div>
+            <div class="reveal">
+                <h3 class="impact" style="color: var(--gold); margin-bottom: 1rem;">Advanced Logic</h3>
+                <ul class="command-list">
+                    <li><code>git worktree add --detach review</code> — Review PRs without branch locking.</li>
+                    <li><code>git worktree lock</code> — Prevent a worktree from being pruned.</li>
+                    <li><code>git worktree repair</code> — Fix pointers if folders are moved.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .commands-grid {
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 2rem;
+    }
+
+    .command-list {
+        list-style: none; 
+        color: #999;
+    }
+
+    .command-list li {
+        margin-bottom: 1rem;
+    }
+
+    code {
+        color: var(--gold);
+        background: #000;
+        padding: 0.2rem 0.5rem;
+        border: 1px solid var(--gray);
+    }
+
+    @media (max-width: 900px) {
+        .commands-grid { grid-template-columns: 1fr; }
+    }
+</style>

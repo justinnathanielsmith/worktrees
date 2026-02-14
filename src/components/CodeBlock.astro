@@ -1,0 +1,93 @@
+---
+interface Props {
+    code: string;
+    label?: string;
+}
+
+const { code, label = "SHELL // SYSTEM_EXECUTABLE" } = Astro.props;
+---
+
+<div class="code-wrap">
+    <div class="code-label">{label}</div>
+    <button class="copy-btn">COPY</button>
+    <pre><code>{code}</code></pre>
+</div>
+
+<style>
+    .code-wrap {
+        background: #000;
+        padding: 3rem;
+        border: var(--border-width) solid var(--gray);
+        margin-top: 3rem;
+        font-family: 'JetBrains Mono', monospace;
+        position: relative;
+        overflow-x: auto;
+    }
+
+    .code-label {
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: var(--gray);
+        color: var(--white);
+        font-size: 0.65rem;
+        padding: 4px 10px;
+        font-family: 'Inter', sans-serif;
+        font-weight: 900;
+    }
+    
+    .copy-btn {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: var(--gray);
+        color: var(--white);
+        border: none;
+        padding: 4px 10px;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.65rem;
+        font-weight: 900;
+        cursor: pointer;
+        transition: background 0.2s;
+        text-transform: uppercase;
+        z-index: 10;
+    }
+
+    .copy-btn:hover {
+        background: var(--gold);
+        color: var(--black);
+    }
+
+    code {
+        color: var(--gold);
+        font-size: 1.1rem;
+        line-height: 1.8;
+    }
+
+    pre {
+        margin: 0;
+    }
+</style>
+
+<script>
+    document.querySelectorAll('.copy-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+            const wrapper = button.closest('.code-wrap');
+            const codeBlock = wrapper?.querySelector('code');
+            if (!codeBlock) return;
+            
+            const text = codeBlock.innerText;
+            try {
+                await navigator.clipboard.writeText(text);
+                const originalText = (button as HTMLElement).innerText;
+                (button as HTMLElement).innerText = 'COPIED';
+                setTimeout(() => {
+                    (button as HTMLElement).innerText = originalText;
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                (button as HTMLElement).innerText = 'ERROR';
+            }
+        });
+    });
+</script>
