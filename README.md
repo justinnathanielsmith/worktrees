@@ -37,7 +37,7 @@ To initialize your environment with this architecture:
 - **Global Fetch**: `git fetch --all`
 
 ## 🎨 Visual Guide
-Open `index.html` in your browser for a full neon-cyberpunk interactive breakdown of these metrics and structures.
+Open `index.html` in your browser for a full Industrial Brutalist breakdown of these metrics and structures. High-contrast, performance-focused documentation.
 
 ---
-*Stay Hydrated. Keep Grinding.*
+*Stay Raw. Keep Grinding.*

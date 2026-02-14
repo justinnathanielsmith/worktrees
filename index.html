@@ -3,527 +3,367 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giga Chad's Bare Worktree Guide</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>BARE HUB | Industrial Performance Workflow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; overflow-x: hidden; }
-        .chart-container { 
-            position: relative; 
-            width: 100%; 
-            max-width: 600px; 
-            margin-left: auto; 
-            margin-right: auto; 
-            height: 350px; 
-            max-height: 400px; 
-        }
-        @media (min-width: 768px) { .chart-container { height: 400px; } }
-        
-        /* Custom scrollbar for webkit */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-        .neon-text { text-shadow: 0 0 10px rgba(6, 182, 212, 0.5); }
-        .neon-box { box-shadow: 0 0 15px rgba(6, 182, 212, 0.2); border: 1px solid rgba(6, 182, 212, 0.3); }
-        .pink-glow { text-shadow: 0 0 10px rgba(236, 72, 153, 0.5); }
-
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
-        }
-        .animate-float { animation: float 6s ease-in-out infinite; }
-
-        @keyframes pulse-glow {
-            0%, 100% { opacity: 0.5; filter: blur(40px); }
-            50% { opacity: 0.8; filter: blur(60px); }
-        }
-        .pulse-bg { animation: pulse-glow 8s ease-in-out infinite; }
-
-        .glass-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .glass-card:hover {
-            transform: translateY(-5px) scale(1.02);
-            border-color: rgba(6, 182, 212, 0.5);
-            box-shadow: 0 10px 30px -10px rgba(6, 182, 212, 0.3);
+        :root {
+            --black: #111111;
+            --gold: #D4AF37;
+            --white: #F2F2F2;
+            --gray: #333333;
+            --border-width: 2px;
+            --transition: 0.3s cubic-bezier(0.23, 1, 0.32, 1);
         }
 
-        .gradient-border {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--black);
+            color: var(--white);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3, .impact {
+            font-family: 'Bebas Neue', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* --- Layout --- */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        section {
+            padding: 8rem 0;
+            border-bottom: var(--border-width) solid var(--gray);
+        }
+
+        /* --- Navigation --- */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            background: var(--black);
+            border-bottom: var(--border-width) solid var(--gray);
+            padding: 1.5rem 0;
+        }
+
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            color: var(--gold);
+            text-decoration: none;
+        }
+
+        .nav-status {
+            font-size: 0.75rem;
+            font-weight: 900;
+            color: var(--gray);
+            border: 1px solid var(--gray);
+            padding: 0.25rem 0.75rem;
+            text-transform: uppercase;
+        }
+
+        /* --- Hero --- */
+        .hero {
+            padding-top: 12rem;
+            text-align: left;
             position: relative;
-            background: #1e293b;
-            border-radius: 1rem;
-            z-index: 1;
         }
-        .gradient-border::before {
-            content: "";
-            position: absolute;
-            top: -2px; left: -2px; right: -2px; bottom: -2px;
-            background: linear-gradient(45deg, #06b6d4, #ec4899, #10b981);
-            border-radius: 1.1rem;
-            z-index: -1;
-            transition: opacity 0.3s;
-            opacity: 0.3;
-        }
-        .gradient-border:hover::before { opacity: 1; }
 
+        .hero h1 {
+            font-size: clamp(4rem, 15vw, 12rem);
+            line-height: 0.85;
+            margin-bottom: 2rem;
+            color: var(--white);
+            transform: translateX(-0.05em);
+        }
+
+        .hero h1 span {
+            display: block;
+            color: transparent;
+            -webkit-text-stroke: 2px var(--white);
+        }
+
+        .hero-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            margin-top: 4rem;
+        }
+
+        .hero-meta p {
+            font-size: 1.25rem;
+            max-width: 40ch;
+            color: #999;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background: var(--gold);
+            color: var(--black);
+            padding: 1.5rem 3rem;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            text-decoration: none;
+            transition: var(--transition);
+            border: none;
+            cursor: pointer;
+        }
+
+        .cta-button:hover {
+            background: var(--white);
+            transform: scale(1.05);
+        }
+
+        /* --- Industrial Grid --- */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 0;
+            border-left: var(--border-width) solid var(--gray);
+        }
+
+        .grid-item {
+            padding: 4rem;
+            border-right: var(--border-width) solid var(--gray);
+            border-bottom: var(--border-width) solid var(--gray);
+            transition: var(--transition);
+        }
+
+        .grid-item:hover {
+            background: var(--gray);
+        }
+
+        .grid-item h3 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--gold);
+        }
+
+        .grid-item p {
+            color: #999;
+        }
+
+        .step-number {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            color: var(--gray);
+            margin-bottom: 2rem;
+            display: block;
+        }
+
+        /* --- Code Block --- */
+        .code-wrap {
+            background: #000;
+            padding: 2rem;
+            border: 1px solid var(--gray);
+            margin-top: 2rem;
+            font-family: monospace;
+            position: relative;
+            overflow-x: auto;
+        }
+
+        .code-wrap::before {
+            content: "SHELL";
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--gray);
+            color: var(--white);
+            font-size: 0.6rem;
+            padding: 2px 6px;
+        }
+
+        code {
+            color: var(--gold);
+        }
+
+        /* --- Animations --- */
         .reveal {
             opacity: 0;
             transform: translateY(30px);
-            transition: all 0.8s ease-out;
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
         }
+
         .reveal.active {
             opacity: 1;
             transform: translateY(0);
         }
+
+        /* --- Decorative --- */
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                rgba(255, 255, 255, 0) 50%,
+                rgba(0, 0, 0, 0.05) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 10000;
+            opacity: 0.1;
+        }
+
+        @media (max-width: 768px) {
+            .hero-meta {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            .grid {
+                border-left: none;
+            }
+            .grid-item {
+                border-left: var(--border-width) solid var(--gray);
+            }
+        }
     </style>
-    <!-- 
-        Selected Palette: "Neon Cyber-Future"
-        Hex Codes: #0f172a (Bg), #1e293b (Card), #06b6d4 (Cyan), #ec4899 (Pink), #10b981 (Green)
-        Justification: Matches the "Giga Chad" / High-Tech vibe of the source material.
-        
-        Plan Summary:
-        1. Intro/Hook: Define the Bare Hub.
-        2. Comparison: Radar chart (Bare vs Standard).
-        3. Anatomy: CSS Grid diagram of folder structure.
-        4. Process: Step-by-step cards.
-        5. Efficiency: Bar chart showing time savings.
-        6. Conclusion: Maintenance tips.
-        
-        NO SVG USED. NO MERMAID JS USED.
-    -->
 </head>
-<body class="antialiased selection:bg-cyan-500 selection:text-white relative">
-    
-    <!-- Background Glow Elements -->
-    <div class="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
-        <div class="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-cyan-500/10 rounded-full pulse-bg"></div>
-        <div class="absolute top-[20%] -right-[5%] w-[30%] h-[30%] bg-pink-500/10 rounded-full pulse-bg" style="animation-delay: -2s;"></div>
-        <div class="absolute bottom-[10%] left-[15%] w-[25%] h-[25%] bg-green-500/10 rounded-full pulse-bg" style="animation-delay: -4s;"></div>
-    </div>
+<body>
+    <div class="scanline"></div>
 
-    <!-- Navigation / Header -->
-    <header class="sticky top-0 z-50 bg-[#0f172a]/80 backdrop-blur-xl border-b border-slate-700/50 py-4 shadow-2xl transition-all duration-300">
-        <div class="container mx-auto px-4 flex justify-between items-center">
-            <h1 class="text-2xl md:text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-pink-500 neon-text">
-                BARE HUB <span class="text-white text-lg font-normal opacity-70 ml-2 hidden sm:inline">| The Giga Chad Workflow</span>
-            </h1>
-            <div class="text-sm font-bold text-cyan-400 border border-cyan-400/50 rounded-full px-4 py-1.5 bg-cyan-400/5 hover:bg-cyan-400/10 transition-colors cursor-default">
-                GIT STATUS: OPTIMIZED
-            </div>
+    <nav>
+        <div class="container">
+            <a href="#" class="logo impact">BARE HUB</a>
+            <div class="nav-status">SYSTEM: OPTIMIZED</div>
         </div>
-    </header>
+    </nav>
 
-    <main class="container mx-auto px-4 py-8 space-y-32">
-
-        <!-- HERO SECTION -->
-        <section class="text-center space-y-8 py-12 reveal active">
-            <div class="inline-block bg-pink-500/10 text-pink-400 font-bold px-4 py-2 rounded-full border border-pink-500/20 mb-4 animate-bounce">
-                ⚠️ WARNING: High Performance Zone
-            </div>
-            <h2 class="text-6xl md:text-8xl font-black text-white leading-tight tracking-tight">
-                STOP CODING LIKE <br>
-                <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 animate-pulse">A MID-TIER DEV</span>
-            </h2>
-            <p class="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                Standard Git setups are high-latency and low-aesthetic. Embrace the <span class="text-cyan-400 font-bold underline decoration-cyan-400/30">Bare Hub Architecture</span>. 
-                Decouple your engine from your muscle. Work on five branches at once. Zero bloat. 100% Gains.
-            </p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
-                <div class="glass-card p-8 rounded-2xl border border-slate-700 neon-box animate-float">
-                    <div class="text-5xl mb-4 filter drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]">⚡</div>
-                    <h3 class="text-2xl font-bold text-white mb-2">Instant Switching</h3>
-                    <p class="text-slate-400">No more checkout delays. Just change directories.</p>
-                </div>
-                <div class="glass-card p-8 rounded-2xl border border-slate-700 neon-box animate-float" style="animation-delay: -1s;">
-                    <div class="text-5xl mb-4 filter drop-shadow-[0_0_8px_rgba(236,72,153,0.5)]">💪</div>
-                    <h3 class="text-2xl font-bold text-white mb-2">Parallel Muscle</h3>
-                    <p class="text-slate-400">Run tests on `main` while coding `feature-x`.</p>
-                </div>
-                <div class="glass-card p-8 rounded-2xl border border-slate-700 neon-box animate-float" style="animation-delay: -2s;">
-                    <div class="text-5xl mb-4 filter drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]">🧹</div>
-                    <h3 class="text-2xl font-bold text-white mb-2">Zero Clutter</h3>
-                    <p class="text-slate-400">Clean root. Hidden engine. Pure focus.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- SECTION 1: THE COMPARISON -->
-        <section class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center reveal">
-            <div class="space-y-8">
-                <h3 class="text-4xl font-bold text-white border-l-8 border-cyan-500 pl-6 py-2">The Performance Gap</h3>
-                <p class="text-xl text-slate-300 leading-relaxed">
-                    Why switch? Because the standard `git clone` model bundles your history with your workspace, creating a bottleneck. 
-                    The Bare Hub separates concerns, maximizing every metric that matters to a high-performer.
-                </p>
-                <ul class="space-y-4 text-slate-400 text-lg">
-                    <li class="flex items-center group"><span class="text-cyan-400 mr-3 transform group-hover:scale-125 transition-transform">✓</span> <strong>Velocity:</strong> Never wait for node_modules to re-index.</li>
-                    <li class="flex items-center group"><span class="text-cyan-400 mr-3 transform group-hover:scale-125 transition-transform">✓</span> <strong>Hygiene:</strong> Dead branches don't clutter your view.</li>
-                    <li class="flex items-center group"><span class="text-cyan-400 mr-3 transform group-hover:scale-125 transition-transform">✓</span> <strong>Flex:</strong> Impress your team with superior folder structures.</li>
-                </ul>
-            </div>
-            
-            <div class="bg-slate-800/50 p-8 rounded-3xl shadow-2xl border border-slate-700 backdrop-blur-sm group hover:border-cyan-500/50 transition-all duration-500">
-                <div class="chart-container">
-                    <canvas id="comparisonChart"></canvas>
-                </div>
-                <p class="text-center text-sm font-medium text-slate-500 mt-6 uppercase tracking-widest">Fig 1. Qualitative analysis of Developer Experience (DX)</p>
-            </div>
-        </section>
-
-        <!-- SECTION 2: THE ANATOMY -->
-        <section class="reveal">
-            <div class="text-center mb-16">
-                <h3 class="text-4xl font-bold text-white mb-6">The Giga Chad Directory Structure</h3>
-                <p class="text-xl text-slate-400 max-w-2xl mx-auto">
-                    Unlike the messy single folder of the past, the Bare Hub is organized into three distinct physiological components: 
-                    The Engine, The Brain, and The Muscle.
-                </p>
-            </div>
-
-            <div class="bg-slate-900/80 p-10 rounded-[3rem] border border-slate-700/50 relative overflow-hidden shadow-inner backdrop-blur-md">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-10 relative z-10">
-                    
-                    <!-- The Engine -->
-                    <div class="gradient-border group p-8 min-h-[300px] flex flex-col">
-                        <div class="flex justify-between items-start mb-6">
-                            <span class="text-5xl group-hover:scale-110 transition-transform">🗄️</span>
-                            <span class="bg-pink-500/20 text-pink-400 text-xs font-bold px-3 py-1 rounded-full border border-pink-500/30">HIDDEN</span>
-                        </div>
-                        <h4 class="text-2xl font-bold text-white group-hover:text-pink-400 transition-colors">.bare/</h4>
-                        <p class="text-sm text-slate-500 font-mono mt-2 mb-6 uppercase tracking-wider">The Engine</p>
-                        <p class="text-slate-300 leading-relaxed">Contains the Git database and history. It does the heavy lifting but stays out of sight.</p>
-                    </div>
-
-                    <!-- The Brain -->
-                    <div class="gradient-border group p-8 min-h-[300px] flex flex-col justify-between">
-                        <div>
-                            <div class="flex justify-between items-start mb-6">
-                                <span class="text-5xl group-hover:scale-110 transition-transform">🧠</span>
-                                <span class="bg-cyan-500/20 text-cyan-400 text-xs font-bold px-3 py-1 rounded-full border border-cyan-500/30">FILE</span>
-                            </div>
-                            <h4 class="text-2xl font-bold text-white group-hover:text-cyan-400 transition-colors">.git</h4>
-                            <p class="text-sm text-slate-500 font-mono mt-2 mb-6 uppercase tracking-wider">The Brain</p>
-                            <p class="text-slate-300 leading-relaxed">A pointer file (not a folder) telling the root where the engine is.</p>
-                        </div>
-                        <div class="bg-black/80 p-4 rounded-xl mt-6 font-mono text-xs text-green-400 border border-green-500/20 shadow-lg">
-                            gitdir: ./.bare
-                        </div>
-                    </div>
-
-                    <!-- The Muscle -->
-                    <div class="gradient-border group p-8 min-h-[300px] flex flex-col">
-                        <div class="flex justify-between items-start mb-6">
-                            <span class="text-5xl group-hover:scale-110 transition-transform">💪</span>
-                            <span class="bg-green-500/20 text-green-400 text-xs font-bold px-3 py-1 rounded-full border border-green-500/30">WORKTREES</span>
-                        </div>
-                        <h4 class="text-2xl font-bold text-white group-hover:text-green-400 transition-colors">folders/</h4>
-                        <p class="text-sm text-slate-500 font-mono mt-2 mb-6 uppercase tracking-wider">The Muscle</p>
-                        <ul class="space-y-4 text-slate-300">
-                            <li class="flex items-center group/item"><span class="text-2xl mr-3 group-hover/item:rotate-12 transition-transform">📂</span> main/</li>
-                            <li class="flex items-center group/item"><span class="text-2xl mr-3 group-hover/item:rotate-12 transition-transform">📂</span> feature-login/</li>
-                            <li class="flex items-center group/item"><span class="text-2xl mr-3 group-hover/item:rotate-12 transition-transform">📂</span> hotfix-ui/</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- SECTION 3: THE WORKFLOW -->
-        <section class="reveal">
-            <div class="flex flex-col md:flex-row items-start md:items-stretch gap-12">
-                <div class="md:w-1/3">
-                    <h3 class="text-4xl font-bold text-white sticky top-24 leading-tight">Execution Protocol</h3>
-                    <p class="text-lg text-slate-400 mt-6 sticky top-48">
-                        Follow this protocol to initialize your environment. Deviation results in suboptimal performance.
+    <main>
+        <!-- Hero -->
+        <section class="hero">
+            <div class="container">
+                <h1 class="reveal">
+                    RAW<span>PERFORMANCE</span>
+                </h1>
+                <div class="hero-meta reveal">
+                    <p>
+                        Stop wrestling with bloated clones. The Bare Hub architecture decouples your Git history from your workspace. Multi-branch development with zero latency.
                     </p>
+                    <div>
+                        <a href="#protocol" class="cta-button">INITIALIZE WORKFLOW</a>
+                    </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section>
+            <div class="container">
+                <div class="grid">
+                    <div class="grid-item reveal">
+                        <span class="step-number">01 / SPEED</span>
+                        <h3>Instant Switching</h3>
+                        <p>No `git checkout` delays. Branches exist as parallel directories. Switch contexts as fast as you can `cd`.</p>
+                    </div>
+                    <div class="grid-item reveal">
+                        <span class="step-number">02 / POWER</span>
+                        <h3>Parallel Tasks</h3>
+                        <p>Run heavy test suites on `main` while simultaneously developing on `feature-x`. No resource locking.</p>
+                    </div>
+                    <div class="grid-item reveal">
+                        <span class="step-number">03 / FOCUS</span>
+                        <h3>Clean Roots</h3>
+                        <p>The Git engine stays hidden in `.bare`. Your workspace remains focused on the code that matters.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Protocol -->
+        <section id="protocol">
+            <div class="container">
+                <h2 class="reveal" style="font-size: 4rem; margin-bottom: 4rem;">EXECUTION PROTOCOL</h2>
                 
-                <div class="md:w-2/3 space-y-12 relative">
-                    <!-- Connector Line -->
-                    <div class="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-500 via-blue-500 to-pink-500 rounded-full hidden md:block opacity-30"></div>
-
-                    <!-- Step 1 -->
-                    <div class="relative bg-slate-800/40 hover:bg-slate-800/60 transition-colors p-8 rounded-3xl ml-0 md:ml-20 border-l-8 border-cyan-500 shadow-xl backdrop-blur-sm group">
-                        <div class="absolute -left-24 top-8 bg-slate-900 border-4 border-cyan-500 w-12 h-12 rounded-full flex items-center justify-center font-black text-white hidden md:flex shadow-[0_0_15px_rgba(6,182,212,0.4)] group-hover:scale-110 transition-transform">1</div>
-                        <h4 class="text-2xl font-bold text-white mb-3">Create The Engine</h4>
-                        <p class="text-slate-400 mb-6 text-lg">Initialize the repo as bare in a hidden directory.</p>
-                        <div class="bg-black/90 p-6 rounded-2xl font-mono text-sm text-cyan-300 overflow-x-auto border border-white/5 shadow-2xl">mkdir project && cd project
-git clone --bare &lt;url&gt; .bare</div>
-                    </div>
-
-                    <!-- Step 2 -->
-                    <div class="relative bg-slate-800/40 hover:bg-slate-800/60 transition-colors p-8 rounded-3xl ml-0 md:ml-20 border-l-8 border-cyan-500 shadow-xl backdrop-blur-sm group">
-                        <div class="absolute -left-24 top-8 bg-slate-900 border-4 border-cyan-500 w-12 h-12 rounded-full flex items-center justify-center font-black text-white hidden md:flex shadow-[0_0_15px_rgba(6,182,212,0.4)] group-hover:scale-110 transition-transform">2</div>
-                        <h4 class="text-2xl font-bold text-white mb-3">Connect The Brain</h4>
-                        <p class="text-slate-400 mb-6 text-lg">Point the root Git context to the hidden engine.</p>
-                        <div class="bg-black/90 p-6 rounded-2xl font-mono text-sm text-cyan-300 overflow-x-auto border border-white/5 shadow-2xl">echo "gitdir: ./.bare" > .git</div>
-                    </div>
-
-                    <!-- Step 3 -->
-                    <div class="relative bg-slate-800/40 hover:bg-slate-800/60 transition-colors p-8 rounded-3xl ml-0 md:ml-20 border-l-8 border-pink-500 shadow-xl backdrop-blur-sm group">
-                        <div class="absolute -left-24 top-8 bg-slate-900 border-4 border-pink-500 w-12 h-12 rounded-full flex items-center justify-center font-black text-white hidden md:flex shadow-[0_0_15px_rgba(236,72,153,0.4)] group-hover:scale-110 transition-transform">3</div>
-                        <h4 class="text-2xl font-bold text-white mb-3">Spawn Muscle</h4>
-                        <p class="text-slate-400 mb-6 text-lg">Generate dedicated folders for your branches. Do not checkout.</p>
-                        <div class="bg-black/90 p-6 rounded-2xl font-mono text-sm text-pink-300 overflow-x-auto border border-white/5 shadow-2xl">git worktree add main
-git worktree add -b feature-scaling scaling</div>
-                    </div>
-
-                </div>
-            </div>
-        </section>
-
-        <!-- SECTION 4: EFFICIENCY METRICS -->
-        <section class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[3rem] p-12 border border-slate-700 shadow-2xl reveal">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-                <div class="chart-container order-2 md:order-1">
-                    <canvas id="efficiencyChart"></canvas>
-                </div>
-                <div class="flex flex-col justify-center space-y-8 order-1 md:order-2">
-                    <h3 class="text-4xl font-bold text-white leading-tight">Shredding the Latency</h3>
-                    <p class="text-xl text-slate-300 leading-relaxed">
-                        Every time you `git checkout` on a massive repo, you lose seconds to file I/O and minutes to your IDE re-indexing symbols. 
-                        With Worktrees, the cost is paid once.
-                    </p>
-                    <div class="space-y-6">
-                        <div class="bg-slate-950/50 p-6 rounded-2xl border-l-8 border-green-500 backdrop-blur-sm hover:translate-x-2 transition-transform">
-                            <h5 class="text-green-400 font-bold text-sm uppercase tracking-widest mb-2">Parallel Testing</h5>
-                            <p class="text-slate-400 leading-relaxed">Run your test suite in the `main` folder while writing code in `feature-login`. 100% uptime.</p>
+                <div style="display: grid; gap: 4rem;">
+                    <div class="reveal">
+                        <span class="step-number">PHASE 1: THE ENGINE</span>
+                        <p>Clone your repository as a bare instance into a hidden directory.</p>
+                        <div class="code-wrap">
+                            <code>git clone --bare git@github.com:user/repo.git .bare</code>
                         </div>
-                        <div class="bg-slate-950/50 p-6 rounded-2xl border-l-8 border-green-500 backdrop-blur-sm hover:translate-x-2 transition-transform">
-                            <h5 class="text-green-400 font-bold text-sm uppercase tracking-widest mb-2">Independent Artifacts</h5>
-                            <p class="text-slate-400 leading-relaxed">`node_modules` are isolated. Installing a package on one branch never breaks another.</p>
+                    </div>
+
+                    <div class="reveal">
+                        <span class="step-number">PHASE 2: THE BRAIN</span>
+                        <p>Point the root directory to the hidden engine using a gitdir pointer.</p>
+                        <div class="code-wrap">
+                            <code>echo "gitdir: ./.bare" > .git</code>
+                        </div>
+                    </div>
+
+                    <div class="reveal">
+                        <span class="step-number">PHASE 3: THE MUSCLE</span>
+                        <p>Spawn independent worktrees for your active branches.</p>
+                        <div class="code-wrap">
+                            <code>git worktree add main<br>git worktree add -b feature-dev dev</code>
                         </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- SECTION 5: MAINTENANCE -->
-        <section class="space-y-12 reveal">
-            <div class="text-center">
-                <h3 class="text-3xl font-bold text-white mb-4">Gym Hygiene (Maintenance)</h3>
-                <p class="text-lg text-slate-400">Keep the facility clean at all times.</p>
+        <!-- Footer -->
+        <footer style="padding: 4rem 0; text-align: center;">
+            <div class="container">
+                <p class="impact" style="font-size: 1.5rem; color: var(--gray);">STAY RAW. KEEP GRINDING.</p>
+                <p style="font-size: 0.75rem; margin-top: 1rem; color: #555;">&copy; 2026 INDUSTRIAL PERFORMANCE WORKFLOW</p>
             </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <!-- Tip 1 -->
-                <div class="glass-card p-8 rounded-3xl border border-slate-700/50 group">
-                    <div class="w-12 h-12 bg-pink-500/10 rounded-xl flex items-center justify-center mb-6 border border-pink-500/20 group-hover:scale-110 transition-transform">
-                        <span class="text-2xl text-pink-400">🗑️</span>
-                    </div>
-                    <h4 class="text-xl font-bold text-white mb-3">Remove Worktree</h4>
-                    <p class="text-slate-400 mb-6">Don't just delete the folder. Unregister it properly.</p>
-                    <code class="bg-black/40 px-3 py-2 rounded-lg text-xs text-pink-300 font-mono block border border-pink-500/10">git worktree remove &lt;name&gt;</code>
-                </div>
-
-                <!-- Tip 2 -->
-                <div class="glass-card p-8 rounded-3xl border border-slate-700/50 group">
-                    <div class="w-12 h-12 bg-cyan-500/10 rounded-xl flex items-center justify-center mb-6 border border-cyan-500/20 group-hover:scale-110 transition-transform">
-                        <span class="text-2xl text-cyan-400">✂️</span>
-                    </div>
-                    <h4 class="text-xl font-bold text-white mb-3">Prune Ghosts</h4>
-                    <p class="text-slate-400 mb-6">Remove remote branches that no longer exist locally.</p>
-                    <code class="bg-black/40 px-3 py-2 rounded-lg text-xs text-cyan-300 font-mono block border border-cyan-500/10">git fetch --prune</code>
-                </div>
-
-                <!-- Tip 3 -->
-                <div class="glass-card p-8 rounded-3xl border border-slate-700/50 group">
-                    <div class="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-6 border border-green-500/20 group-hover:scale-110 transition-transform">
-                        <span class="text-2xl text-green-400">🔄</span>
-                    </div>
-                    <h4 class="text-xl font-bold text-white mb-3">Global Fetch</h4>
-                    <p class="text-slate-400 mb-6">Update your entire engine history from the root.</p>
-                    <code class="bg-black/40 px-3 py-2 rounded-lg text-xs text-green-300 font-mono block border border-green-500/10">git fetch --all</code>
-                </div>
-            </div>
-        </section>
-
-        <footer class="text-center space-y-4 py-16 border-t border-slate-800 mt-20">
-            <p class="text-slate-500 font-medium uppercase tracking-[0.3em] text-xs">Generated for the Giga Chad Developer Community</p>
-            <p class="text-slate-400 font-black italic text-xl">Stay Hydrated. Keep Grinding.</p>
         </footer>
-
     </main>
 
-    <!-- Chart.js and Animation Logic -->
     <script>
-        // Scroll Reveal Animation
-        function reveal() {
-            var reveals = document.querySelectorAll(".reveal");
-            for (var i = 0; i < reveals.length; i++) {
-                var windowHeight = window.innerHeight;
-                var elementTop = reveals[i].getBoundingClientRect().top;
-                var elementVisible = 150;
-                if (elementTop < windowHeight - elementVisible) {
-                    reveals[i].classList.add("active");
-                }
-            }
-        }
-        window.addEventListener("scroll", reveal);
-        // Initial check
-        reveal();
-
-        // Common Chart Defaults for Neon Theme
-        Chart.defaults.color = '#94a3b8';
-        Chart.defaults.borderColor = 'rgba(51, 65, 85, 0.5)';
-        Chart.defaults.font.family = "'Inter', sans-serif";
-        
-        // Tooltip Callback for Multi-line Labels
-        const tooltipConfig = {
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
-            titleColor: '#fff',
-            bodyColor: '#94a3b8',
-            borderColor: 'rgba(6, 182, 212, 0.3)',
-            borderWidth: 1,
-            padding: 12,
-            cornerRadius: 8,
-            callbacks: {
-                title: function(tooltipItems) {
-                    const item = tooltipItems[0];
-                    let label = item.chart.data.labels[item.dataIndex];
-                    if (Array.isArray(label)) {
-                        return label.join(' ');
-                    } else {
-                        return label;
-                    }
-                }
-            }
+        // Intersection Observer for scroll animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
         };
 
-        // Utility: Label Wrapping
-        function wrapLabel(str) {
-            if (str.length <= 16) return str;
-            const words = str.split(' ');
-            const lines = [];
-            let currentLine = words[0];
-
-            for (let i = 1; i < words.length; i++) {
-                if (currentLine.length + 1 + words[i].length <= 16) {
-                    currentLine += ' ' + words[i];
-                } else {
-                    lines.push(currentLine);
-                    currentLine = words[i];
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
                 }
-            }
-            lines.push(currentLine);
-            return lines;
-        }
+            });
+        }, observerOptions);
 
-        // --- CHART 1: COMPARISON RADAR ---
-        const radarCtx = document.getElementById('comparisonChart').getContext('2d');
-        const radarLabelsRaw = ['Workflow Velocity', 'Organization Hygiene', 'Parallel Power', 'Aesthetic Flex', 'Ease of Setup'];
-        const radarLabels = radarLabelsRaw.map(wrapLabel);
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-        new Chart(radarCtx, {
-            type: 'radar',
-            data: {
-                labels: radarLabels,
-                datasets: [{
-                    label: 'Bare Hub (Giga Chad)',
-                    data: [95, 90, 100, 100, 60],
-                    backgroundColor: 'rgba(6, 182, 212, 0.2)',
-                    borderColor: '#06b6d4',
-                    borderWidth: 3,
-                    pointBackgroundColor: '#fff',
-                    pointBorderColor: '#06b6d4',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: '#06b6d4',
-                    pointRadius: 4
-                }, {
-                    label: 'Standard Git (Mid-Tier)',
-                    data: [40, 50, 20, 10, 90],
-                    backgroundColor: 'rgba(236, 72, 153, 0.2)',
-                    borderColor: '#ec4899',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#ec4899',
-                    pointBorderColor: '#ec4899',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: '#ec4899',
-                    pointRadius: 3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    r: {
-                        angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        pointLabels: {
-                            color: '#94a3b8',
-                            font: { size: 11, weight: '600' }
-                        },
-                        ticks: { display: false },
-                        suggestedMin: 0,
-                        suggestedMax: 100
-                    }
-                },
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { padding: 30, usePointStyle: true, font: { size: 12 } }
-                    },
-                    tooltip: tooltipConfig
-                }
-            }
+        // Magnetic Button Effect (Minimal)
+        const buttons = document.querySelectorAll('.cta-button');
+        buttons.forEach(btn => {
+            btn.addEventListener('mousemove', (e) => {
+                const rect = btn.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                btn.style.transform = `translate(${x * 0.1}px, ${y * 0.1}px) scale(1.05)`;
+            });
+            btn.addEventListener('mouseleave', () => {
+                btn.style.transform = `translate(0, 0) scale(1)`;
+            });
         });
-
-        // --- CHART 2: EFFICIENCY STACKED BAR ---
-        const barCtx = document.getElementById('efficiencyChart').getContext('2d');
-        const barLabelsRaw = ['Quick Bug Fix', 'Running Test Suite', 'Feature Dev'];
-        const barLabels = barLabelsRaw.map(wrapLabel);
-
-        new Chart(barCtx, {
-            type: 'bar',
-            data: {
-                labels: barLabels,
-                datasets: [
-                    {
-                        label: 'Bare Hub Time',
-                        data: [5, 45, 120],
-                        backgroundColor: '#06b6d4',
-                        borderRadius: 8,
-                        barPercentage: 0.6,
-                        categoryPercentage: 0.8
-                    },
-                    {
-                        label: 'Standard Git Time',
-                        data: [15, 60, 130],
-                        backgroundColor: '#ec4899',
-                        borderRadius: 8,
-                        barPercentage: 0.6,
-                        categoryPercentage: 0.8
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        title: { display: true, text: 'Time (Minutes)', color: '#64748b' }
-                    },
-                    x: {
-                        grid: { display: false }
-                    }
-                },
-                plugins: {
-                    legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } },
-                    tooltip: tooltipConfig
-                }
-            }
-        });
-
     </script>
 </body>
 </html>
