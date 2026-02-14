@@ -1,0 +1,117 @@
+---
+import CodeBlock from './CodeBlock.astro';
+---
+<section class="py-24 space-y-32">
+    <!-- Header -->
+    <div class="container mx-auto px-4 text-center reveal">
+        <h2 class="text-5xl md:text-7xl font-black text-white mb-6 impact">2026 BEST PRACTICES</h2>
+        <p class="text-cyber-cyan text-xl uppercase tracking-[0.3em] font-bold">Standard Operating Procedures for Giga Chads</p>
+    </div>
+
+    <!-- Practice 1: Intent-Based -->
+    <div class="container mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+        <div class="space-y-8 reveal">
+            <h3 class="text-4xl md:text-5xl font-black text-white border-l-4 border-cyber-cyan pl-6 impact">
+                INTENT-BASED WORKTREES
+            </h3>
+            <p class="text-slate-300 text-lg leading-relaxed">
+                Stop creating new folders for every ephemeral branch. In 2026, we use **static worktrees** named by *intent*. 
+                Maintain permanent directories for specific tasks to keep build caches and IDE indexes warm.
+            </p>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700">
+                    <span class="text-cyber-cyan font-bold block mb-1">/work</span>
+                    <span class="text-xs text-slate-400 uppercase">Primary Development</span>
+                </div>
+                <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700">
+                    <span class="text-cyber-pink font-bold block mb-1">/review</span>
+                    <span class="text-xs text-slate-400 uppercase">PR Inspections</span>
+                </div>
+                <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700">
+                    <span class="text-cyber-green font-bold block mb-1">/hotfix</span>
+                    <span class="text-xs text-slate-400 uppercase">Emergency Patches</span>
+                </div>
+                <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700">
+                    <span class="text-white font-bold block mb-1">/sandbox</span>
+                    <span class="text-xs text-slate-400 uppercase">Experimental R&D</span>
+                </div>
+            </div>
+        </div>
+        <div class="reveal">
+            <CodeBlock code={`# Setup intent-based structure
+git worktree add work main
+git worktree add review main
+git worktree add hotfix main
+
+# Switch branch WITHIN the intent folder
+cd review
+git switch feature-user-auth`} label="TERMINAL // INTENT_FLOW" />
+        </div>
+    </div>
+
+    <!-- Practice 2: AI Isolation -->
+    <div class="container mx-auto px-4">
+        <div class="bg-slate-900/50 p-8 md:p-12 rounded-[2.5rem] border border-slate-800 relative overflow-hidden reveal">
+            <div class="absolute top-0 right-0 w-96 h-96 bg-cyber-pink/10 rounded-full blur-[100px] -mr-48 -mt-48 pointer-events-none"></div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center relative z-10">
+                <div class="order-2 md:order-1">
+                    <CodeBlock code={`# Create a dedicated agent worktree
+git worktree add ai-sandbox ai-task-branch
+
+# Let the agent run wild without locking your UI
+gemini "Refactor the core engine in ./ai-sandbox"`} label="TERMINAL // AI_ISOLATION" />
+                </div>
+                <div class="space-y-8 order-1 md:order-2">
+                    <h3 class="text-4xl md:text-5xl font-black text-white impact pink-glow">AI SANDBOXING</h3>
+                    <p class="text-slate-300 text-lg leading-relaxed">
+                        Don't let your AI agent fight you for terminal focus. Give it a dedicated worktree where it can run builds, 
+                        execute tests, and refactor code in parallel while you keep working in `/work`.
+                    </p>
+                    <ul class="space-y-4">
+                        <li class="flex items-center gap-3">
+                            <span class="w-2 h-2 bg-cyber-pink rounded-full"></span>
+                            <span class="text-slate-400">Zero UI locking during AI builds</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="w-2 h-2 bg-cyber-pink rounded-full"></span>
+                            <span class="text-slate-400">Isolated dependency installs</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="w-2 h-2 bg-cyber-pink rounded-full"></span>
+                            <span class="text-slate-400">Safety: AI can't accidentally wipe your unstaged work</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Practice 3: Modern Pkg Managers -->
+    <div class="container mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+        <div class="space-y-8 reveal">
+            <h3 class="text-4xl md:text-5xl font-black text-white border-l-4 border-cyber-green pl-6 impact">
+                GLOBAL CONTENT STORES
+            </h3>
+            <p class="text-slate-300 text-lg leading-relaxed">
+                In a multi-worktree environment, standard `npm` is a disk-space disaster. Use **pnpm** or **Bun** to share 
+                a single content-addressable store across all your folders.
+            </p>
+            <div class="bg-black/60 p-6 rounded-xl border border-cyber-green/30 font-mono text-sm text-cyber-green">
+                <div class="mb-2">// Disk Usage Comparison (5 Worktrees)</div>
+                <div class="flex justify-between border-b border-slate-800 pb-2 mb-2">
+                    <span>NPM / YARN v1</span>
+                    <span class="text-cyber-pink">~2.5 GB</span>
+                </div>
+                <div class="flex justify-between text-white font-bold">
+                    <span>PNPM / BUN</span>
+                    <span class="text-cyber-green">~500 MB</span>
+                </div>
+            </div>
+        </div>
+        <div class="reveal">
+            <CodeBlock code={`# All worktrees share the same physical files
+pnpm install # Instant in secondary worktrees`} label="TERMINAL // PKG_OPTIMIZATION" />
+        </div>
+    </div>
+</section>
