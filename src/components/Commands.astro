@@ -1,51 +1,160 @@
 <section id="maintenance">
     <div class="container">
-        <h2 class="reveal" style="font-size: 4rem; margin-bottom: 4rem;">COMMAND REPERTOIRE</h2>
+        <h2 class="reveal">COMMAND REPERTOIRE</h2>
         <div class="commands-grid">
-            <div class="reveal">
-                <h3 class="impact" style="color: var(--gold); margin-bottom: 1rem;">Worktree Management</h3>
-                <ul class="command-list">
-                    <li><code>git worktree list</code> — Inventory all active worktree folders.</li>
-                    <li><code>git worktree prune</code> — Clean up stale metadata.</li>
-                    <li><code>git worktree remove &lt;path&gt;</code> — Safely delete a worktree.</li>
-                </ul>
+            <div class="reveal command-column">
+                <h3 class="column-title">Worktree Management</h3>
+                <div class="command-rows">
+                    <div class="command-row" data-cmd="git worktree list">
+                        <code class="cmd">git worktree list</code>
+                        <span class="desc">Inventory all active worktree folders.</span>
+                        <div class="copy-feedback">COPIED</div>
+                    </div>
+                    <div class="command-row" data-cmd="git worktree prune">
+                        <code class="cmd">git worktree prune</code>
+                        <span class="desc">Clean up stale metadata.</span>
+                        <div class="copy-feedback">COPIED</div>
+                    </div>
+                    <div class="command-row" data-cmd="git worktree remove <path>">
+                        <code class="cmd">git worktree remove &lt;path&gt;</code>
+                        <span class="desc">Safely delete a worktree.</span>
+                        <div class="copy-feedback">COPIED</div>
+                    </div>
+                </div>
             </div>
-            <div class="reveal">
-                <h3 class="impact" style="color: var(--gold); margin-bottom: 1rem;">Advanced Logic</h3>
-                <ul class="command-list">
-                    <li><code>git worktree add --detach review</code> — Review PRs without branch locking.</li>
-                    <li><code>git worktree lock</code> — Prevent a worktree from being pruned.</li>
-                    <li><code>git worktree repair</code> — Fix pointers if folders are moved.</li>
-                </ul>
+
+            <div class="reveal command-column">
+                <h3 class="column-title">Advanced Logic</h3>
+                <div class="command-rows">
+                    <div class="command-row" data-cmd="git worktree add --detach review">
+                        <code class="cmd">git worktree add --detach review</code>
+                        <span class="desc">Review PRs without branch locking.</span>
+                        <div class="copy-feedback">COPIED</div>
+                    </div>
+                    <div class="command-row" data-cmd="git worktree lock">
+                        <code class="cmd">git worktree lock</code>
+                        <span class="desc">Prevent a worktree from being pruned.</span>
+                        <div class="copy-feedback">COPIED</div>
+                    </div>
+                    <div class="command-row" data-cmd="git worktree repair">
+                        <code class="cmd">git worktree repair</code>
+                        <span class="desc">Fix pointers if folders are moved.</span>
+                        <div class="copy-feedback">COPIED</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </section>
 
 <style>
+    section {
+        background: linear-gradient(180deg, var(--black) 0%, #111 100%);
+    }
+
+    h2 {
+        font-size: 4rem; 
+        margin-bottom: 4rem;
+    }
+
     .commands-grid {
         display: grid; 
         grid-template-columns: 1fr 1fr; 
-        gap: 2rem;
+        gap: 4rem;
     }
 
-    .command-list {
-        list-style: none; 
-        color: #999;
-    }
-
-    .command-list li {
-        margin-bottom: 1rem;
-    }
-
-    code {
+    .column-title {
         color: var(--gold);
-        background: #000;
-        padding: 0.2rem 0.5rem;
+        margin-bottom: 2rem;
+        font-size: 1.5rem;
+        border-bottom: 1px solid var(--gray);
+        padding-bottom: 1rem;
+    }
+
+    .command-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .command-row {
+        position: relative;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.02);
         border: 1px solid var(--gray);
+        transition: var(--transition);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        overflow: hidden;
+    }
+
+    .command-row:hover {
+        background: rgba(212, 175, 55, 0.05);
+        border-color: var(--gold);
+        transform: translateX(10px);
+    }
+
+    .command-row:active {
+        transform: translateX(10px) scale(0.98);
+    }
+
+    .cmd {
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--gold);
+        font-size: 0.9rem;
+        background: transparent;
+        padding: 0;
+        border: none;
+    }
+
+    .desc {
+        font-size: 0.85rem;
+        color: #888;
+        font-weight: 400;
+    }
+
+    .copy-feedback {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: var(--gold);
+        color: var(--black);
+        font-size: 0.6rem;
+        font-weight: bold;
+        padding: 0.2rem 0.5rem;
+        opacity: 0;
+        transform: translateY(-100%);
+        transition: 0.2s cubic-bezier(0.2, 1, 0.3, 1);
+    }
+
+    .command-row.copied .copy-feedback {
+        opacity: 1;
+        transform: translateY(0);
     }
 
     @media (max-width: 900px) {
-        .commands-grid { grid-template-columns: 1fr; }
+        .commands-grid { grid-template-columns: 1fr; gap: 2rem; }
+        h2 { font-size: 3rem; }
     }
 </style>
+
+<script>
+    document.querySelectorAll('.command-row').forEach(row => {
+        row.addEventListener('click', async () => {
+            const cmd = row.getAttribute('data-cmd');
+            if (!cmd) return;
+
+            try {
+                await navigator.clipboard.writeText(cmd);
+                row.classList.add('copied');
+                setTimeout(() => {
+                    row.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+        });
+    });
+</script>
