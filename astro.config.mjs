@@ -1,13 +1,10 @@
 import { defineConfig } from 'astro/config';
-
 import tailwind from '@astrojs/tailwind';
 
 // https://astro.build/config
 export default defineConfig({
   output: 'static',
-
-  // User should update this
-  site: 'https://github.com/user/repo',
-
+  site: 'https://justinnathanielsmith.github.io',
+  base: '/worktrees',
   integrations: [tailwind()]
 });
