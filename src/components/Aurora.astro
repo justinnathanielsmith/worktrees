@@ -1,4 +1,7 @@
+---
+---
 <div class="aurora-bg">
+    <div class="aurora-layer"></div>
     <div class="aurora-layer"></div>
     <div class="aurora-layer"></div>
 </div>
@@ -12,7 +15,7 @@
         height: 100%;
         z-index: -1;
         overflow: hidden;
-        background: radial-gradient(circle at 50% 50%, #111 0%, #0a0a0a 100%);
+        background: radial-gradient(circle at 50% 50%, #111827 0%, #0f172a 100%);
     }
 
     .aurora-layer {
@@ -23,26 +26,36 @@
         left: -50%;
         background: radial-gradient(
             ellipse at center,
-            rgba(212, 175, 55, 0.05) 0%,
+            rgba(6, 182, 212, 0.08) 0%,
             rgba(0, 0, 0, 0) 70%
         );
-        filter: blur(80px);
-        animation: aurora-drift 20s infinite alternate ease-in-out;
+        filter: blur(100px);
+        animation: aurora-drift 30s infinite alternate ease-in-out;
         pointer-events: none;
     }
 
     .aurora-layer:nth-child(2) {
         background: radial-gradient(
             ellipse at center,
-            rgba(255, 255, 255, 0.02) 0%,
+            rgba(236, 72, 153, 0.05) 0%,
             rgba(0, 0, 0, 0) 60%
         );
-        animation-duration: 25s;
+        animation-duration: 35s;
         animation-delay: -5s;
+    }
+
+    .aurora-layer:nth-child(3) {
+        background: radial-gradient(
+            ellipse at center,
+            rgba(16, 185, 129, 0.03) 0%,
+            rgba(0, 0, 0, 0) 50%
+        );
+        animation-duration: 40s;
+        animation-delay: -10s;
     }
 
     @keyframes aurora-drift {
         from { transform: translate(-5%, -5%) rotate(0deg); }
-        to { transform: translate(5%, 5%) rotate(5deg); }
+        to { transform: translate(5%, 5%) rotate(10deg); }
     }
 </style>

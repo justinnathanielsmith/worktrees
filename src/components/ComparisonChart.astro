@@ -1,0 +1,68 @@
+---
+---
+<div class="relative w-full aspect-square md:aspect-auto md:h-[400px]">
+    <canvas id="comparisonChart"></canvas>
+</div>
+
+<script>
+    import Chart from 'chart.js/auto';
+
+    function initChart() {
+        const ctx = document.getElementById('comparisonChart') as HTMLCanvasElement;
+        if (!ctx) return;
+
+        // Common Chart Defaults for Neon Theme
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = '#334155';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['Velocity', 'Hygiene', 'Parallelism', 'Aesthetic', 'Setup Ease'],
+                datasets: [{
+                    label: 'Bare Hub (Giga Chad)',
+                    data: [95, 90, 100, 100, 60],
+                    backgroundColor: 'rgba(6, 182, 212, 0.2)',
+                    borderColor: '#06b6d4',
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#06b6d4',
+                    borderWidth: 3,
+                }, {
+                    label: 'Standard Git (Mid-Tier)',
+                    data: [40, 50, 20, 10, 90],
+                    backgroundColor: 'rgba(236, 72, 153, 0.2)',
+                    borderColor: '#ec4899',
+                    pointBackgroundColor: '#ec4899',
+                    pointBorderColor: '#ec4899',
+                    borderWidth: 3,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { color: '#334155' },
+                        grid: { color: '#1e293b' },
+                        pointLabels: {
+                            color: '#f8fafc',
+                            font: { size: 12, weight: 'bold' }
+                        },
+                        ticks: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 20, usePointStyle: true, font: { weight: 'bold' } }
+                    }
+                }
+            }
+        });
+    }
+
+    // Initialize on load and on view transitions
+    initChart();
+    document.addEventListener('astro:page-load', initChart);
+</script>

@@ -1,142 +1,59 @@
-<section id="maintenance">
-    <div class="container">
-        <h2 class="reveal">COMMAND REPERTOIRE</h2>
-        <div class="commands-grid">
-            <div class="reveal command-column">
-                <h3 class="column-title">Worktree Management</h3>
-                <div class="command-rows">
-                    <div class="command-row" data-cmd="git worktree list">
-                        <code class="cmd">git worktree list</code>
-                        <span class="desc">Inventory all active worktree folders.</span>
-                        <div class="copy-feedback">COPIED</div>
-                    </div>
-                    <div class="command-row" data-cmd="git worktree prune">
-                        <code class="cmd">git worktree prune</code>
-                        <span class="desc">Clean up stale metadata.</span>
-                        <div class="copy-feedback">COPIED</div>
-                    </div>
-                    <div class="command-row" data-cmd="git worktree remove <path>">
-                        <code class="cmd">git worktree remove &lt;path&gt;</code>
-                        <span class="desc">Safely delete a worktree.</span>
-                        <div class="copy-feedback">COPIED</div>
-                    </div>
+---
+---
+<section id="maintenance" class="py-24 bg-cyber-bg">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-16 reveal">
+            <h2 class="text-4xl md:text-6xl font-black text-white mb-4 impact">GYM HYGIENE</h2>
+            <p class="text-slate-400 text-lg uppercase tracking-[0.2em] font-bold">Maintenance & Cleanup</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Tip 1 -->
+            <div class="reveal command-row bg-slate-800/40 p-8 rounded-2xl border border-slate-700 hover:border-cyber-pink transition-all group backdrop-blur-sm cursor-pointer relative overflow-hidden" data-cmd="git worktree remove <name>">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-10 h-10 rounded-lg bg-cyber-pink/20 flex items-center justify-center text-cyber-pink text-2xl">🧹</div>
+                    <h4 class="text-2xl font-black text-white impact tracking-wider">Remove Muscle</h4>
                 </div>
+                <p class="text-slate-400 text-sm mb-6 leading-relaxed">Don't just delete the folder. Unregister it from the engine properly.</p>
+                <div class="bg-black/60 p-4 rounded-lg font-mono text-xs text-cyber-pink border border-slate-700/50 group-hover:border-cyber-pink/30 transition-colors">
+                    git worktree remove &lt;name&gt;
+                </div>
+                <div class="copy-feedback absolute top-0 right-0 bg-cyber-pink text-white text-[0.6rem] font-bold px-2 py-1 opacity-0 transform -translate-y-full transition-all">COPIED</div>
             </div>
 
-            <div class="reveal command-column">
-                <h3 class="column-title">Advanced Logic</h3>
-                <div class="command-rows">
-                    <div class="command-row" data-cmd="git worktree add --detach review">
-                        <code class="cmd">git worktree add --detach review</code>
-                        <span class="desc">Review PRs without branch locking.</span>
-                        <div class="copy-feedback">COPIED</div>
-                    </div>
-                    <div class="command-row" data-cmd="git worktree lock">
-                        <code class="cmd">git worktree lock</code>
-                        <span class="desc">Prevent a worktree from being pruned.</span>
-                        <div class="copy-feedback">COPIED</div>
-                    </div>
-                    <div class="command-row" data-cmd="git worktree repair">
-                        <code class="cmd">git worktree repair</code>
-                        <span class="desc">Fix pointers if folders are moved.</span>
-                        <div class="copy-feedback">COPIED</div>
-                    </div>
+            <!-- Tip 2 -->
+            <div class="reveal command-row bg-slate-800/40 p-8 rounded-2xl border border-slate-700 hover:border-cyber-cyan transition-all group backdrop-blur-sm cursor-pointer relative overflow-hidden" data-cmd="git fetch --prune">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-10 h-10 rounded-lg bg-cyber-cyan/20 flex items-center justify-center text-cyber-cyan text-2xl">👻</div>
+                    <h4 class="text-2xl font-black text-white impact tracking-wider">Prune Ghosts</h4>
                 </div>
+                <p class="text-slate-400 text-sm mb-6 leading-relaxed">Remove remote tracking branches that no longer exist on the server.</p>
+                <div class="bg-black/60 p-4 rounded-lg font-mono text-xs text-cyber-cyan border border-slate-700/50 group-hover:border-cyber-cyan/30 transition-colors">
+                    git fetch --prune
+                </div>
+                <div class="copy-feedback absolute top-0 right-0 bg-cyber-cyan text-white text-[0.6rem] font-bold px-2 py-1 opacity-0 transform -translate-y-full transition-all">COPIED</div>
+            </div>
+
+            <!-- Tip 3 -->
+            <div class="reveal command-row bg-slate-800/40 p-8 rounded-2xl border border-slate-700 hover:border-cyber-green transition-all group backdrop-blur-sm cursor-pointer relative overflow-hidden" data-cmd="git fetch --all">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-10 h-10 rounded-lg bg-cyber-green/20 flex items-center justify-center text-cyber-green text-2xl">🌍</div>
+                    <h4 class="text-2xl font-black text-white impact tracking-wider">Global Fetch</h4>
+                </div>
+                <p class="text-slate-400 text-sm mb-6 leading-relaxed">Update all remote pointers in the engine from any directory context.</p>
+                <div class="bg-black/60 p-4 rounded-lg font-mono text-xs text-cyber-green border border-slate-700/50 group-hover:border-cyber-green/30 transition-colors">
+                    git fetch --all
+                </div>
+                <div class="copy-feedback absolute top-0 right-0 bg-cyber-green text-white text-[0.6rem] font-bold px-2 py-1 opacity-0 transform -translate-y-full transition-all">COPIED</div>
             </div>
         </div>
     </div>
 </section>
 
 <style>
-    section {
-        background: linear-gradient(180deg, var(--black) 0%, #111 100%);
-    }
-
-    h2 {
-        font-size: 4rem; 
-        margin-bottom: 4rem;
-    }
-
-    .commands-grid {
-        display: grid; 
-        grid-template-columns: 1fr 1fr; 
-        gap: 4rem;
-    }
-
-    .column-title {
-        color: var(--gold);
-        margin-bottom: 2rem;
-        font-size: 1.5rem;
-        border-bottom: 1px solid var(--gray);
-        padding-bottom: 1rem;
-    }
-
-    .command-rows {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .command-row {
-        position: relative;
-        padding: 1.5rem;
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid var(--gray);
-        transition: var(--transition);
-        cursor: pointer;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        overflow: hidden;
-    }
-
-    .command-row:hover {
-        background: rgba(212, 175, 55, 0.05);
-        border-color: var(--gold);
-        transform: translateX(10px);
-    }
-
-    .command-row:active {
-        transform: translateX(10px) scale(0.98);
-    }
-
-    .cmd {
-        font-family: 'JetBrains Mono', monospace;
-        color: var(--gold);
-        font-size: 0.9rem;
-        background: transparent;
-        padding: 0;
-        border: none;
-    }
-
-    .desc {
-        font-size: 0.85rem;
-        color: #888;
-        font-weight: 400;
-    }
-
-    .copy-feedback {
-        position: absolute;
-        top: 0;
-        right: 0;
-        background: var(--gold);
-        color: var(--black);
-        font-size: 0.6rem;
-        font-weight: bold;
-        padding: 0.2rem 0.5rem;
-        opacity: 0;
-        transform: translateY(-100%);
-        transition: 0.2s cubic-bezier(0.2, 1, 0.3, 1);
-    }
-
     .command-row.copied .copy-feedback {
         opacity: 1;
         transform: translateY(0);
-    }
-
-    @media (max-width: 900px) {
-        .commands-grid { grid-template-columns: 1fr; gap: 2rem; }
-        h2 { font-size: 3rem; }
     }
 </style>
 

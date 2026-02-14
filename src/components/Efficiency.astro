@@ -1,0 +1,31 @@
+---
+import EfficiencyChart from './EfficiencyChart.astro';
+---
+<section class="py-24 bg-slate-800/20">
+    <div class="container mx-auto px-4">
+        <div class="bg-slate-800/40 rounded-[2.5rem] p-8 md:p-12 border border-slate-700 backdrop-blur-sm reveal">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+                <div class="order-2 md:order-1">
+                    <EfficiencyChart />
+                </div>
+                <div class="flex flex-col justify-center space-y-8 order-1 md:order-2">
+                    <h3 class="text-4xl md:text-5xl font-black text-white impact">SHREDDING THE LATENCY</h3>
+                    <p class="text-slate-300 text-lg leading-relaxed">
+                        Every time you `git checkout` on a massive repo, you lose seconds to file I/O and minutes to your IDE re-indexing symbols. 
+                        With Worktrees, the cost is paid once. Switching is instantaneous.
+                    </p>
+                    <div class="space-y-6">
+                        <div class="bg-slate-900/60 p-6 rounded-xl border-l-4 border-cyber-green group hover:bg-slate-900/80 transition-colors">
+                            <h5 class="text-cyber-green font-black text-lg impact tracking-widest mb-1">Parallel Testing</h5>
+                            <p class="text-slate-400 text-sm">Run your test suite in the `main` folder while writing code in `feature-login`. 100% uptime.</p>
+                        </div>
+                        <div class="bg-slate-900/60 p-6 rounded-xl border-l-4 border-cyber-green group hover:bg-slate-900/80 transition-colors">
+                            <h5 class="text-cyber-green font-black text-lg impact tracking-widest mb-1">Independent Artifacts</h5>
+                            <p class="text-slate-400 text-sm">`node_modules` are isolated. Installing a package on one branch never breaks another.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

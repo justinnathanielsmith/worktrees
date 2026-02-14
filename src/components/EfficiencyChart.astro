@@ -1,0 +1,62 @@
+---
+---
+<div class="relative w-full h-[350px]">
+    <canvas id="efficiencyChart"></canvas>
+</div>
+
+<script>
+    import Chart from 'chart.js/auto';
+
+    function initChart() {
+        const ctx = document.getElementById('efficiencyChart') as HTMLCanvasElement;
+        if (!ctx) return;
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Quick Fix', 'Test Suite', 'Feature Dev'],
+                datasets: [
+                    {
+                        label: 'Bare Hub Time',
+                        data: [5, 45, 120],
+                        backgroundColor: '#06b6d4',
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.8
+                    },
+                    {
+                        label: 'Standard Git Time',
+                        data: [15, 60, 130],
+                        backgroundColor: '#ec4899',
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.8
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#334155' },
+                        title: { display: true, text: 'Time (Minutes)', color: '#94a3b8' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8', font: { weight: 'bold' } }
+                    }
+                },
+                plugins: {
+                    legend: { 
+                        position: 'bottom',
+                        labels: { color: '#94a3b8', font: { weight: 'bold' }, padding: 20 }
+                    }
+                }
+            }
+        });
+    }
+
+    initChart();
+    document.addEventListener('astro:page-load', initChart);
+</script>

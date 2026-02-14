@@ -1,113 +1,47 @@
-<section class="hero">
-    <div class="container">
-        <h1 class="reveal">
-            BARE<span>HUB</span>
+---
+---
+<section class="relative pt-32 pb-24 overflow-hidden">
+    <!-- Decorative background elements -->
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyber-cyan/5 rounded-full blur-[120px] pointer-events-none"></div>
+    
+    <div class="container mx-auto px-4 text-center space-y-8">
+        <div class="reveal inline-block bg-cyber-pink/10 text-cyber-pink font-bold px-4 py-2 rounded-full border border-cyber-pink/20 mb-4 animate-pulse">
+            ⚠️ WARNING: High Performance Zone
+        </div>
+        
+        <h1 class="reveal text-6xl md:text-8xl font-black text-white leading-[0.9] impact">
+            STOP CODING LIKE <br>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyber-cyan to-blue-500">A MID-TIER DEV</span>
         </h1>
-        <div class="hero-meta reveal">
-            <p>
-                High-performance Git worktree orchestration. Decouple your repository history into a hidden engine while your branches live in clean, dedicated worktrees.
-            </p>
-            <div class="cta-wrap">
-                <div class="cta-shadow"></div>
-                <a href="#protocol" class="cta-button">INITIALIZE PROTOCOL</a>
+        
+        <p class="reveal text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
+            Standard Git setups are high-latency and low-aesthetic. Embrace the <span class="text-cyber-cyan font-bold">Bare Hub Architecture</span>. 
+            Decouple your engine from your muscle. Work on five branches at once. Zero bloat. 100% Gains.
+        </p>
+        
+        <div class="reveal flex flex-wrap justify-center gap-6 pt-8">
+            <a href="#protocol" class="group relative inline-flex items-center justify-center px-8 py-4 font-impact text-2xl tracking-widest text-cyber-bg bg-cyber-cyan transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95">
+                INITIALIZE PROTOCOL
+                <div class="absolute -inset-1 border border-white/20 -z-10 group-hover:-inset-2 transition-all"></div>
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20">
+            <div class="reveal bg-slate-800/50 p-8 rounded-xl border border-slate-700 neon-box backdrop-blur-sm group hover:border-cyber-cyan transition-colors">
+                <div class="text-5xl mb-4 group-hover:scale-110 transition-transform">⚡</div>
+                <h3 class="text-2xl font-bold text-white mb-2 impact">Instant Switching</h3>
+                <p class="text-slate-400 text-sm">No more checkout delays. Branches are dedicated directories. Just change path.</p>
+            </div>
+            <div class="reveal bg-slate-800/50 p-8 rounded-xl border border-slate-700 neon-box backdrop-blur-sm group hover:border-cyber-pink transition-colors">
+                <div class="text-5xl mb-4 group-hover:scale-110 transition-transform">💪</div>
+                <h3 class="text-2xl font-bold text-white mb-2 impact">Parallel Muscle</h3>
+                <p class="text-slate-400 text-sm">Run heavy tests on `main` while simultaneously coding on `feature-x`.</p>
+            </div>
+            <div class="reveal bg-slate-800/50 p-8 rounded-xl border border-slate-700 neon-box backdrop-blur-sm group hover:border-cyber-green transition-colors">
+                <div class="text-5xl mb-4 group-hover:scale-110 transition-transform">🧹</div>
+                <h3 class="text-2xl font-bold text-white mb-2 impact">Zero Clutter</h3>
+                <p class="text-slate-400 text-sm">Keep your root directory clean. The Git engine stays hidden in `.bare`.</p>
             </div>
         </div>
     </div>
 </section>
-
-<style>
-    .hero {
-        padding-top: 15rem;
-        padding-bottom: 15rem;
-        text-align: left;
-    }
-
-    .hero h1 {
-        font-size: clamp(3.5rem, 15vw, 15rem);
-        line-height: 0.8;
-        margin-bottom: 3rem;
-        color: var(--white);
-        transform: translateX(-0.05em);
-        font-weight: 900;
-    }
-
-    .hero h1 span {
-        display: block;
-        color: transparent;
-        -webkit-text-stroke: 1.5px var(--white);
-    }
-
-    .hero-meta {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 6rem;
-    }
-
-    .hero-meta p {
-        font-size: 1.5rem;
-        max-width: 35ch;
-        color: #888;
-        font-weight: 400;
-    }
-
-    .cta-wrap {
-        position: relative;
-        display: inline-block;
-    }
-
-    .cta-button {
-        display: inline-block;
-        background: var(--gold);
-        color: var(--black);
-        padding: 2rem 4rem;
-        font-family: 'Bebas Neue', sans-serif;
-        font-size: 2rem;
-        text-decoration: none;
-        transition: var(--transition);
-        border: none;
-        cursor: pointer;
-        z-index: 2;
-        position: relative;
-    }
-
-    .cta-button:hover {
-        background: var(--white);
-        color: var(--black);
-    }
-
-    .cta-shadow {
-        position: absolute;
-        top: 8px;
-        left: 8px;
-        width: 100%;
-        height: 100%;
-        border: var(--border-width) solid var(--white);
-        z-index: 1;
-        transition: var(--transition);
-    }
-
-    .cta-wrap:hover .cta-shadow {
-        transform: translate(-4px, -4px);
-        border-color: var(--gold);
-    }
-
-    @media (max-width: 900px) {
-        .hero-meta { grid-template-columns: 1fr; gap: 4rem; }
-    }
-</style>
-
-<script>
-    // Magnetic Button Effect (Minimal)
-    const buttons = document.querySelectorAll('.cta-button');
-    buttons.forEach(btn => {
-        btn.addEventListener('mousemove', (e) => {
-            const rect = btn.getBoundingClientRect();
-            const x = (e as MouseEvent).clientX - rect.left - rect.width / 2;
-            const y = (e as MouseEvent).clientY - rect.top - rect.height / 2;
-            (btn as HTMLElement).style.transform = `translate(${x * 0.1}px, ${y * 0.1}px) scale(1.05)`;
-        });
-        btn.addEventListener('mouseleave', () => {
-            (btn as HTMLElement).style.transform = `translate(0, 0) scale(1)`;
-        });
-    });
-</script>
