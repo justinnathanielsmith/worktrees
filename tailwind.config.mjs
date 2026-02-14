@@ -4,6 +4,9 @@ export default {
 	theme: {
 		extend: {
 			colors: {
+				gold: '#D4AF37',
+				'matte-black': '#111111',
+				'concrete-white': '#F2F2F2',
 				cyber: {
 					bg: '#0f172a',
 					card: '#1e293b',

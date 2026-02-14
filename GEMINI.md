@@ -10,7 +10,7 @@ This project, titled **"Giga Chad's Bare Worktree Guide,"** is an educational re
 - **Git**: The central subject of the guide.
 
 ### Architecture
-The project is built with Astro, employing a component-based architecture to manage its "Industrial Brutalist" aesthetic. It decouples UI logic into reusable components (`Hero`, `Protocol`, `CodeBlock`, etc.) while maintaining a zero-JS footprint by default.
+The project is built with Astro, employing a component-based architecture to manage its "High-Performance Cyber" aesthetic. It decouples UI logic into reusable components (`Hero`, `Protocol`, `CodeBlock`, etc.) while maintaining a zero-JS footprint by default.
 
 ## Building and Running
 - **Development**: `npm run dev` to start the Astro dev server.
@@ -18,6 +18,6 @@ The project is built with Astro, employing a component-based architecture to man
 - **Deployment**: Automated via GitHub Actions using the 2026 best practices (parallel builds, environment protection).
 
 ## Development Conventions
-- **Thematic Consistency**: All documentation and UI elements should adhere to the "Industrial Brutalist" persona and palette (#111111 Matte Black, #D4AF37 Metallic Gold, #F2F2F2 Concrete White).
-- **Visualization**: Use raw CSS grids and high-impact typography for visualizations. Avoid overused neon gradients and glassmorphism.
+- **Thematic Consistency**: All documentation and UI elements should adhere to the "High-Performance Cyber" persona and palette (Neon Cyan, Pink, Green, and Deep Slate).
+- **Visualization**: Use neon gradients, glassmorphism, and interactive feedback to visualize complex Git flows.
 - **No Heavy Dependencies**: Keep the project lightweight and dependency-free to maintain a fast-loading, professional footprint.

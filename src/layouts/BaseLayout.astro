@@ -27,6 +27,14 @@ const { title } = Astro.props;
 			@tailwind components;
 			@tailwind utilities;
 
+			:root {
+				--gold: #D4AF37;
+				--black: #111111;
+				--white: #F2F2F2;
+				--gray: #333333;
+				--border-width: 2px;
+			}
+
 			h1, h2, h3, .impact {
 				font-family: 'Bebas Neue', sans-serif;
 				text-transform: uppercase;
@@ -77,9 +85,9 @@ const { title } = Astro.props;
 
 			/* Custom scrollbar */
 			::-webkit-scrollbar { width: 8px; }
-			::-webkit-scrollbar-track { background: #0f172a; }
-			::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-			::-webkit-scrollbar-thumb:hover { background: #475569; }
+			::-webkit-scrollbar-track { background: var(--black); }
+			::-webkit-scrollbar-thumb { background: var(--gray); }
+			::-webkit-scrollbar-thumb:hover { background: var(--gold); }
 
 			.reveal {
 				opacity: 0;
