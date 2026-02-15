@@ -1,0 +1,16 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Aurora from '../components/Aurora.astro';
+import Navigation from '../components/Navigation.astro';
+import KMPWorkflowContent from '../components/KMPWorkflowContent.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<BaseLayout title="KMP WORKFLOW | BARE HUB">
+    <Aurora />
+    <Navigation />
+    <main class="pt-20">
+        <KMPWorkflowContent />
+    </main>
+    <Footer />
+</BaseLayout>
