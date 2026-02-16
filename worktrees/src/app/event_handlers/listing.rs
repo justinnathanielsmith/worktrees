@@ -57,65 +57,20 @@ pub fn handle_listing_events<R: ProjectRepository>(
                 }));
             }
 
-            let normalized_code = match key_code {
-                KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
-                _ => key_code,
-            };
-
-            match normalized_code {
-                KeyCode::Char('q') | KeyCode::Esc => return Ok(Some(AppState::Exiting(None))),
-                KeyCode::Down | KeyCode::Char('j') => {
-                    move_selection(table_state, worktrees.len(), 1);
-                    if let AppState::ListingWorktrees {
-                        worktrees,
-                        table_state,
-                        selection_mode,
-                        dashboard,
-                        ..
-                    } = current_state
-                    {
-                        return Ok(Some(AppState::ListingWorktrees {
-                            worktrees: worktrees.clone(),
-                            table_state: table_state.clone(),
-                            refresh_needed: true,
-                            selection_mode: *selection_mode,
-                            dashboard: dashboard.clone(),
-                        }));
-                    }
-                    return Ok(Some(current_state.clone()));
-                }
-                KeyCode::Up | KeyCode::Char('k') => {
-                    move_selection(table_state, worktrees.len(), -1);
-                    if let AppState::ListingWorktrees {
-                        worktrees,
-                        table_state,
-                        selection_mode,
-                        dashboard,
-                        ..
-                    } = current_state
-                    {
-                        return Ok(Some(AppState::ListingWorktrees {
-                            worktrees: worktrees.clone(),
-                            table_state: table_state.clone(),
-                            refresh_needed: true,
-                            selection_mode: *selection_mode,
-                            dashboard: dashboard.clone(),
-                        }));
-                    }
-                    return Ok(Some(current_state.clone()));
-                }
+            // Handle navigation keys that are case-sensitive before normalization
+            match key_code {
                 KeyCode::Char('g') => {
                     table_state.select(Some(0));
                     if let AppState::ListingWorktrees {
-                        worktrees,
-                        table_state,
+                        worktrees: _,
+                        table_state: _,
                         selection_mode,
                         dashboard,
                         ..
                     } = current_state
                     {
                         return Ok(Some(AppState::ListingWorktrees {
-                            worktrees: worktrees.clone(),
+                            worktrees: worktrees.to_vec(),
                             table_state: table_state.clone(),
                             refresh_needed: true,
                             selection_mode: *selection_mode,
@@ -128,21 +83,71 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         table_state.select(Some(worktrees.len() - 1));
                     }
                     if let AppState::ListingWorktrees {
-                        worktrees,
-                        table_state,
+                        worktrees: _,
+                        table_state: _,
                         selection_mode,
                         dashboard,
                         ..
                     } = current_state
                     {
                         return Ok(Some(AppState::ListingWorktrees {
-                            worktrees: worktrees.clone(),
+                            worktrees: worktrees.to_vec(),
                             table_state: table_state.clone(),
                             refresh_needed: true,
                             selection_mode: *selection_mode,
                             dashboard: dashboard.clone(),
                         }));
                     }
+                }
+                _ => {}
+            }
+
+            let normalized_code = match key_code {
+                KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
+                _ => key_code,
+            };
+
+            match normalized_code {
+                KeyCode::Char('q') | KeyCode::Esc => return Ok(Some(AppState::Exiting(None))),
+                KeyCode::Down | KeyCode::Char('j') => {
+                    move_selection(table_state, worktrees.len(), 1);
+                    if let AppState::ListingWorktrees {
+                        worktrees: _,
+                        table_state: _,
+                        selection_mode,
+                        dashboard,
+                        ..
+                    } = current_state
+                    {
+                        return Ok(Some(AppState::ListingWorktrees {
+                            worktrees: worktrees.to_vec(),
+                            table_state: table_state.clone(),
+                            refresh_needed: true,
+                            selection_mode: *selection_mode,
+                            dashboard: dashboard.clone(),
+                        }));
+                    }
+                    return Ok(Some(current_state.clone()));
+                }
+                KeyCode::Up | KeyCode::Char('k') => {
+                    move_selection(table_state, worktrees.len(), -1);
+                    if let AppState::ListingWorktrees {
+                        worktrees: _,
+                        table_state: _,
+                        selection_mode,
+                        dashboard,
+                        ..
+                    } = current_state
+                    {
+                        return Ok(Some(AppState::ListingWorktrees {
+                            worktrees: worktrees.to_vec(),
+                            table_state: table_state.clone(),
+                            refresh_needed: true,
+                            selection_mode: *selection_mode,
+                            dashboard: dashboard.clone(),
+                        }));
+                    }
+                    return Ok(Some(current_state.clone()));
                 }
                 KeyCode::Char('1') | KeyCode::Char('2') | KeyCode::Char('3') => {
                     if let AppState::ListingWorktrees {
@@ -390,13 +395,48 @@ pub fn handle_listing_events<R: ProjectRepository>(
                     if let AppState::ListingWorktrees {
                         worktrees,
                         table_state,
-                        selection_mode: true,
+                        selection_mode,
                         ..
                     } = current_state
-                        && let Some(i) = table_state.selected()
-                        && let Some(wt) = worktrees.get(i)
                     {
-                        return Ok(Some(AppState::Exiting(Some(wt.path.clone()))));
+                        if *selection_mode {
+                            if let Some(i) = table_state.selected()
+                                && let Some(wt) = worktrees.get(i)
+                            {
+                                return Ok(Some(AppState::Exiting(Some(wt.path.clone()))));
+                            }
+                        } else if let Some(i) = table_state.selected()
+                            && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
+                        {
+                            // Open in editor behavior (replicate 'o' key logic)
+                            let branch = wt.branch.clone();
+                            let path = wt.path.clone();
+                            let prev = Box::new(current_state.clone());
+
+                            if let Ok(Some(editor)) = repo.get_preferred_editor() {
+                                let prev_clone = prev.clone();
+                                let opening_state = AppState::OpeningEditor {
+                                    branch,
+                                    editor: editor.clone(),
+                                    prev_state: prev,
+                                };
+                                let _ = Command::new(&editor).arg(&path).spawn();
+                                return Ok(Some(AppState::Timed {
+                                    inner_state: Box::new(opening_state),
+                                    target_state: prev_clone,
+                                    start_time: std::time::Instant::now(),
+                                    duration: std::time::Duration::from_millis(800),
+                                }));
+                            } else {
+                                let options = EditorConfig::defaults();
+                                return Ok(Some(AppState::SelectingEditor {
+                                    branch,
+                                    options,
+                                    selected: 0,
+                                    prev_state: prev,
+                                }));
+                            }
+                        }
                     }
                 }
                 KeyCode::Char('?') | KeyCode::Char('h') => {
@@ -436,15 +476,15 @@ pub fn handle_listing_events<R: ProjectRepository>(
 
                                 // Return same state to trigger refresh of dashboard
                                 if let AppState::ListingWorktrees {
-                                    worktrees,
-                                    table_state,
+                                    worktrees: _,
+                                    table_state: _,
                                     selection_mode,
                                     dashboard,
                                     ..
                                 } = current_state
                                 {
                                     return Ok(Some(AppState::ListingWorktrees {
-                                        worktrees: worktrees.clone(),
+                                        worktrees: worktrees.to_vec(),
                                         table_state: table_state.clone(),
                                         refresh_needed: true,
                                         selection_mode: *selection_mode,

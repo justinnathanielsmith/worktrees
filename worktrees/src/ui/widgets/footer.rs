@@ -14,15 +14,15 @@ impl Widget for FooterWidget {
 
         let footer_text = vec![Line::from(vec![
             Span::styled(
-                " [A] ",
+                " [j/k/g/G] ",
                 Style::default()
                     .fg(theme.primary)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("ADD", Style::default().fg(theme.text)),
+            Span::styled("NAV", Style::default().fg(theme.text)),
             Span::styled(" | ", Style::default().fg(theme.subtle)),
             Span::styled(
-                " [O] ",
+                " [ENT] ",
                 Style::default()
                     .fg(theme.primary)
                     .add_modifier(Modifier::BOLD),
@@ -30,7 +30,7 @@ impl Widget for FooterWidget {
             Span::styled("OPEN", Style::default().fg(theme.text)),
             Span::styled(" | ", Style::default().fg(theme.subtle)),
             Span::styled(
-                " [G] ",
+                " [V] ",
                 Style::default()
                     .fg(theme.secondary)
                     .add_modifier(Modifier::BOLD),
@@ -70,14 +70,6 @@ impl Widget for FooterWidget {
             Span::styled("SYNC", Style::default().fg(theme.text)),
             Span::styled(" | ", Style::default().fg(theme.subtle)),
             Span::styled(
-                " [U] ",
-                Style::default()
-                    .fg(theme.primary)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("SETUP", Style::default().fg(theme.text)),
-            Span::styled(" | ", Style::default().fg(theme.subtle)),
-            Span::styled(
                 " [P] ",
                 Style::default()
                     .fg(theme.secondary)
@@ -92,6 +84,14 @@ impl Widget for FooterWidget {
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled("PULL", Style::default().fg(theme.text)),
+            Span::styled(" | ", Style::default().fg(theme.subtle)),
+            Span::styled(
+                " [A] ",
+                Style::default()
+                    .fg(theme.primary)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("ADD", Style::default().fg(theme.text)),
             Span::styled(" | ", Style::default().fg(theme.subtle)),
             Span::styled(
                 " [D/X] ",
