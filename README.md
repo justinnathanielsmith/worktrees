@@ -61,6 +61,49 @@ powershell -ExecutionPolicy ByPass -c "irm https://github.com/justinnathanielsmi
 cargo install --git https://github.com/justinnathanielsmith/worktrees
 ```
 
+### Key Features (v0.2.0)
+
+- **Bare Hub Architecture**: Automatically manages `.bare` git dir and `.git` file pointer.
+- **Reactive TUI**: Real-time updates when files or branches change.
+- **Convert Existing Repos**: Turn standard git repositories into Bare Hubs with `worktrees convert`.
+- **Smart Branching**: Create worktrees from any branch or commit.
+- **AI Integration**: Generate commit messages with Gemini 1.5 Flash.
+- **Cross-Platform**: Works on macOS, Linux, and Windows.
+
+## Quick Start
+
+### 1. Initialize a New Project
+
+```bash
+worktrees init https://github.com/user/repo.git --name my-project
+cd my-project
+```
+
+### 2. Convert an Existing Repository
+
+```bash
+cd my-existing-repo
+worktrees convert
+```
+
+### 3. Open the TUI
+
+```bash
+worktrees list
+# or just
+worktrees
+```
+
+### 4. CLI Commands
+
+- `worktrees add <name> [branch]`: Create a new worktree.
+- `worktrees remove <name>`: Remove a worktree.
+- `worktrees switch <name>`: Switch to a worktree (outputs path).
+- `worktrees checkout <name> <branch>`: Switch a worktree to a different branch.
+- `worktrees config set-key <key>`: Set Gemini API key for AI features.
+- `worktrees clean --dry-run`: cleanup stale worktrees.
+
+
 ### Local Development
 
 Generate the static site:
