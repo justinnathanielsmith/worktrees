@@ -41,7 +41,7 @@ pub fn render_modals<R: ProjectRepository>(
         )
         .split(f.area());
 
-    let context = repo.detect_context();
+    let context = repo.detect_context(std::path::Path::new("."));
     let standard_area = centered_rect(60, 20, f.area());
 
     match state {
