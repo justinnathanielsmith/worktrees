@@ -9,6 +9,8 @@ This project, titled **"Git Bare Hub Architecture Guide,"** is a professional ed
 - **Tailwind CSS**: Utility-first CSS for styling.
 - **TypeScript**: Ensuring type safety across components and logic.
 - **Git**: The central subject and core technology of the guide.
+- **Notify**: File system watching for reactive TUI updates.
+- **Keyring**: Secure storage for API keys.
 
 ### Architecture
 The project is a multi-page Astro application employing a component-based architecture.
