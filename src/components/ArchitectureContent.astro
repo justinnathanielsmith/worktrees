@@ -4,60 +4,60 @@ import CodeBlock from './CodeBlock.astro';
 
 <section class="py-24 space-y-32 container mx-auto px-4">
     <!-- Header -->
-    <div class="max-w-4xl reveal">
-        <h1 class="text-6xl md:text-8xl font-black text-white impact mb-8 leading-none">
-            BARE HUB <br>
-            <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyber-cyan to-cyber-pink">ARCHITECTURE</span>
+    <div class="max-w-4xl fade-in">
+        <h1 class="text-4xl md:text-6xl font-bold text-white mb-8 leading-none">
+            Architecture <br>
+            <span class="text-blue-500">Overview</span>
         </h1>
-        <p class="text-xl text-slate-400 font-mono tracking-tight leading-relaxed border-l-4 border-cyber-cyan pl-6">
+        <p class="text-xl text-slate-400 font-mono tracking-tight leading-relaxed border-l-4 border-blue-500 pl-6">
             A technical specification for decoupling the Git versioning engine from the working directory. 
             Designed for high-concurrency development environments and multi-agent orchestration.
         </p>
     </div>
 
     <!-- 01. Core Concepts -->
-    <div class="reveal space-y-12">
+    <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-cyber-cyan font-black text-4xl impact">01</span>
-            <h2 class="text-4xl font-black text-white impact tracking-widest uppercase">Core Concepts</h2>
+            <span class="text-blue-500 font-bold text-2xl">01</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Core Concepts</h2>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
             <div class="space-y-6">
-                <h3 class="text-2xl font-bold text-cyber-cyan impact">The Bare Repository (The Engine)</h3>
+                <h3 class="text-2xl font-bold text-blue-400">The Bare Repository (The Engine)</h3>
                 <p class="text-slate-300 leading-relaxed">
                     A standard Git repository contains both the version history (the `.git` folder) and your working files. 
                     A <strong>Bare Repository</strong> contains only the version history. There are no working files, no "checked out" state, and no `HEAD` in the traditional sense. It acts as a local server—a single source of truth for all worktrees.
                 </p>
-                <div class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl">
-                    <h4 class="text-xs font-black text-cyber-cyan uppercase tracking-widest mb-2">Technical Insight</h4>
+                <div class="p-6 bg-slate-900 border border-slate-800 rounded-xl">
+                    <h4 class="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">Technical Insight</h4>
                     <p class="text-xs text-slate-500 leading-relaxed">By using a bare repository as the hub, you prevent the common "nested git" issues and ensure that every worktree is a first-class citizen with direct access to the shared object database.</p>
                 </div>
             </div>
             <div class="space-y-6">
-                <h3 class="text-2xl font-bold text-cyber-pink impact">The Worktree (The Muscle)</h3>
+                <h3 class="text-2xl font-bold text-blue-400">The Worktree (The Workspace)</h3>
                 <p class="text-slate-300 leading-relaxed">
                     Worktrees are physical directories that represent a specific branch or commit. Unlike a standard checkout where switching branches changes the files in place, a worktree checkout creates a <strong>new physical folder</strong> while sharing the same underlying history stored in the Bare Engine.
                 </p>
-                <div class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl">
-                    <h4 class="text-xs font-black text-cyber-pink uppercase tracking-widest mb-2">The shared .git file</h4>
-                    <p class="text-xs text-slate-500 leading-relaxed">Each worktree contains a `.git` <strong>file</strong> (not a folder) that points back to the central repository. This is the "umbilical cord" that connects the muscle to the brain.</p>
+                <div class="p-6 bg-slate-900 border border-slate-800 rounded-xl">
+                    <h4 class="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">The shared .git file</h4>
+                    <p class="text-xs text-slate-500 leading-relaxed">Each worktree contains a `.git` <strong>file</strong> (not a folder) that points back to the central repository.</p>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- 02. The Command Reference -->
-    <div class="reveal space-y-12">
+    <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-white font-black text-4xl impact">02</span>
-            <h2 class="text-4xl font-black text-white impact tracking-widest uppercase">Command Reference</h2>
+            <span class="text-slate-400 font-bold text-2xl">02</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Command Reference</h2>
         </div>
 
         <div class="grid grid-cols-1 gap-6">
-            <div class="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
                 <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-800/50 text-cyber-cyan impact tracking-widest uppercase text-xs">
+                    <thead class="bg-slate-800 text-slate-300 tracking-widest uppercase text-xs">
                         <tr>
                             <th class="px-6 py-4">Action</th>
                             <th class="px-6 py-4">Command</th>
@@ -67,27 +67,27 @@ import CodeBlock from './CodeBlock.astro';
                     <tbody class="divide-y divide-slate-800 text-slate-400 font-mono">
                         <tr>
                             <td class="px-6 py-4 text-white font-bold">Add</td>
-                            <td class="px-6 py-4 text-cyber-pink">git worktree add &lt;path&gt; &lt;branch&gt;</td>
+                            <td class="px-6 py-4 text-blue-400">git worktree add &lt;path&gt; &lt;branch&gt;</td>
                             <td class="px-6 py-4">Creates a new worktree at the specified path.</td>
                         </tr>
                         <tr>
                             <td class="px-6 py-4 text-white font-bold">List</td>
-                            <td class="px-6 py-4 text-cyber-pink">git worktree list</td>
+                            <td class="px-6 py-4 text-blue-400">git worktree list</td>
                             <td class="px-6 py-4">Shows all active worktrees and their branches.</td>
                         </tr>
                         <tr>
                             <td class="px-6 py-4 text-white font-bold">Remove</td>
-                            <td class="px-6 py-4 text-cyber-pink">git worktree remove &lt;path&gt;</td>
+                            <td class="px-6 py-4 text-blue-400">git worktree remove &lt;path&gt;</td>
                             <td class="px-6 py-4">Safely detaches and deletes the worktree folder.</td>
                         </tr>
                         <tr>
                             <td class="px-6 py-4 text-white font-bold">Move</td>
-                            <td class="px-6 py-4 text-cyber-pink">git worktree move &lt;src&gt; &lt;dst&gt;</td>
+                            <td class="px-6 py-4 text-blue-400">git worktree move &lt;src&gt; &lt;dst&gt;</td>
                             <td class="px-6 py-4">Relocates a worktree to a new path.</td>
                         </tr>
                         <tr>
                             <td class="px-6 py-4 text-white font-bold">Prune</td>
-                            <td class="px-6 py-4 text-cyber-pink">git worktree prune</td>
+                            <td class="px-6 py-4 text-blue-400">git worktree prune</td>
                             <td class="px-6 py-4">Cleans up metadata for manually deleted worktrees.</td>
                         </tr>
                     </tbody>
@@ -97,25 +97,25 @@ import CodeBlock from './CodeBlock.astro';
     </div>
 
     <!-- 03. The Advantage Set -->
-    <div class="reveal space-y-12">
+    <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-cyber-pink font-black text-4xl impact">03</span>
-            <h2 class="text-4xl font-black text-white impact tracking-widest uppercase">The Advantage Set</h2>
+            <span class="text-blue-500 font-bold text-2xl">03</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Key Advantages</h2>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="bg-slate-900/50 p-8 border border-slate-800 rounded-xl hover:border-cyber-cyan transition-colors">
-                <div class="text-cyber-cyan font-black text-xs tracking-widest uppercase mb-4">Performance</div>
+            <div class="bg-slate-900 p-8 border border-slate-800 rounded-xl hover:border-blue-500 transition-colors">
+                <div class="text-blue-500 font-bold text-xs tracking-widest uppercase mb-4">Performance</div>
                 <h4 class="text-xl font-bold text-white mb-4">Zero-Latency Switching</h4>
                 <p class="text-sm text-slate-400">Context switching is reduced to a `cd` command. No more waiting for Git to rewrite thousands of files or for your IDE to re-index the entire project.</p>
             </div>
-            <div class="bg-slate-900/50 p-8 border border-slate-800 rounded-xl hover:border-cyber-pink transition-colors">
-                <div class="text-cyber-pink font-black text-xs tracking-widest uppercase mb-4">Isolation</div>
+            <div class="bg-slate-900 p-8 border border-slate-800 rounded-xl hover:border-blue-500 transition-colors">
+                <div class="text-blue-500 font-bold text-xs tracking-widest uppercase mb-4">Isolation</div>
                 <h4 class="text-xl font-bold text-white mb-4">Parallel Execution</h4>
                 <p class="text-sm text-slate-400">Run long-running test suites or build processes on `main` in one terminal while simultaneously writing code on a feature branch in another.</p>
             </div>
-            <div class="bg-slate-900/50 p-8 border border-slate-800 rounded-xl hover:border-cyber-green transition-colors">
-                <div class="text-cyber-green font-black text-xs tracking-widest uppercase mb-4">Architecture</div>
+            <div class="bg-slate-900 p-8 border border-slate-800 rounded-xl hover:border-blue-500 transition-colors">
+                <div class="text-blue-500 font-bold text-xs tracking-widest uppercase mb-4">Architecture</div>
                 <h4 class="text-xl font-bold text-white mb-4">Shared Object Store</h4>
                 <p class="text-sm text-slate-400">All worktrees share the same `.bare` object database. You only download history once, and local commits in one worktree are immediately available in all others.</p>
             </div>
@@ -123,124 +123,124 @@ import CodeBlock from './CodeBlock.astro';
     </div>
 
     <!-- 04. Implementation Protocol -->
-    <div class="reveal space-y-12">
+    <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-cyber-green font-black text-4xl impact">04</span>
-            <h2 class="text-4xl font-black text-white impact tracking-widest uppercase">Implementation Protocol</h2>
+            <span class="text-blue-500 font-bold text-2xl">04</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Implementation Steps</h2>
         </div>
 
         <div class="space-y-8">
             <div class="space-y-4">
-                <h3 class="text-2xl font-bold text-white impact">Phase A: Initialization</h3>
+                <h3 class="text-2xl font-bold text-white">Phase A: Initialization</h3>
                 <p class="text-slate-400">Clone the repository as a bare instance into a hidden sub-directory. This ensures the root remains clean for your worktree folders.</p>
-                <CodeBlock code={`mkdir my-project && cd my-project\ngit clone --bare git@github.com:user/repo.git .bare`} label="SHELL // PHASE_A" />
+                <CodeBlock code={`mkdir my-project && cd my-project\ngit clone --bare git@github.com:user/repo.git .bare`} label="Shell" />
             </div>
 
             <div class="space-y-4">
-                <h3 class="text-2xl font-bold text-white impact">Phase B: The Pointer</h3>
+                <h3 class="text-2xl font-bold text-white">Phase B: The Pointer</h3>
                 <p class="text-slate-400">Establish the link between the root directory and the bare engine. This allows you to run Git commands from the root.</p>
-                <CodeBlock code={`echo "gitdir: ./.bare" > .git`} label="SHELL // PHASE_B" />
+                <CodeBlock code={`echo "gitdir: ./.bare" > .git`} label="Shell" />
             </div>
 
             <div class="space-y-4">
-                <h3 class="text-2xl font-bold text-white impact">Phase C: Refspec Fix</h3>
+                <h3 class="text-2xl font-bold text-white">Phase C: Refspec Fix</h3>
                 <p class="text-slate-400">Bare repos don't fetch remote branches by default for worktrees. This critical step ensures `git fetch` populates all branches.</p>
-                <CodeBlock code={`git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"\ngit fetch origin`} label="SHELL // PHASE_C" />
+                <CodeBlock code={`git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"\ngit fetch origin`} label="Shell" />
             </div>
         </div>
     </div>
 
     <!-- 05. The Mindset Shift -->
-    <div class="reveal space-y-12">
+    <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-cyber-cyan font-black text-4xl impact">05</span>
-            <h2 class="text-4xl font-black text-white impact tracking-widest uppercase">The Mindset Shift</h2>
+            <span class="text-blue-500 font-bold text-2xl">05</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Workflow Patterns</h2>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div class="bg-slate-800/20 p-8 rounded-2xl border border-slate-800">
-                <h3 class="text-2xl font-black text-white impact mb-4">Feature-Based (Ephemeral)</h3>
+            <div class="bg-slate-800 p-8 rounded-xl border border-slate-700">
+                <h3 class="text-xl font-bold text-white mb-4">Feature-Based (Ephemeral)</h3>
                 <p class="text-slate-400 text-sm leading-relaxed mb-6">Create a new folder for every task, then delete it when finished. Good for isolation, but requires constant environment setup.</p>
-                <CodeBlock code={`git worktree add -b feat/auth ./auth\ncd ./auth && npm install`} label="EPHEMERAL_FLOW" />
+                <CodeBlock code={`git worktree add -b feat/auth ./auth\ncd ./auth && npm install`} label="Ephemeral Flow" />
             </div>
-            <div class="bg-slate-800/20 p-8 rounded-2xl border border-cyber-cyan/30">
-                <h3 class="text-2xl font-black text-white impact mb-4">Mindset-Based (Permanent)</h3>
+            <div class="bg-slate-800 p-8 rounded-xl border border-slate-700">
+                <h3 class="text-xl font-bold text-white mb-4">Role-Based (Permanent)</h3>
                 <p class="text-slate-400 text-sm leading-relaxed mb-6">Maintain permanent folders for specific roles (dev, hotfix, review). Use `git checkout` within them to swap branches instantly.</p>
-                <CodeBlock code={`# In your permanent 'review' folder\ngit checkout feature-to-test\n# node_modules and cache stay intact`} label="PERMANENT_FLOW" />
+                <CodeBlock code={`# In your permanent 'review' folder\ngit checkout feature-to-test\n# node_modules and cache stay intact`} label="Permanent Flow" />
             </div>
         </div>
     </div>
 
     <!-- 06. Standard Git Flow -->
-    <div class="reveal space-y-12">
+    <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-cyber-pink font-black text-4xl impact">06</span>
-            <h2 class="text-4xl font-black text-white impact tracking-widest uppercase">Standard Git Flow</h2>
+            <span class="text-blue-500 font-bold text-2xl">06</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Standard Git Flow</h2>
         </div>
 
         <div class="space-y-6">
             <p class="text-slate-300">Working in a worktree is identical to a normal repo, with one major advantage: <strong>History is shared.</strong></p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl">
+                <div class="p-6 bg-slate-900 border border-slate-800 rounded-xl">
                     <h4 class="text-white font-bold mb-2">Committing</h4>
                     <p class="text-xs text-slate-500 mb-4">Commits are saved to the central `.bare` database immediately.</p>
-                    <CodeBlock code="git add .\ngit commit -m 'feat: logic'" label="GIT_COMMIT" />
+                    <CodeBlock code="git add .\ngit commit -m 'feat: logic'" label="Git Commit" />
                 </div>
-                <div class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl">
+                <div class="p-6 bg-slate-900 border border-slate-800 rounded-xl">
                     <h4 class="text-white font-bold mb-2">Syncing</h4>
                     <p class="text-xs text-slate-500 mb-4">Fetching in any worktree updates the `.bare` database for all of them.</p>
-                    <CodeBlock code="git fetch origin\ngit pull origin main" label="GIT_SYNC" />
+                    <CodeBlock code="git fetch origin\ngit pull origin main" label="Git Sync" />
                 </div>
-                <div class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl">
+                <div class="p-6 bg-slate-900 border border-slate-800 rounded-xl">
                     <h4 class="text-white font-bold mb-2">Branching</h4>
-                    <p class="text-xs text-slate-500 mb-4">Create branches in the hub, then spawn them as muscle.</p>
-                    <CodeBlock code="git branch feat-x\ngit worktree add ./feat-x feat-x" label="GIT_BRANCH" />
+                    <p class="text-xs text-slate-500 mb-4">Create branches in the hub, then spawn them as workspaces.</p>
+                    <CodeBlock code="git branch feat-x\ngit worktree add ./feat-x feat-x" label="Git Branch" />
                 </div>
             </div>
         </div>
     </div>
 
     <!-- 07. Advanced Maneuvers -->
-    <div class="reveal space-y-12">
+    <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-cyber-green font-black text-4xl impact">07</span>
-            <h2 class="text-4xl font-black text-white impact tracking-widest uppercase">Advanced Maneuvers</h2>
+            <span class="text-blue-500 font-bold text-2xl">07</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Advanced Techniques</h2>
         </div>
 
-        <div class="bg-slate-800/30 p-10 rounded-3xl border border-slate-700 space-y-10">
+        <div class="bg-slate-800 p-10 rounded-xl border border-slate-700 space-y-10">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
                 <div class="space-y-4">
-                    <h4 class="text-xl font-black text-cyber-cyan impact uppercase">AI Agent Orchestration</h4>
+                    <h4 class="text-lg font-bold text-white uppercase">AI Agent Orchestration</h4>
                     <p class="text-slate-400 text-sm leading-relaxed">
                         Deploy AI agents into isolated worktrees to resolve tickets or run audits. This prevents the agent from overwriting your uncommitted work or polluting your primary dev environment.
                     </p>
                     <CodeBlock code={`git worktree add ../agent-task feature-42
-# Launch agent in isolated path`} label="AI_DEPLOYMENT" />
+# Launch agent in isolated path`} label="AI Deployment" />
                 </div>
                 <div class="space-y-4">
-                    <h4 class="text-xl font-black text-cyber-pink impact uppercase">Detached HEAD Scratchpads</h4>
+                    <h4 class="text-lg font-bold text-white uppercase">Detached HEAD Scratchpads</h4>
                     <p class="text-slate-400 text-sm leading-relaxed">
                         Need to check a file or run a quick experiment without creating a branch? Use a detached worktree.
                     </p>
-                    <CodeBlock code={`git worktree add --detach ../scratch origin/main`} label="SCRATCH_DISK" />
+                    <CodeBlock code={`git worktree add --detach ../scratch origin/main`} label="Scratch Disk" />
                 </div>
             </div>
             
             <hr class="border-slate-800">
 
             <div class="space-y-6">
-                <h4 class="text-xl font-black text-white impact uppercase">CI/CD & Parallel Builds</h4>
+                <h4 class="text-lg font-bold text-white uppercase">CI/CD & Parallel Builds</h4>
                 <p class="text-slate-400 text-sm leading-relaxed">
                     In high-performance CI pipelines, use worktrees to run multiple build flavors (e.g., dev vs prod) or test suites simultaneously against the same repository state. This eliminates redundant cloning time and optimizes disk space on the build agent.
                 </p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="p-4 bg-black/40 border border-slate-800 rounded-lg">
-                        <div class="text-cyber-green text-[0.6rem] font-bold mb-2 uppercase">Scenario: Matrix Testing</div>
-                        <CodeBlock code={`# Run Node 18 and 20 tests in parallel\ngit worktree add ../test-18 branch-a\ngit worktree add ../test-20 branch-a --detach`} label="CI_MATRIX" />
+                    <div class="p-4 bg-slate-950 border border-slate-800 rounded-lg">
+                        <div class="text-blue-500 text-[0.6rem] font-bold mb-2 uppercase">Scenario: Matrix Testing</div>
+                        <CodeBlock code={`# Run Node 18 and 20 tests in parallel\ngit worktree add ../test-18 branch-a\ngit worktree add ../test-20 branch-a --detach`} label="CI Matrix" />
                     </div>
-                    <div class="p-4 bg-black/40 border border-slate-800 rounded-lg">
-                        <div class="text-cyber-pink text-[0.6rem] font-bold mb-2 uppercase">Scenario: Deployment Prep</div>
-                        <CodeBlock code={`# Build static assets while linting\ngit worktree add ../build main\ncd ../build && npm run build`} label="CI_BUILD_PARALLEL" />
+                    <div class="p-4 bg-slate-950 border border-slate-800 rounded-lg">
+                        <div class="text-blue-500 text-[0.6rem] font-bold mb-2 uppercase">Scenario: Deployment Prep</div>
+                        <CodeBlock code={`# Build static assets while linting\ngit worktree add ../build main\ncd ../build && npm run build`} label="Parallel Build" />
                     </div>
                 </div>
             </div>
@@ -248,36 +248,36 @@ import CodeBlock from './CodeBlock.astro';
     </div>
 
     <!-- 08. Toolchain Integration -->
-    <div class="reveal space-y-12">
+    <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-white font-black text-4xl impact">08</span>
-            <h2 class="text-4xl font-black text-white impact tracking-widest uppercase">Toolchain Integration</h2>
+            <span class="text-slate-400 font-bold text-2xl">08</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Toolchain Integration</h2>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="p-8 bg-slate-900/50 border border-slate-800 rounded-2xl">
-                <h4 class="text-cyber-cyan font-black impact mb-4">tmux + sesh</h4>
+            <div class="p-8 bg-slate-900 border border-slate-800 rounded-xl">
+                <h4 class="text-blue-400 font-bold mb-4">tmux + sesh</h4>
                 <p class="text-xs text-slate-500 leading-relaxed mb-6">Combine worktrees with terminal multiplexers to create instant "Work Environments".</p>
-                <CodeBlock code="sesh connect $(git worktree list | fzf)" label="SESH_INTEGRATION" />
+                <CodeBlock code="sesh connect $(git worktree list | fzf)" label="Sesh" />
             </div>
-            <div class="p-8 bg-slate-900/50 border border-slate-800 rounded-2xl">
-                <h4 class="text-cyber-pink font-black impact mb-4">fzf-worktree</h4>
-                <p class="text-xs text-slate-500 leading-relaxed mb-6">Fuzzy search through your active muscle and jump instantly to any branch folder.</p>
-                <CodeBlock code="cd $(git worktree list | fzf | cut -d' ' -f1)" label="FZF_NAVIGATION" />
+            <div class="p-8 bg-slate-900 border border-slate-800 rounded-xl">
+                <h4 class="text-blue-400 font-bold mb-4">fzf-worktree</h4>
+                <p class="text-xs text-slate-500 leading-relaxed mb-6">Fuzzy search through your active worktrees and jump instantly to any branch folder.</p>
+                <CodeBlock code="cd $(git worktree list | fzf | cut -d' ' -f1)" label="FZF" />
             </div>
-            <div class="p-8 bg-slate-900/50 border border-slate-800 rounded-2xl">
-                <h4 class="text-cyber-green font-black impact mb-4">Node.js / Bun</h4>
+            <div class="p-8 bg-slate-900 border border-slate-800 rounded-xl">
+                <h4 class="text-blue-400 font-bold mb-4">Node.js / Bun</h4>
                 <p class="text-xs text-slate-500 leading-relaxed mb-6">Use shared stores (pnpm/bun) to prevent `node_modules` explosion across worktrees.</p>
-                <CodeBlock code="pnpm install --store-dir ~/.pnpm-store" label="PACKAGE_OPTIMIZATION" />
+                <CodeBlock code="pnpm install --store-dir ~/.pnpm-store" label="PNPM" />
             </div>
         </div>
     </div>
 
     <!-- 09. Troubleshooting -->
-    <div class="reveal space-y-12">
+    <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-yellow-500 font-black text-4xl impact">09</span>
-            <h2 class="text-4xl font-black text-white impact tracking-widest uppercase">Troubleshooting</h2>
+            <span class="text-yellow-500 font-bold text-2xl">09</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Troubleshooting</h2>
         </div>
 
         <div class="space-y-6">

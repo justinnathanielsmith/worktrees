@@ -1,97 +1,94 @@
 ---
 import ComparisonChart from './ComparisonChart.astro';
 ---
-<section class="py-24 space-y-32">
+<section class="py-24 space-y-32 bg-slate-950">
     <!-- Comparison Section -->
     <div class="container mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-        <div class="space-y-8 reveal">
-            <h3 class="text-4xl md:text-5xl font-black text-white border-l-4 border-cyber-cyan pl-6 impact">
-                THE PERFORMANCE GAP
+        <div class="space-y-8 fade-in">
+            <h3 class="text-3xl md:text-4xl font-bold text-white border-l-4 border-blue-500 pl-6">
+                Why Use Worktrees?
             </h3>
             <p class="text-slate-300 text-lg leading-relaxed">
-                Standard `git clone` bundles your history with your workspace, creating a high-latency bottleneck. 
-                The Bare Hub separates concerns, maximizing every metric that matters.
+                Standard `git clone` bundles your history with your workspace, creating a bottleneck. 
+                The Bare Hub separates concerns, optimizing your workflow.
             </p>
             <ul class="space-y-4 text-slate-400">
                 <li class="flex items-center gap-3">
-                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-cyber-cyan/20 flex items-center justify-center text-cyber-cyan font-bold">✓</span>
-                    <span><strong>Workflow Velocity:</strong> Never wait for node_modules to re-index when switching.</span>
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 font-bold">✓</span>
+                    <span><strong>Workflow Efficiency:</strong> Never wait for node_modules to re-index when switching context.</span>
                 </li>
                 <li class="flex items-center gap-3">
-                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-cyber-cyan/20 flex items-center justify-center text-cyber-cyan font-bold">✓</span>
-                    <span><strong>Organization Hygiene:</strong> Dead branches don't clutter your view.</span>
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 font-bold">✓</span>
+                    <span><strong>Organization:</strong> Keep dead branches from cluttering your view.</span>
                 </li>
                 <li class="flex items-center gap-3">
-                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-cyber-cyan/20 flex items-center justify-center text-cyber-cyan font-bold">✓</span>
-                    <span><strong>Aesthetic Flex:</strong> Impress your team with superior architecture.</span>
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 font-bold">✓</span>
+                    <span><strong>Parallel Execution:</strong> Run tests on one branch while coding on another.</span>
                 </li>
             </ul>
         </div>
         
-        <div class="reveal bg-slate-800/40 p-8 rounded-2xl shadow-2xl border border-slate-700 backdrop-blur-sm">
+        <div class="fade-in bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-700">
             <ComparisonChart />
-            <p class="text-center text-xs text-slate-500 mt-6 font-mono uppercase tracking-widest">Fig 1. Qualitative analysis of Developer Experience (DX)</p>
+            <p class="text-center text-xs text-slate-500 mt-6 font-mono uppercase tracking-widest">Fig 1. Developer Experience Analysis</p>
         </div>
     </div>
 
     <!-- Anatomy Section -->
     <div class="container mx-auto px-4">
-        <div class="text-center mb-16 reveal">
-            <h3 class="text-4xl md:text-6xl font-black text-white mb-6 impact">THE GIGA CHAD ANATOMY</h3>
+        <div class="text-center mb-16 fade-in">
+            <h3 class="text-3xl md:text-5xl font-bold text-white mb-6">System Architecture</h3>
             <p class="text-slate-400 max-w-2xl mx-auto text-lg">
-                The Bare Hub is organized into three distinct physiological components: 
-                The Engine, The Brain, and The Muscle.
+                The Bare Hub consists of three key components: 
+                The Engine, The Hub, and The Worktrees.
             </p>
         </div>
 
-        <div class="bg-slate-900/50 p-8 md:p-12 rounded-[2.5rem] border border-slate-800 relative overflow-hidden reveal">
-            <!-- Decorative background elements -->
-            <div class="absolute top-0 right-0 w-96 h-96 bg-cyber-cyan/10 rounded-full blur-[100px] -mr-48 -mt-48 pointer-events-none"></div>
-            <div class="absolute bottom-0 left-0 w-96 h-96 bg-cyber-pink/10 rounded-full blur-[100px] -ml-48 -mb-48 pointer-events-none"></div>
-
+        <div class="bg-slate-900 p-8 md:p-12 rounded-xl border border-slate-800 relative overflow-hidden fade-in">
+            
             <div class="grid grid-cols-1 md:grid-cols-3 gap-10 relative z-10">
                 <!-- The Engine -->
-                <div class="bg-slate-800/60 p-8 rounded-2xl border-2 border-slate-700 hover:border-cyber-pink transition-all group backdrop-blur-sm">
+                <div class="bg-slate-800 p-8 rounded-xl border border-slate-700 hover:border-blue-500 transition-colors group">
                     <div class="flex justify-between items-start mb-6">
-                        <span class="text-5xl">🗄️</span>
-                        <span class="bg-cyber-pink/20 text-cyber-pink text-xs font-black px-3 py-1 rounded tracking-tighter">HIDDEN</span>
+                        <span class="text-4xl">🗄️</span>
+                        <span class="bg-blue-500/20 text-blue-400 text-xs font-bold px-3 py-1 rounded">HIDDEN</span>
                     </div>
-                    <h4 class="text-2xl font-black text-white group-hover:text-cyber-pink transition-colors impact">.bare/</h4>
-                    <p class="text-sm text-cyber-pink/70 font-mono mt-1 font-bold">THE ENGINE</p>
+                    <h4 class="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">.bare/</h4>
+                    <p class="text-sm text-slate-500 font-mono mt-1 font-bold">THE ENGINE</p>
                     <hr class="border-slate-700 my-6">
                     <p class="text-slate-300 text-sm leading-relaxed">Contains the Git database and history. It does the heavy lifting but stays out of sight.</p>
                 </div>
 
-                <!-- The Brain -->
-                <div class="bg-slate-800/60 p-8 rounded-2xl border-2 border-slate-700 hover:border-cyber-cyan transition-all group backdrop-blur-sm flex flex-col justify-between">
+                <!-- The Hub -->
+                <div class="bg-slate-800 p-8 rounded-xl border border-slate-700 hover:border-blue-500 transition-colors group flex flex-col justify-between">
                     <div>
                         <div class="flex justify-between items-start mb-6">
-                            <span class="text-5xl">🧠</span>
-                            <span class="bg-cyber-cyan/20 text-cyber-cyan text-xs font-black px-3 py-1 rounded tracking-tighter">POINTER</span>
+                            <span class="text-4xl">🧠</span>
+                            <span class="bg-blue-500/20 text-blue-400 text-xs font-bold px-3 py-1 rounded">POINTER</span>
                         </div>
-                        <h4 class="text-2xl font-black text-white group-hover:text-cyber-cyan transition-colors impact">.git</h4>
-                        <p class="text-sm text-cyber-cyan/70 font-mono mt-1 font-bold">THE BRAIN</p>
+                        <h4 class="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">.git</h4>
+                        <p class="text-sm text-slate-500 font-mono mt-1 font-bold">THE HUB</p>
                         <hr class="border-slate-700 my-6">
-                        <p class="text-slate-300 text-sm leading-relaxed">A pointer file (not a folder) telling the root where the engine is.</p>
+                        <p class="text-slate-300 text-sm leading-relaxed">A pointer file connecting your root directory to the bare repository engine.</p>
                     </div>
-                    <div class="bg-black/60 p-4 rounded-lg mt-6 font-mono text-xs text-green-400 border border-slate-700">
+                    <div class="bg-black/40 p-4 rounded mt-6 font-mono text-xs text-green-400 border border-slate-700">
                         gitdir: ./.bare
                     </div>
                 </div>
 
-                <!-- The Muscle -->
-                <div class="bg-slate-800/60 p-8 rounded-2xl border-2 border-slate-700 hover:border-cyber-green transition-all group backdrop-blur-sm">
+                <!-- The Worktrees -->
+                <div class="bg-slate-800 p-8 rounded-xl border border-slate-700 hover:border-blue-500 transition-colors group">
                     <div class="flex justify-between items-start mb-6">
-                        <span class="text-5xl">💪</span>
-                        <span class="bg-cyber-green/20 text-cyber-green text-xs font-black px-3 py-1 rounded tracking-tighter">WORKTREES</span>
+                        <span class="text-4xl">📂</span>
+                        <span class="bg-blue-500/20 text-blue-400 text-xs font-bold px-3 py-1 rounded">WORKSPACES</span>
                     </div>
-                    <h4 class="text-2xl font-black text-white group-hover:text-cyber-green transition-colors impact">active_branches/</h4>
-                    <p class="text-sm text-cyber-green/70 font-mono mt-1 font-bold">THE MUSCLE</p>
+                    <h4 class="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">active_branches/</h4>
+                    <p class="text-sm text-slate-500 font-mono mt-1 font-bold">THE WORKTREES</p>
                     <hr class="border-slate-700 my-6">
                     <ul class="space-y-3 text-sm text-slate-300 font-mono">
-                        <li class="flex items-center gap-3"><span class="text-cyber-green">📂</span> main/</li>
-                        <li class="flex items-center gap-3"><span class="text-cyber-green">📂</span> feature-login/</li>
-                        <li class="flex items-center gap-3"><span class="text-cyber-green">📂</span> hotfix-ui/</li>
+                        <li class="flex items-center gap-3"><span class="text-blue-500">📂</span> main/</li>
+                        <li class="flex items-center gap-3"><span class="text-blue-500">📂</span> feature-login/</li>
+                        <li class="flex items-center gap-3"><span class="text-blue-500">📂</span> hotfix-ui/</li>
                     </ul>
                 </div>
             </div>

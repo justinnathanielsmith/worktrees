@@ -4,116 +4,116 @@ import CodeBlock from './CodeBlock.astro';
 
 <section class="py-24 space-y-32 container mx-auto px-4">
     <!-- Header -->
-    <div class="max-w-4xl reveal">
-        <h1 class="text-6xl md:text-8xl font-black text-white impact mb-8 leading-none">
-            AI AGENT <br>
-            <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyber-cyan to-cyber-pink">SANDBOXING</span>
+    <div class="max-w-4xl fade-in">
+        <h1 class="text-4xl md:text-6xl font-bold text-white mb-8 leading-none">
+            AI Agent <br>
+            <span class="text-blue-500">Sandboxing</span>
         </h1>
-        <p class="text-xl text-slate-400 font-mono tracking-tight leading-relaxed border-l-4 border-cyber-cyan pl-6">
+        <p class="text-xl text-slate-400 font-mono tracking-tight leading-relaxed border-l-4 border-blue-500 pl-6">
             A guide to orchestrating high-velocity AI agents using the Bare Hub infrastructure. 
             Maximize agent autonomy while protecting your primary development environment.
         </p>
     </div>
 
     <!-- 01. Why Sandbox? -->
-    <div class="reveal space-y-12">
+    <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-cyber-cyan font-black text-4xl impact">01</span>
-            <h2 class="text-4xl font-black text-white impact tracking-widest uppercase">Why Sandbox?</h2>
+            <span class="text-blue-500 font-bold text-2xl">01</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Why Sandbox?</h2>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-slate-400 text-sm">
-            <div class="space-y-4 p-6 bg-slate-900/50 border border-slate-800 rounded-xl">
-                <h4 class="text-white font-bold impact uppercase">No Collisions</h4>
+            <div class="space-y-4 p-6 bg-slate-900 border border-slate-800 rounded-xl">
+                <h4 class="text-white font-bold uppercase">No Collisions</h4>
                 <p>AI agents often make massive, sweeping changes. In a worktree, these changes are isolated. Your main `git status` remains clean.</p>
             </div>
-            <div class="space-y-4 p-6 bg-slate-900/50 border border-slate-800 rounded-xl">
-                <h4 class="text-white font-bold impact uppercase">Parallelism</h4>
+            <div class="space-y-4 p-6 bg-slate-900 border border-slate-800 rounded-xl">
+                <h4 class="text-white font-bold uppercase">Parallelism</h4>
                 <p>Run three different agents on three different bugs simultaneously. Each has its own physical directory and process space.</p>
             </div>
-            <div class="space-y-4 p-6 bg-slate-900/50 border border-slate-800 rounded-xl">
-                <h4 class="text-white font-bold impact uppercase">Safe Context</h4>
+            <div class="space-y-4 p-6 bg-slate-900 border border-slate-800 rounded-xl">
+                <h4 class="text-white font-bold uppercase">Safe Context</h4>
                 <p>Agents won't see your uncommitted experiments or sensitive local files that aren't part of the branch history.</p>
             </div>
         </div>
     </div>
 
     <!-- 02. Deployment Protocol -->
-    <div class="reveal space-y-12">
+    <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-cyber-pink font-black text-4xl impact">02</span>
-            <h2 class="text-4xl font-black text-white impact tracking-widest uppercase">Deployment Protocol</h2>
+            <span class="text-blue-500 font-bold text-2xl">02</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Deployment Steps</h2>
         </div>
 
         <div class="space-y-16">
             <!-- Step 1 -->
             <div class="space-y-6">
                 <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded bg-cyber-pink/20 flex items-center justify-center text-cyber-pink font-bold">1</div>
-                    <h3 class="text-2xl font-bold text-white impact">Initialize the Sandbox</h3>
+                    <div class="w-8 h-8 rounded bg-blue-500 flex items-center justify-center text-white font-bold">1</div>
+                    <h3 class="text-2xl font-bold text-white">Initialize the Sandbox</h3>
                 </div>
                 <p class="text-slate-400 max-w-2xl">Create a dedicated worktree for the specific ticket or task. This ensures the agent has a clean, branch-specific slate.</p>
                 <CodeBlock code={`# Create a new worktree at ../agent-fix for a specific feature
 git worktree add ../agent-fix -b ai/fix-issue-123
-cd ../agent-fix`} label="SANDBOX // INIT" />
+cd ../agent-fix`} label="Shell" />
             </div>
 
             <!-- Step 2 -->
             <div class="space-y-6">
                 <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded bg-cyber-pink/20 flex items-center justify-center text-cyber-pink font-bold">2</div>
-                    <h3 class="text-2xl font-bold text-white impact">Engage the Agent</h3>
+                    <div class="w-8 h-8 rounded bg-blue-500 flex items-center justify-center text-white font-bold">2</div>
+                    <h3 class="text-2xl font-bold text-white">Engage the Agent</h3>
                 </div>
                 <p class="text-slate-400 max-w-2xl">Launch your AI tool within the sandbox directory. The agent now has exclusive access to this isolated environment.</p>
                 <CodeBlock code={`# For Claude Code
 claude "Fix the layout bug in Header.astro"
 
 # For Gemini CLI
-gemini-cli "Refactor the authentication middleware"`} label="SANDBOX // ENGAGE" />
+gemini-cli "Refactor the authentication middleware"`} label="Shell" />
             </div>
 
             <!-- Step 3 -->
             <div class="space-y-6">
                 <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded bg-cyber-pink/20 flex items-center justify-center text-cyber-pink font-bold">3</div>
-                    <h3 class="text-2xl font-bold text-white impact">Review & Merge</h3>
+                    <div class="w-8 h-8 rounded bg-blue-500 flex items-center justify-center text-white font-bold">3</div>
+                    <h3 class="text-2xl font-bold text-white">Review & Merge</h3>
                 </div>
                 <p class="text-slate-400 max-w-2xl">Once the agent finishes, review the changes in the sandbox. If satisfied, commit and push, or merge into your primary branch.</p>
                 <CodeBlock code={`git add .
 git commit -m "ai: fix layout bug"
 git push origin ai/fix-issue-123
 
-# Clean up the muscle
+# Clean up the workspace
 cd ..
-git worktree remove agent-fix`} label="SANDBOX // CLEANUP" />
+git worktree remove agent-fix`} label="Shell" />
             </div>
         </div>
     </div>
 
     <!-- 03. Multi-Agent Orchestration -->
-    <div class="reveal space-y-12">
+    <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-cyber-green font-black text-4xl impact">03</span>
-            <h2 class="text-4xl font-black text-white impact tracking-widest uppercase">Multi-Agent Orchestration</h2>
+            <span class="text-blue-500 font-bold text-2xl">03</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Multi-Agent Orchestration</h2>
         </div>
 
-        <div class="bg-slate-800/20 p-10 rounded-3xl border border-slate-700">
+        <div class="bg-slate-900_20 p-10 rounded-xl border border-slate-700">
             <p class="text-slate-300 mb-8 leading-relaxed">
-                The Bare Hub truly shines when managing multiple agents. Use a naming convention for your sandbox directories to maintain clarity.
+                The Bare Hub excels when managing multiple agents. Use a naming convention for your sandbox directories to maintain clarity.
             </p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div class="p-6 bg-black/40 rounded-xl border border-slate-800">
-                    <h4 class="text-cyber-green font-bold impact mb-3">CONCURRENT AUDIT</h4>
+                <div class="p-6 bg-slate-900 rounded-xl border border-slate-800">
+                    <h4 class="text-blue-400 font-bold mb-3">Concurrent Audit</h4>
                     <p class="text-xs text-slate-500 mb-4">Run a security audit agent and a performance audit agent at the same time.</p>
-                    <ul class="text-[0.65rem] font-mono text-slate-400 space-y-1">
+                    <ul class="text-xs font-mono text-slate-400 space-y-1">
                         <li>📁 audits/security</li>
                         <li>📁 audits/performance</li>
                     </ul>
                 </div>
-                <div class="p-6 bg-black/40 rounded-xl border border-slate-800">
-                    <h4 class="text-cyber-green font-bold impact mb-3">TICKET PIPELINE</h4>
+                <div class="p-6 bg-slate-900 rounded-xl border border-slate-800">
+                    <h4 class="text-blue-400 font-bold mb-3">Ticket Pipeline</h4>
                     <p class="text-xs text-slate-500 mb-4">Assign separate tickets to separate agent instances.</p>
-                    <ul class="text-[0.65rem] font-mono text-slate-400 space-y-1">
+                    <ul class="text-xs font-mono text-slate-400 space-y-1">
                         <li>📁 tasks/fix-nav</li>
                         <li>📁 tasks/update-docs</li>
                     </ul>
@@ -122,19 +122,19 @@ git worktree remove agent-fix`} label="SANDBOX // CLEANUP" />
         </div>
     </div>
 
-    <!-- 04. Expert Tips -->
-    <div class="reveal space-y-12">
+    <!-- 04. Pro Tips -->
+    <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-white font-black text-4xl impact">04</span>
-            <h2 class="text-4xl font-black text-white impact tracking-widest uppercase">Expert Tips</h2>
+            <span class="text-slate-400 font-bold text-2xl">04</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Pro Tips</h2>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="border-l-2 border-cyber-cyan pl-6 py-2">
+            <div class="border-l-2 border-blue-500 pl-6 py-2">
                 <h4 class="text-white font-bold mb-2">Automate Node Installs</h4>
                 <p class="text-slate-400 text-sm">Use a `post-checkout` Git hook in your `.bare` engine to automatically run `pnpm install` when a new worktree is created.</p>
             </div>
-            <div class="border-l-2 border-cyber-pink pl-6 py-2">
+            <div class="border-l-2 border-blue-400 pl-6 py-2">
                 <h4 class="text-white font-bold mb-2">Shared Build Cache</h4>
                 <p class="text-slate-400 text-sm">Configure your build tools (Turborepo, Nx) to use a global cache so agents don't waste time rebuilding components you've already compiled.</p>
             </div>

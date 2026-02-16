@@ -2,61 +2,50 @@
 import CodeBlock from './CodeBlock.astro';
 ---
 
-<section id="protocol" class="py-24 bg-slate-900/30">
+<section id="protocol" class="py-24 bg-slate-900 border-t border-slate-800">
     <div class="container mx-auto px-4">
-        <div class="flex flex-col md:flex-row items-start md:items-stretch gap-16">
+        <div class="flex flex-col md:flex-row items-start gap-16">
             <div class="md:w-1/3">
-                <div class="sticky top-32 reveal space-y-6">
-                    <h3 class="text-4xl md:text-5xl font-black text-white impact">EXECUTION PROTOCOL</h3>
+                <div class="sticky top-32 fade-in space-y-6">
+                    <h3 class="text-3xl md:text-4xl font-bold text-white tracking-tight">Setup Guide</h3>
                     <p class="text-slate-400 text-lg leading-relaxed">
-                        Follow this protocol to initialize your environment. Deviation results in suboptimal performance.
+                        Follow these steps to initialize your repository with the Bare Hub architecture.
                     </p>
-                    <div class="hidden md:block pt-4">
-                        <div class="text-xs font-black text-cyber-cyan mb-2 tracking-[0.2em] uppercase">Status Check</div>
-                        <div class="bg-black/40 border border-slate-800 p-4 rounded-lg font-mono text-[0.65rem] text-slate-500">
-                            > CHECKING CORE... OK<br>
-                            > SYNCING BUFFERS... OK<br>
-                            > READY FOR INITIALIZATION_
-                        </div>
-                    </div>
                 </div>
             </div>
             
             <div class="md:w-2/3 space-y-12 relative">
-                <!-- Connector Line -->
-                <div class="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-cyber-cyan via-cyber-pink to-cyber-green rounded-full hidden md:block opacity-30"></div>
-
                 <!-- Step 1 -->
-                <div class="reveal relative bg-slate-800/40 p-8 rounded-2xl ml-0 md:ml-16 border-l-4 border-cyber-cyan shadow-xl backdrop-blur-sm group hover:bg-slate-800/60 transition-colors">
-                    <div class="absolute -left-[5.25rem] top-8 bg-slate-900 border-4 border-cyber-cyan w-12 h-12 rounded-full flex items-center justify-center font-black text-white hidden md:flex z-10 group-hover:scale-110 transition-transform impact text-xl">1</div>
-                    <h4 class="text-2xl font-black text-white mb-3 impact tracking-wider">Create The Engine</h4>
-                    <p class="text-slate-300 mb-6">Initialize the repo as bare in a hidden directory to decouple history from workspace.</p>
-                    <CodeBlock code="mkdir project && cd project\ngit clone --bare git@github.com:user/repo.git .bare" label="TERMINAL // STEP_01" />
+                <div class="fade-in relative bg-slate-800 p-8 rounded-xl border border-slate-700 shadow-sm">
+                    <div class="absolute -left-4 top-8 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold text-white text-sm hidden md:flex">1</div>
+                    <h4 class="text-xl font-bold text-white mb-3">Create The Engine</h4>
+                    <p class="text-slate-400 mb-6">Initialize the repository as a bare repo in a hidden directory to decouple history from your workspace.</p>
+                    <CodeBlock code="mkdir project && cd project\ngit clone --bare git@github.com:user/repo.git .bare" label="Terminal" />
                 </div>
 
                 <!-- Step 2 -->
-                <div class="reveal relative bg-slate-800/40 p-8 rounded-2xl ml-0 md:ml-16 border-l-4 border-cyber-cyan shadow-xl backdrop-blur-sm group hover:bg-slate-800/60 transition-colors">
-                    <div class="absolute -left-[5.25rem] top-8 bg-slate-900 border-4 border-cyber-cyan w-12 h-12 rounded-full flex items-center justify-center font-black text-white hidden md:flex z-10 group-hover:scale-110 transition-transform impact text-xl">2</div>
-                    <h4 class="text-2xl font-black text-white mb-3 impact tracking-wider">Connect The Brain</h4>
-                    <p class="text-slate-300 mb-6">Point the root Git context to the hidden engine using a gitdir pointer.</p>
-                    <CodeBlock code='echo "gitdir: ./.bare" > .git' label="TERMINAL // STEP_02" />
-                </div>
-
-                <!-- Step 2.5 -->
-                <div class="reveal relative bg-slate-800/40 p-8 rounded-2xl ml-0 md:ml-16 border-l-4 border-cyber-pink shadow-xl backdrop-blur-sm group hover:bg-slate-800/60 transition-colors">
-                    <div class="absolute -left-[5.25rem] top-8 bg-slate-900 border-4 border-cyber-pink w-12 h-12 rounded-full flex items-center justify-center font-black text-white hidden md:flex z-10 group-hover:scale-110 transition-transform impact text-xl">!</div>
-                    <h4 class="text-2xl font-black text-white mb-3 impact tracking-wider">The Pulse</h4>
-                    <p class="text-slate-300 mb-6">Configure remote tracking to enable standard fetching in a bare environment.</p>
-                    <CodeBlock code='git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"' label="TERMINAL // STEP_OPTIMIZE" />
+                <div class="fade-in relative bg-slate-800 p-8 rounded-xl border border-slate-700 shadow-sm">
+                    <div class="absolute -left-4 top-8 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold text-white text-sm hidden md:flex">2</div>
+                    <h4 class="text-xl font-bold text-white mb-3">Connect The Hub</h4>
+                    <p class="text-slate-400 mb-6">Point the root Git context to the hidden engine using a gitdir pointer file.</p>
+                    <CodeBlock code='echo "gitdir: ./.bare" > .git' label="Terminal" />
                 </div>
 
                 <!-- Step 3 -->
-                <div class="reveal relative bg-slate-800/40 p-8 rounded-2xl ml-0 md:ml-16 border-l-4 border-cyber-green shadow-xl backdrop-blur-sm group hover:bg-slate-800/60 transition-colors">
-                    <div class="absolute -left-[5.25rem] top-8 bg-slate-900 border-4 border-cyber-green w-12 h-12 rounded-full flex items-center justify-center font-black text-white hidden md:flex z-10 group-hover:scale-110 transition-transform impact text-xl">3</div>
-                    <h4 class="text-2xl font-black text-white mb-3 impact tracking-wider">Spawn Muscle</h4>
-                    <p class="text-slate-300 mb-6">Generate dedicated folders for your active branches. Zero branch locking.</p>
+                <div class="fade-in relative bg-slate-800 p-8 rounded-xl border border-slate-700 shadow-sm">
+                    <div class="absolute -left-4 top-8 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold text-white text-sm hidden md:flex">3</div>
+                    <h4 class="text-xl font-bold text-white mb-3">Configure Fetch</h4>
+                    <p class="text-slate-400 mb-6">Configure remote tracking to enable standard fetching in a bare environment.</p>
+                    <CodeBlock code='git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"' label="Terminal" />
+                </div>
+
+                <!-- Step 4 -->
+                <div class="fade-in relative bg-slate-800 p-8 rounded-xl border border-slate-700 shadow-sm">
+                    <div class="absolute -left-4 top-8 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold text-white text-sm hidden md:flex">4</div>
+                    <h4 class="text-xl font-bold text-white mb-3">Create Worktrees</h4>
+                    <p class="text-slate-400 mb-6">Generate dedicated folders for your active branches.</p>
                     <CodeBlock code={`git worktree add main
-git worktree add -b feature-scaling scaling`} label="TERMINAL // STEP_03" />
+git worktree add -b feature-scaling scaling`} label="Terminal" />
                 </div>
 
             </div>

@@ -1,31 +1,33 @@
-# 🔱 Giga Chad Bare Worktree Guide
+# Git Bare Hub Architecture Guide
 
-> **Live Demo:** [https://justinnathanielsmith.github.io/worktrees/](https://justinnathanielsmith.github.io/worktrees/)
+> **Live Guide:** [https://justinnathanielsmith.github.io/worktrees/](https://justinnathanielsmith.github.io/worktrees/)
 
-Standard Git setups are high-latency and low-aesthetic. This repository contains the source for the **Bare Hub Architecture Guide**—an elite interactive experience for devs who want to decouple their Git engine from their muscle.
+This repository contains the source for the **Git Bare Hub Architecture Guide**—a comprehensive resource for developers looking to optimize their Git workflow using bare repositories and worktrees.
 
-## 🧠 The Philosophy
+## The Bare Hub Workflow
 
-We don't "checkout" branches. We spawn them.
-We don't "wait" for tests. We run them in parallel.
-We don't "clutter" our root. We hide the engine in `.bare`.
+The Bare Hub architecture separates your Git metadata from your working directories, offering several benefits over standard cloning:
 
-## 🛠 The Architecture
+1.  **Instant Context Switching**: Create new branches in dedicated directories (worktrees) without stashing or rewriting your current workspace.
+2.  **Parallel Development**: Run long-running tests or builds in one worktree while coding in another.
+3.  **Clean Root Directory**: Keep your project root organized by isolating the main Git engine in a hidden `.bare` directory.
+4.  **Isolated Dependencies**: Each worktree has its own `node_modules` or build artifacts, preventing conflicts when switching between branches with different dependency versions.
 
-The interactive guide covers the core pillars of the Bare Hub setup:
+## Project Architecture
 
-1.  **The Engine**: Initializing the repository as a bare repo in `.bare`.
-2.  **The Brain**: Connecting the root directory to the engine via a `.git` pointer file.
-3.  **The Muscle**: Spawning dedicated worktrees for every branch.
-4.  **The Gains**: Parallel builds, instant branch switching, and AI-sandboxing.
+This interactive guide explains the core concepts:
 
-## 🚀 Interactive Guide Source
+1.  **The "Engine" (.bare)**: The bare repository holding all Git history and refs.
+2.  **The "Hub" (.git)**: A pointer file connecting your root to the engine.
+3.  **Worktrees**: Dedicated directories for each active branch (e.g., `main`, `feature-x`).
 
-This site is built with **Astro 4.x+** and **Tailwind CSS**, featuring a **High-Performance Cyber** aesthetic.
+## Interactive Guide Source
+
+This site is built with **Astro 4.x+** and **Tailwind CSS**.
 
 ### Local Development
 
-Get the engine running locally:
+To run the guide locally:
 
 #### Astro Site
 ```bash
@@ -41,26 +43,25 @@ npm run dev
 ```
 
 #### Worktrees CLI (Rust)
-The CLI tool for managing these worktrees lives in `worktrees/`.
+The repository also includes a Rust CLI tool for automating the Bare Hub setup, located in `worktrees/`.
 
 ```bash
 cd worktrees
+# Run the CLI
 cargo run -- --help
 ```
 
 ### Production Build
 
-Generate the optimized static muscle:
+Generate the static site:
 
 ```bash
 npm run build
 ```
 
-The output will be in the `dist/` directory, ready for zero-latency deployment.
+The output will be in the `dist/` directory.
 
-## 🔱 Join the Elite
+## Contributing
 
-Standard Git is for the weak. Bare Hub is for the Giga Chads. 
-
-Read the full guide at the link above and start coding with 100% gains.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 

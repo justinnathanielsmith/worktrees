@@ -1,117 +1,106 @@
 ---
 import CodeBlock from './CodeBlock.astro';
 ---
-<section class="py-24 space-y-32">
+
+<section class="py-24 space-y-32 container mx-auto px-4">
     <!-- Header -->
-    <div class="container mx-auto px-4 text-center reveal">
-        <h2 class="text-5xl md:text-7xl font-black text-white mb-6 impact">2026 BEST PRACTICES</h2>
-        <p class="text-cyber-cyan text-xl uppercase tracking-[0.3em] font-bold">Standard Operating Procedures for Giga Chads</p>
+    <div class="max-w-4xl fade-in">
+        <h1 class="text-4xl md:text-6xl font-bold text-white mb-8 leading-none">
+            Best <br>
+            <span class="text-blue-500">Practices</span>
+        </h1>
+        <p class="text-xl text-slate-400 font-mono tracking-tight leading-relaxed border-l-4 border-blue-500 pl-6">
+            Standard operating procedures for maintaining a clean, efficient Bare Hub environment. 
+            Follow these guidelines to ensure consistency and prevent configuration drift.
+        </p>
     </div>
 
-    <!-- Practice 1: Intent-Based -->
-    <div class="container mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-        <div class="space-y-8 reveal">
-            <h3 class="text-4xl md:text-5xl font-black text-white border-l-4 border-cyber-cyan pl-6 impact">
-                INTENT-BASED WORKTREES
-            </h3>
-            <p class="text-slate-300 text-lg leading-relaxed">
-                Stop creating new folders for every ephemeral branch. In 2026, we use **static worktrees** named by *intent*. 
-                Maintain permanent directories for specific tasks to keep build caches and IDE indexes warm.
-            </p>
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700">
-                    <span class="text-cyber-cyan font-bold block mb-1">/work</span>
-                    <span class="text-xs text-slate-400 uppercase">Primary Development</span>
-                </div>
-                <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700">
-                    <span class="text-cyber-pink font-bold block mb-1">/review</span>
-                    <span class="text-xs text-slate-400 uppercase">PR Inspections</span>
-                </div>
-                <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700">
-                    <span class="text-cyber-green font-bold block mb-1">/hotfix</span>
-                    <span class="text-xs text-slate-400 uppercase">Emergency Patches</span>
-                </div>
-                <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700">
-                    <span class="text-white font-bold block mb-1">/sandbox</span>
-                    <span class="text-xs text-slate-400 uppercase">Experimental R&D</span>
+    <!-- 01. Intent-Based Worktrees -->
+    <div class="fade-in space-y-12">
+        <div class="flex items-center gap-4">
+            <span class="text-blue-500 font-bold text-2xl">01</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Intent-Based Worktrees</h2>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div class="space-y-6">
+                <p class="text-slate-300 leading-relaxed">
+                    Don't name worktrees after branch names like `feat-login`. Name them after <strong>intent</strong> or <strong>role</strong>. This decouples the directory from the temporary git branch.
+                </p>
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="p-4 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-between">
+                        <span class="text-red-400 line-through">../feature-login-page</span>
+                        <span class="text-slate-500 text-xs">Too specific</span>
+                    </div>
+                    <div class="p-4 bg-slate-900 border border-blue-500/30 rounded-lg flex items-center justify-between">
+                        <span class="text-blue-400 font-bold">../dev-frontend</span>
+                        <span class="text-slate-500 text-xs">Reusable Role</span>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="reveal">
-            <CodeBlock code={`# Setup intent-based structure
-git worktree add work main
-git worktree add review main
-git worktree add hotfix main
-
-# Switch branch WITHIN the intent folder
-cd review
-git switch feature-user-auth`} label="TERMINAL // INTENT_FLOW" />
-        </div>
-    </div>
-
-    <!-- Practice 2: AI Isolation -->
-    <div class="container mx-auto px-4">
-        <div class="bg-slate-900/50 p-8 md:p-12 rounded-[2.5rem] border border-slate-800 relative overflow-hidden reveal">
-            <div class="absolute top-0 right-0 w-96 h-96 bg-cyber-pink/10 rounded-full blur-[100px] -mr-48 -mt-48 pointer-events-none"></div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center relative z-10">
-                <div class="order-2 md:order-1">
-                    <CodeBlock code={`# Create a dedicated agent worktree
-git worktree add ai-sandbox ai-task-branch
-
-# Let the agent run wild without locking your UI
-gemini "Refactor the core engine in ./ai-sandbox"`} label="TERMINAL // AI_ISOLATION" />
-                </div>
-                <div class="space-y-8 order-1 md:order-2">
-                    <h3 class="text-4xl md:text-5xl font-black text-white impact pink-glow">AI SANDBOXING</h3>
-                    <p class="text-slate-300 text-lg leading-relaxed">
-                        Don't let your AI agent fight you for terminal focus. Give it a dedicated worktree where it can run builds, 
-                        execute tests, and refactor code in parallel while you keep working in `/work`.
-                    </p>
-                    <ul class="space-y-4">
-                        <li class="flex items-center gap-3">
-                            <span class="w-2 h-2 bg-cyber-pink rounded-full"></span>
-                            <span class="text-slate-400">Zero UI locking during AI builds</span>
-                        </li>
-                        <li class="flex items-center gap-3">
-                            <span class="w-2 h-2 bg-cyber-pink rounded-full"></span>
-                            <span class="text-slate-400">Isolated dependency installs</span>
-                        </li>
-                        <li class="flex items-center gap-3">
-                            <span class="w-2 h-2 bg-cyber-pink rounded-full"></span>
-                            <span class="text-slate-400">Safety: AI can't accidentally wipe your unstaged work</span>
-                        </li>
-                    </ul>
-                </div>
+            <div class="p-8 bg-slate-900 border border-slate-800 rounded-xl">
+                 <h3 class="text-lg font-bold text-white mb-4">The Strategy</h3>
+                 <ul class="space-y-3 text-sm text-slate-400">
+                    <li class="flex gap-2">
+                        <span class="text-blue-500">→</span>
+                        <span><strong>../review</strong>: A permanent slot for checking out PRs.</span>
+                    </li>
+                    <li class="flex gap-2">
+                        <span class="text-blue-500">→</span>
+                        <span><strong>../hotfix</strong>: Always sitting on `main`, ready for a new branch split.</span>
+                    </li>
+                    <li class="flex gap-2">
+                        <span class="text-blue-500">→</span>
+                        <span><strong>../release</strong>: Reserved for release tagging and changelog generation.</span>
+                    </li>
+                 </ul>
             </div>
         </div>
     </div>
 
-    <!-- Practice 3: Modern Pkg Managers -->
-    <div class="container mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-        <div class="space-y-8 reveal">
-            <h3 class="text-4xl md:text-5xl font-black text-white border-l-4 border-cyber-green pl-6 impact">
-                GLOBAL CONTENT STORES
-            </h3>
-            <p class="text-slate-300 text-lg leading-relaxed">
-                In a multi-worktree environment, standard `npm` is a disk-space disaster. Use **pnpm** or **Bun** to share 
-                a single content-addressable store across all your folders.
-            </p>
-            <div class="bg-black/60 p-6 rounded-xl border border-cyber-green/30 font-mono text-sm text-cyber-green">
-                <div class="mb-2">// Disk Usage Comparison (5 Worktrees)</div>
-                <div class="flex justify-between border-b border-slate-800 pb-2 mb-2">
-                    <span>NPM / YARN v1</span>
-                    <span class="text-cyber-pink">~2.5 GB</span>
-                </div>
-                <div class="flex justify-between text-white font-bold">
-                    <span>PNPM / BUN</span>
-                    <span class="text-cyber-green">~500 MB</span>
-                </div>
-            </div>
+    <!-- 02. The Dotfile Config -->
+    <div class="fade-in space-y-12">
+        <div class="flex items-center gap-4">
+            <span class="text-blue-500 font-bold text-2xl">02</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">The Dotfile Config</h2>
         </div>
-        <div class="reveal">
-            <CodeBlock code={`# All worktrees share the same physical files
-pnpm install # Instant in secondary worktrees`} label="TERMINAL // PKG_OPTIMIZATION" />
+
+        <div class="bg-slate-900 p-8 rounded-xl border border-slate-800">
+            <p class="text-slate-400 mb-6">Aggregate your `.gitignore` and config at the repository root level so they apply to all worktrees automatically.</p>
+            <CodeBlock code={`# In your .bare/config (the bare repo)
+[core]
+    worktreeConfig = true
+[remote "origin"]
+    fetch = +refs/heads/*:refs/remotes/origin/*`} label="Git Config" />
+        </div>
+    </div>
+
+    <!-- 03. Agent Hygiene -->
+    <div class="fade-in space-y-12">
+        <div class="flex items-center gap-4">
+            <span class="text-blue-500 font-bold text-2xl">03</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Agent Hygiene</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="p-6 bg-slate-900 border border-slate-800 rounded-xl relative overflow-hidden group hover:border-blue-500 transition-colors">
+                <h4 class="text-white font-bold mb-2 z-10 relative">One-Shot Containers</h4>
+                <p class="text-xs text-slate-500 z-10 relative">
+                    When an AI agent task is done, <strong>delete the worktree</strong>. Do not reuse "dirty" agent worktrees.
+                </p>
+            </div>
+            <div class="p-6 bg-slate-900 border border-slate-800 rounded-xl relative overflow-hidden group hover:border-blue-500 transition-colors">
+                <h4 class="text-white font-bold mb-2 z-10 relative">Review First</h4>
+                <p class="text-xs text-slate-500 z-10 relative">
+                    Never merge an agent's worktree blindly. cd into it, run tests, and inspect the excessive changes.
+                </p>
+            </div>
+            <div class="p-6 bg-slate-900 border border-slate-800 rounded-xl relative overflow-hidden group hover:border-blue-500 transition-colors">
+                <h4 class="text-white font-bold mb-2 z-10 relative">Limit Scope</h4>
+                <p class="text-xs text-slate-500 z-10 relative">
+                    Give the agent a narrow context. Don't ask it to "fix the app". Ask it to "fix the padding in Header.astro".
+                </p>
+            </div>
         </div>
     </div>
 </section>
