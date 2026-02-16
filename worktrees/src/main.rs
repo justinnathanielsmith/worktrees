@@ -114,6 +114,8 @@ async fn main() -> Result<()> {
                         cached_status: None,
                         cached_history: None,
                     },
+                    filter_query: String::new(),
+                    is_filtering: false,
                 };
                 let result = View::render_tui(&GitProjectRepository, initial_state)
                     .map_err(|e| miette::miette!("{e:?}"))?;
@@ -150,6 +152,8 @@ async fn main() -> Result<()> {
                     cached_status: None,
                     cached_history: None,
                 },
+                filter_query: String::new(),
+                is_filtering: false,
             };
             View::render_tui(&GitProjectRepository, initial_state)
                 .map_err(|e| miette::miette!("{e:?}"))?;
