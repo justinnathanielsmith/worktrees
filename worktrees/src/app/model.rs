@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone)]
 pub enum PromptType {
-    AddIntent,
+    NameNewWorktree { base_ref: String },
     CommitMessage,
     ApiKey,
 }
@@ -228,6 +228,12 @@ pub enum AppState {
         selected_index: usize,
         prev_state: Box<AppState>,
     },
+    /// Branch selection menu for creating a new worktree.
+    PickingBaseRef {
+        branches: Vec<String>,
+        selected_index: usize,
+        prev_state: Box<AppState>,
+    },
     /// General purpose text input prompt.
     Prompting {
         prompt_type: PromptType,
@@ -278,6 +284,7 @@ impl AppState {
             AppState::ViewingHistory { prev_state, .. } => prev_state,
             AppState::SwitchingBranch { prev_state, .. } => prev_state,
             AppState::Committing { prev_state, .. } => prev_state,
+            AppState::PickingBaseRef { prev_state, .. } => prev_state,
             AppState::Prompting { prev_state, .. } => prev_state,
             AppState::Timed { target_state, .. } => target_state,
             AppState::Error(_, prev_state) => prev_state,

@@ -97,6 +97,28 @@ pub enum Commands {
         /// The name or branch of the worktree to switch to
         name: Option<String>,
     },
+    /// Convert an existing standard repository into a bare hub structure
+    ///
+    /// This will move the .git folder to .bare and create a new hub directory.
+    ///
+    /// Example: worktrees convert --name my-project-hub
+    Convert {
+        /// Optional name for the new hub directory (defaults to {project}-hub)
+        #[arg(short, long)]
+        name: Option<String>,
+        /// Optional main branch name (defaults to current branch)
+        #[arg(short, long)]
+        branch: Option<String>,
+    },
+    /// Switch a worktree to a different branch
+    ///
+    /// Example: worktrees checkout feature-login develop
+    Checkout {
+        /// The name or intent of the worktree
+        intent: String,
+        /// The branch to switch to
+        branch: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -199,6 +221,23 @@ mod tests {
                 assert_eq!(name, Some("dev".to_string()));
             }
             _ => anyhow::bail!("Expected Switch"),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_cli_parsing_checkout() -> Result<()> {
+        let cli = Cli::try_parse_from(["worktrees", "checkout", "feat-a", "main"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match cli
+            .command
+            .ok_or_else(|| anyhow::anyhow!("Missing command"))?
+        {
+            Commands::Checkout { intent, branch } => {
+                assert_eq!(intent, "feat-a");
+                assert_eq!(branch, "main");
+            }
+            _ => anyhow::bail!("Expected Checkout"),
         }
         Ok(())
     }

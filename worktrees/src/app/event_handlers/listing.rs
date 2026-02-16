@@ -1,5 +1,5 @@
 use crate::app::intent::Intent;
-use crate::app::model::{filter_worktrees, AppState, EditorConfig, PromptType, RefreshType};
+use crate::app::model::{AppState, EditorConfig, RefreshType, filter_worktrees};
 use crate::domain::repository::{ProjectRepository, Worktree};
 use anyhow::Result;
 use ratatui::{Terminal, backend::CrosstermBackend, widgets::TableState};
@@ -139,7 +139,12 @@ pub fn handle_listing_events<R: ProjectRepository>(
                 KeyCode::Char('g') => {
                     table_state.select(Some(0));
                     let mut new_state = current_state.clone();
-                    if let AppState::ListingWorktrees { table_state: ts, refresh_needed, .. } = &mut new_state {
+                    if let AppState::ListingWorktrees {
+                        table_state: ts,
+                        refresh_needed,
+                        ..
+                    } = &mut new_state
+                    {
                         *ts = table_state.clone();
                         *refresh_needed = RefreshType::Dashboard;
                     }
@@ -150,7 +155,12 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         table_state.select(Some(filtered_worktrees.len() - 1));
                     }
                     let mut new_state = current_state.clone();
-                    if let AppState::ListingWorktrees { table_state: ts, refresh_needed, .. } = &mut new_state {
+                    if let AppState::ListingWorktrees {
+                        table_state: ts,
+                        refresh_needed,
+                        ..
+                    } = &mut new_state
+                    {
                         *ts = table_state.clone();
                         *refresh_needed = RefreshType::Dashboard;
                     }
@@ -167,7 +177,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
             match normalized_code {
                 KeyCode::Char('q') | KeyCode::Esc => {
                     if !filter_query.is_empty() {
-                         let mut new_state = current_state.clone();
+                        let mut new_state = current_state.clone();
                         if let AppState::ListingWorktrees {
                             filter_query,
                             refresh_needed,
@@ -179,12 +189,17 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         }
                         return Ok(Some(new_state));
                     }
-                    return Ok(Some(AppState::Exiting(None)))
-                },
+                    return Ok(Some(AppState::Exiting(None)));
+                }
                 KeyCode::Down | KeyCode::Char('j') => {
                     move_selection(table_state, filtered_worktrees.len(), 1);
                     let mut new_state = current_state.clone();
-                    if let AppState::ListingWorktrees { table_state: ts, refresh_needed, .. } = &mut new_state {
+                    if let AppState::ListingWorktrees {
+                        table_state: ts,
+                        refresh_needed,
+                        ..
+                    } = &mut new_state
+                    {
                         *ts = table_state.clone();
                         *refresh_needed = RefreshType::Dashboard;
                     }
@@ -193,7 +208,12 @@ pub fn handle_listing_events<R: ProjectRepository>(
                 KeyCode::Up | KeyCode::Char('k') => {
                     move_selection(table_state, filtered_worktrees.len(), -1);
                     let mut new_state = current_state.clone();
-                    if let AppState::ListingWorktrees { table_state: ts, refresh_needed, .. } = &mut new_state {
+                    if let AppState::ListingWorktrees {
+                        table_state: ts,
+                        refresh_needed,
+                        ..
+                    } = &mut new_state
+                    {
                         *ts = table_state.clone();
                         *refresh_needed = RefreshType::Dashboard;
                     }
@@ -232,9 +252,12 @@ pub fn handle_listing_events<R: ProjectRepository>(
                     }
                 }
                 KeyCode::Char('a') => {
-                    return Ok(Some(AppState::Prompting {
-                        prompt_type: PromptType::AddIntent,
-                        input: String::new(),
+                    let branches = repo
+                        .list_branches()
+                        .map_err(|e| anyhow::anyhow!("Failed to list branches: {}", e))?;
+                    return Ok(Some(AppState::PickingBaseRef {
+                        branches,
+                        selected_index: 0,
                         prev_state: Box::new(current_state.clone()),
                     }));
                 }
@@ -316,12 +339,40 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         return Ok(Some(create_timed_state(complete_state, *prev_clone, 800)));
                     }
                 }
+                KeyCode::Char('c') => {
+                    // C for CLEAN stale metadata
+                    let prev = Box::new(current_state.clone());
+                    match repo.clean_worktrees(false) {
+                        Ok(cleaned) => {
+                            let _count = cleaned.len();
+                            return Ok(Some(create_timed_state(
+                                AppState::WorktreeRemoved, // Reuse removed state for success feedback
+                                *prev,
+                                1200,
+                            )));
+                        }
+                        Err(e) => {
+                            return Ok(Some(AppState::Error(
+                                format!("Failed to clean worktrees: {}", e),
+                                prev,
+                            )));
+                        }
+                    }
+                }
                 KeyCode::Char('o') => {
                     if let Some(i) = table_state.selected()
-                        && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
+                        && let Some(wt) = filtered_worktrees.get(i)
                     {
-                        let branch = wt.branch.clone();
-                        let path = wt.path.clone();
+                        let branch = if wt.is_bare {
+                            "HUB".to_string()
+                        } else {
+                            wt.branch.clone()
+                        };
+                        let path = if wt.is_bare {
+                            repo.get_project_root()?.to_string_lossy().to_string()
+                        } else {
+                            wt.path.clone()
+                        };
                         let prev = Box::new(current_state.clone());
 
                         if let Ok(Some(editor)) = repo.get_preferred_editor() {
@@ -408,9 +459,13 @@ pub fn handle_listing_events<R: ProjectRepository>(
                 }
                 KeyCode::Char('f') => {
                     if let Some(i) = table_state.selected()
-                        && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
+                        && let Some(wt) = filtered_worktrees.get(i)
                     {
-                        let branch = wt.branch.clone();
+                        let branch = if wt.is_bare {
+                            "HUB".to_string()
+                        } else {
+                            wt.branch.clone()
+                        };
                         let path = wt.path.clone();
                         let prev = Box::new(current_state.clone());
                         let mut fetching_state = AppState::Fetching {
@@ -430,11 +485,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                     }
                 }
                 KeyCode::Enter => {
-                    if let AppState::ListingWorktrees {
-                        selection_mode,
-                        ..
-                    } = current_state
-                    {
+                    if let AppState::ListingWorktrees { selection_mode, .. } = current_state {
                         if *selection_mode {
                             if let Some(i) = table_state.selected()
                                 && let Some(wt) = filtered_worktrees.get(i)
@@ -442,11 +493,19 @@ pub fn handle_listing_events<R: ProjectRepository>(
                                 return Ok(Some(AppState::Exiting(Some(wt.path.clone()))));
                             }
                         } else if let Some(i) = table_state.selected()
-                            && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
+                            && let Some(wt) = filtered_worktrees.get(i)
                         {
                             // Open in editor behavior (replicate 'o' key logic)
-                            let branch = wt.branch.clone();
-                            let path = wt.path.clone();
+                            let branch = if wt.is_bare {
+                                "HUB".to_string()
+                            } else {
+                                wt.branch.clone()
+                            };
+                            let path = if wt.is_bare {
+                                repo.get_project_root()?.to_string_lossy().to_string()
+                            } else {
+                                wt.path.clone()
+                            };
                             let prev = Box::new(current_state.clone());
 
                             if let Ok(Some(editor)) = repo.get_preferred_editor() {
@@ -583,7 +642,12 @@ pub fn handle_listing_events<R: ProjectRepository>(
                     move_selection(table_state, filtered_worktrees.len(), 1);
                     // Update state with new table_state
                     let mut new_state = current_state.clone();
-                    if let AppState::ListingWorktrees { table_state: ts, refresh_needed, .. } = &mut new_state {
+                    if let AppState::ListingWorktrees {
+                        table_state: ts,
+                        refresh_needed,
+                        ..
+                    } = &mut new_state
+                    {
                         *ts = table_state.clone();
                         *refresh_needed = RefreshType::Dashboard;
                     }
@@ -592,7 +656,12 @@ pub fn handle_listing_events<R: ProjectRepository>(
                 MouseEventKind::ScrollUp => {
                     move_selection(table_state, filtered_worktrees.len(), -1);
                     let mut new_state = current_state.clone();
-                    if let AppState::ListingWorktrees { table_state: ts, refresh_needed, .. } = &mut new_state {
+                    if let AppState::ListingWorktrees {
+                        table_state: ts,
+                        refresh_needed,
+                        ..
+                    } = &mut new_state
+                    {
                         *ts = table_state.clone();
                         *refresh_needed = RefreshType::Dashboard;
                     }

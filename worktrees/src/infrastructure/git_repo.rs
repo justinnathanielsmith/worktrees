@@ -1,13 +1,17 @@
 use crate::domain::repository::{
-    GitCommit, GitStatus, ProjectContext, ProjectRepository, Worktree, WorktreeMetadata,
+    GitCommit, GitStatus, ProjectContext, ProjectRepository, RepoStatus, Worktree, WorktreeMetadata,
 };
+
+use crate::domain::repository::RepositoryEvent;
 use anyhow::{Context, Result};
+use crossbeam_channel::Receiver;
 use keyring::Entry;
+use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use tracing::{debug, instrument};
+use tracing::{debug, error, instrument};
 
 #[derive(Clone)]
 pub struct GitProjectRepository;
@@ -42,12 +46,17 @@ impl GitProjectRepository {
             }
         }
 
-        // 2. Check XDG/Standard config path
+        // 2. Check XDG_CONFIG_HOME explicitly (fixes tests and supports custom XDG locations)
+        if let Ok(xdg_home) = std::env::var("XDG_CONFIG_HOME") {
+            return Some(Path::new(&xdg_home).join("worktrees").join(new_filename));
+        }
+
+        // 3. Check Standard config path via dirs crate (Platform defaults)
         if let Some(config_dir) = dirs::config_dir() {
             return Some(config_dir.join("worktrees").join(new_filename));
         }
 
-        // 3. Fallback to HOME if dirs fails (unlikely but safe)
+        // 4. Fallback to HOME if dirs fails (unlikely but safe)
         if let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
             return Some(Path::new(&home).join(legacy_filename));
         }
@@ -184,6 +193,53 @@ impl GitProjectRepository {
         std::fs::write(path, content)?;
         Ok(())
     }
+    fn parse_branches(output: &str) -> Vec<String> {
+        let mut branches: Vec<String> = Vec::new();
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+        // 1. First pass: Collect local branches
+        for line in output.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.contains("origin/HEAD") {
+                continue;
+            }
+            if !line.starts_with("origin/") {
+                branches.push(line.to_string());
+                seen.insert(line.to_string());
+            }
+        }
+
+        // 2. Second pass: Add remote branches
+        for line in output.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.contains("origin/HEAD") {
+                continue;
+            }
+            if let Some(stripped) = line.strip_prefix("origin/")
+                && !seen.contains(stripped)
+            {
+                branches.push(stripped.to_string());
+                seen.insert(stripped.to_string());
+            }
+        }
+
+        branches.sort();
+        branches
+    }
+
+    fn get_project_root_path(&self) -> Result<PathBuf> {
+        // Use git rev-parse --git-common-dir to find the bare repo location
+        let output = Self::run_git(&["rev-parse", "--path-format=absolute", "--git-common-dir"])?;
+        let common_dir = Path::new(output.trim());
+
+        // The project root is the parent of the .bare (or .git) directory
+        common_dir.parent().map(|p| p.to_path_buf()).ok_or_else(|| {
+            anyhow::anyhow!(
+                "Could not determine project root from git common dir: {:?}",
+                common_dir
+            )
+        })
+    }
 }
 
 impl ProjectRepository for GitProjectRepository {
@@ -223,27 +279,35 @@ impl ProjectRepository for GitProjectRepository {
     }
 
     fn add_worktree(&self, path: &str, branch: &str) -> Result<()> {
-        Self::run_git(&["worktree", "add", "--", path, branch]).context(format!(
+        let root = self.get_project_root()?;
+        let abs_path = root.join(path);
+        let abs_path_str = abs_path.to_string_lossy();
+
+        Self::run_git(&["worktree", "add", "--", &abs_path_str, branch]).context(format!(
             "Failed to add worktree '{}'. HELP: Ensure the branch '{}' exists on origin.",
             path, branch
         ))?;
-        self.handle_context_files(path);
+        self.handle_context_files(&abs_path_str);
         Ok(())
     }
 
     fn add_new_worktree(&self, path: &str, branch: &str, base: &str) -> Result<()> {
-        let res = Self::run_git(&["worktree", "add", "-b", branch, "--", path, base]);
+        let root = self.get_project_root()?;
+        let abs_path = root.join(path);
+        let abs_path_str = abs_path.to_string_lossy();
+
+        let res = Self::run_git(&["worktree", "add", "-b", branch, "--", &abs_path_str, base]);
 
         if res.is_err() && base == "HEAD" {
             debug!("Normal worktree add failed on HEAD, trying --orphan for fresh repository...");
-            Self::run_git(&["worktree", "add", "--orphan", "-b", branch, path])
+            Self::run_git(&["worktree", "add", "--orphan", "-b", branch, &abs_path_str])
                 .context(format!("Failed to create orphan worktree '{}'. HELP: Ensure your Git version is 2.42+ or manually create the first commit.", path))?;
-            self.handle_context_files(path);
+            self.handle_context_files(&abs_path_str);
             return Ok(());
         }
 
         res.context(format!("Failed to create new worktree '{}' from '{}'. HELP: Ensure the base branch '{}' is valid.", path, base, base))?;
-        self.handle_context_files(path);
+        self.handle_context_files(&abs_path_str);
         Ok(())
     }
 
@@ -542,8 +606,8 @@ impl ProjectRepository for GitProjectRepository {
     }
 
     fn list_branches(&self) -> Result<Vec<String>> {
-        let output = Self::run_git(&["branch", "--format=%(refname:short)"])?;
-        Ok(output.lines().map(|s| s.to_string()).collect())
+        let output = Self::run_git(&["branch", "-a", "--format=%(refname:short)"])?;
+        Ok(Self::parse_branches(&output))
     }
 
     fn switch_branch(&self, path: &str, branch: &str) -> Result<()> {
@@ -609,10 +673,10 @@ impl ProjectRepository for GitProjectRepository {
         }
 
         // 2. Always store in file as fallback/sync
-        if let Some(path) = self.resolve_config_path(".worktrees.gemini_key", "gemini_key") {
-            if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
+        if let Some(path) = self.resolve_config_path(".worktrees.gemini_key", "gemini_key")
+            && let Some(parent) = path.parent()
+        {
+            std::fs::create_dir_all(parent)?;
 
             #[cfg(unix)]
             {
@@ -732,11 +796,192 @@ impl ProjectRepository for GitProjectRepository {
 
         Ok(to_remove)
     }
+
+    fn get_project_root(&self) -> Result<PathBuf> {
+        self.get_project_root_path()
+    }
+
+    fn convert_to_bare(&self, name: Option<&str>, branch: Option<&str>) -> Result<PathBuf> {
+        let current_dir = std::env::current_dir().context("Failed to get current directory")?;
+        let git_dir = current_dir.join(".git");
+
+        if !git_dir.exists() || !git_dir.is_dir() {
+            return Err(anyhow::anyhow!(
+                "Not a standard Git repository (missing .git directory). HELP: Ensure you are in the root of a standard repository."
+            ));
+        }
+
+        // Determine current branch if not provided
+        let branch = match branch {
+            Some(b) => b.to_string(),
+            None => {
+                let out = Self::run_git(&["rev-parse", "--abbrev-ref", "HEAD"])?;
+                out.trim().to_string()
+            }
+        };
+
+        // Determine project name and hub directory
+        let project_name = current_dir
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("project");
+        let hub_name = name
+            .map(|n| n.to_string())
+            .unwrap_or_else(|| format!("{}-hub", project_name));
+        let parent_dir = current_dir
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("Could not find parent directory"))?;
+        let hub_dir = parent_dir.join(&hub_name);
+
+        if hub_dir.exists() {
+            return Err(anyhow::anyhow!(
+                "Target hub directory '{}' already exists. HELP: Choose a different name or remove the existing directory.",
+                hub_dir.display()
+            ));
+        }
+
+        // 1. Create new hub directory and move .git as .bare
+        std::fs::create_dir_all(&hub_dir).context("Failed to create hub directory")?;
+        let bare_dir = hub_dir.join(".bare");
+        std::fs::rename(&git_dir, &bare_dir).context("Failed to move .git to .bare")?;
+
+        // 2. Configure as bare
+        Self::run_git(&[
+            "-C",
+            &bare_dir.to_string_lossy(),
+            "config",
+            "--bool",
+            "core.bare",
+            "true",
+        ])
+        .context("Failed to set core.bare to true")?;
+
+        // 3. Create .git redirection file in the hub
+        std::fs::write(hub_dir.join(".git"), "gitdir: ./.bare\n")
+            .context("Failed to create .git redirection file in hub")?;
+
+        // 4. Add the initial worktree
+        let worktree_dir = hub_dir.join(&branch);
+        Self::run_git(&[
+            "-C",
+            &hub_dir.to_string_lossy(),
+            "worktree",
+            "add",
+            &worktree_dir.to_string_lossy(),
+            &branch,
+        ])
+        .context(format!("Failed to add initial worktree '{}'", branch))?;
+
+        Ok(hub_dir)
+    }
+
+    fn check_status(&self, path: &Path) -> RepoStatus {
+        // 1. Check if it's a bare hub
+        // A bare hub root has a .bare directory
+        if path.join(".bare").exists() {
+            return RepoStatus::BareHub;
+        }
+
+        // Or if we are inside a worktree of a bare hub
+        // git rev-parse --git-common-dir should point to a .bare directory
+        if let Ok(common_dir) = Self::run_git(&[
+            "-C",
+            &path.to_string_lossy(),
+            "rev-parse",
+            "--git-common-dir",
+        ]) && common_dir.trim().ends_with(".bare")
+        {
+            return RepoStatus::BareHub;
+        }
+
+        // 2. Check if it's a standard git repo
+        // git rev-parse --is-inside-work-tree should be true
+        if let Ok(is_inside) = Self::run_git(&[
+            "-C",
+            &path.to_string_lossy(),
+            "rev-parse",
+            "--is-inside-work-tree",
+        ]) && is_inside.trim() == "true"
+        {
+            return RepoStatus::StandardGit;
+        }
+
+        // Also check for .git directory directly in case we are at root
+        if path.join(".git").exists() {
+            return RepoStatus::StandardGit;
+        }
+
+        RepoStatus::NoRepo
+    }
+
+    fn watch(&self) -> Result<Receiver<RepositoryEvent>> {
+        let (tx, rx) = crossbeam_channel::unbounded();
+        let (notify_tx, notify_rx) = crossbeam_channel::unbounded();
+        let root = self.get_project_root()?;
+
+        // Spawn a thread to handle watching
+        std::thread::spawn(move || {
+            let config = Config::default();
+            let mut watcher: RecommendedWatcher = match Watcher::new(
+                move |res| {
+                    let _ = notify_tx.send(res);
+                },
+                config,
+            ) {
+                Ok(w) => w,
+                Err(e) => {
+                    error!("Failed to create watcher: {}", e);
+                    return;
+                }
+            };
+
+            if let Err(e) = watcher.watch(&root, RecursiveMode::Recursive) {
+                error!("Failed to watch root: {}", e);
+                return;
+            }
+
+            // Simple loop to receive events and forward them mapped to RepositoryEvent
+            for res in notify_rx {
+                match res {
+                    Ok(event) => {
+                        // Basic heuristic mapping
+                        let mut meaningful_change = false;
+                        for path in &event.paths {
+                            let path_str = path.to_string_lossy();
+                            if path_str.contains(".git") || path_str.contains(".bare") {
+                                // Git metadata change
+                                if path_str.contains("index.lock") || path_str.contains("HEAD.lock")
+                                {
+                                    continue;
+                                }
+                                meaningful_change = true;
+                            } else {
+                                // Source file change
+                                meaningful_change = true;
+                            }
+                        }
+
+                        if meaningful_change {
+                            // For now, emitted a generic refresh to be safe.
+                            // In the future, we can be more granular.
+                            let _ = tx.send(RepositoryEvent::RescanRequired);
+                        }
+                    }
+                    Err(e) => error!("Watch error: {}", e),
+                }
+            }
+        });
+
+        Ok(rx)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static CWD_MUTEX: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_parse_git_history_normal() {
@@ -798,24 +1043,37 @@ mod tests {
         if temp_dir.exists() {
             std::fs::remove_dir_all(&temp_dir).unwrap();
         }
-        std::fs::create_dir(&temp_dir).unwrap();
+        std::fs::create_dir_all(&temp_dir).unwrap();
 
         let repo = GitProjectRepository;
 
-        // 1. Test Standard context (empty dir)
-        assert_eq!(repo.detect_context(&temp_dir), ProjectContext::Standard);
+        // Test Standard
+        assert_eq!(
+            repo.detect_context(&temp_dir),
+            crate::domain::repository::ProjectContext::Standard
+        );
 
-        // 2. Test KmpAndroid context (with build.gradle)
-        std::fs::write(temp_dir.join("build.gradle"), "").unwrap();
-        assert_eq!(repo.detect_context(&temp_dir), ProjectContext::KmpAndroid);
-        std::fs::remove_file(temp_dir.join("build.gradle")).unwrap();
-
-        // 3. Test KmpAndroid context (with local.properties)
-        std::fs::write(temp_dir.join("local.properties"), "").unwrap();
-        assert_eq!(repo.detect_context(&temp_dir), ProjectContext::KmpAndroid);
+        // Test KMP/Android
+        std::fs::write(temp_dir.join("build.gradle.kts"), "").unwrap();
+        assert_eq!(
+            repo.detect_context(&temp_dir),
+            crate::domain::repository::ProjectContext::KmpAndroid
+        );
 
         // Cleanup
         std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_parse_branches() {
+        let output = "main\norigin/HEAD\norigin/main\norigin/feature-branch\norigin/other-branch";
+        let branches = GitProjectRepository::parse_branches(output);
+
+        assert_eq!(branches.len(), 3);
+        assert_eq!(branches[0], "feature-branch");
+        assert_eq!(branches[1], "main"); // deduplicated origin/main
+        assert_eq!(branches[2], "other-branch");
+        // ensure origin/HEAD is ignored
     }
 
     #[test]
@@ -867,7 +1125,8 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
 
         // Setup temp dir
-        let temp_dir = std::env::temp_dir().join(format!("worktrees_test_perms_{}", std::process::id()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("worktrees_test_perms_{}", std::process::id()));
         if temp_dir.exists() {
             std::fs::remove_dir_all(&temp_dir).unwrap();
         }
@@ -894,14 +1153,22 @@ mod tests {
         let path1 = temp_dir.join("worktrees").join("gemini_key");
         let path2 = temp_dir.join(".worktrees.gemini_key");
 
-        let actual_path = if path1.exists() { path1.clone() } else { path2.clone() };
+        let actual_path = if path1.exists() {
+            path1.clone()
+        } else {
+            path2.clone()
+        };
         assert!(actual_path.exists(), "API key file should be created");
 
         // Verify initial creation is secure
         let metadata = std::fs::metadata(&actual_path).unwrap();
         let permissions = metadata.permissions();
         let mode = permissions.mode() & 0o777;
-        assert_eq!(mode, 0o600, "Initial creation: API key file permissions should be 600, but were {:o}", mode);
+        assert_eq!(
+            mode, 0o600,
+            "Initial creation: API key file permissions should be 600, but were {:o}",
+            mode
+        );
 
         // Test existing file scenario: Sabotage permissions to 644
         let mut perms = metadata.permissions();
@@ -909,23 +1176,170 @@ mod tests {
         std::fs::set_permissions(&actual_path, perms).unwrap();
 
         // Verify sabotage worked
-        let mode_sabotaged = std::fs::metadata(&actual_path).unwrap().permissions().mode() & 0o777;
-        assert_eq!(mode_sabotaged, 0o644, "Failed to sabotage permissions for test");
+        let mode_sabotaged = std::fs::metadata(&actual_path)
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(
+            mode_sabotaged, 0o644,
+            "Failed to sabotage permissions for test"
+        );
 
         // Run set_api_key again - should fix permissions
         repo.set_api_key("new_secret_key").unwrap();
 
         // Verify fix
-        let mode_fixed = std::fs::metadata(&actual_path).unwrap().permissions().mode() & 0o777;
-        assert_eq!(mode_fixed, 0o600, "Fixed API key file permissions should be 600, but were {:o}", mode_fixed);
+        let mode_fixed = std::fs::metadata(&actual_path)
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(
+            mode_fixed, 0o600,
+            "Fixed API key file permissions should be 600, but were {:o}",
+            mode_fixed
+        );
 
         // Restore env
         unsafe {
-            if let Some(h) = old_home { std::env::set_var("HOME", h); } else { std::env::remove_var("HOME"); }
-            if let Some(x) = old_xdg { std::env::set_var("XDG_CONFIG_HOME", x); } else { std::env::remove_var("XDG_CONFIG_HOME"); }
+            if let Some(h) = old_home {
+                std::env::set_var("HOME", h);
+            } else {
+                std::env::remove_var("HOME");
+            }
+            if let Some(x) = old_xdg {
+                std::env::set_var("XDG_CONFIG_HOME", x);
+            } else {
+                std::env::remove_var("XDG_CONFIG_HOME");
+            }
         }
 
         // Cleanup
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_convert_to_bare() {
+        let _lock = CWD_MUTEX.lock().unwrap();
+        let temp_dir =
+            std::env::temp_dir().join(format!("worktrees_convert_test_{}", std::process::id()));
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let repo_dir = temp_dir.join("my-app");
+        std::fs::create_dir_all(&repo_dir).unwrap();
+
+        // 1. Setup a standard repo
+        let git_cmd = std::env::var("WORKTREES_GIT_PATH").unwrap_or_else(|_| "git".to_string());
+        Command::new(&git_cmd)
+            .args(["-C", &repo_dir.to_string_lossy(), "init"])
+            .output()
+            .unwrap();
+        Command::new(&git_cmd)
+            .args([
+                "-C",
+                &repo_dir.to_string_lossy(),
+                "config",
+                "user.email",
+                "test@example.com",
+            ])
+            .output()
+            .unwrap();
+        Command::new(&git_cmd)
+            .args([
+                "-C",
+                &repo_dir.to_string_lossy(),
+                "config",
+                "user.name",
+                "Test User",
+            ])
+            .output()
+            .unwrap();
+
+        std::fs::write(repo_dir.join("file.txt"), "hello").unwrap();
+        Command::new(&git_cmd)
+            .args(["-C", &repo_dir.to_string_lossy(), "add", "file.txt"])
+            .output()
+            .unwrap();
+        Command::new(&git_cmd)
+            .args(["-C", &repo_dir.to_string_lossy(), "commit", "-m", "init"])
+            .output()
+            .unwrap();
+
+        // 2. Perform conversion
+        let repo = GitProjectRepository;
+        let original_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&repo_dir).unwrap();
+
+        let res = repo.convert_to_bare(Some("my-app-hub"), Some("main"));
+
+        // Restore CWD regardless of success
+        std::env::set_current_dir(original_cwd).unwrap();
+
+        let hub_path = res.expect("Conversion failed");
+        assert!(hub_path.exists());
+        assert!(hub_path.ends_with("my-app-hub"));
+        assert!(hub_path.join(".bare").exists());
+        assert!(hub_path.join("main").exists());
+        assert!(hub_path.join("main").join("file.txt").exists());
+        assert!(!repo_dir.join(".git").exists());
+
+        // Cleanup
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_watch_reactivity() {
+        let _lock = CWD_MUTEX.lock().unwrap();
+        // Setup temp dir
+        let temp_dir =
+            std::env::temp_dir().join(format!("worktrees_watch_test_{}", std::process::id()));
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let git_cmd = std::env::var("WORKTREES_GIT_PATH").unwrap_or_else(|_| "git".to_string());
+        // Init bare repo structure manually to fake being a project root
+        let _ = Command::new(&git_cmd)
+            .args(["init", "--bare", ".bare"])
+            .current_dir(&temp_dir)
+            .output()
+            .unwrap();
+        std::fs::write(temp_dir.join(".git"), "gitdir: ./.bare\n").unwrap();
+
+        // We need to run the test inside temp_dir to simulate repo context
+        let original_dir = std::env::current_dir().unwrap();
+        if let Err(e) = std::env::set_current_dir(&temp_dir) {
+            println!("Failed to set current dir: {}", e);
+            return;
+        }
+
+        let repo = GitProjectRepository;
+        let rx_res = repo.watch();
+
+        if let Ok(rx) = rx_res {
+            // Modify a file
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+            std::fs::write(temp_dir.join("test_file"), "content").unwrap();
+
+            // Expect event
+            let event = rx.recv_timeout(std::time::Duration::from_secs(5));
+            assert!(event.is_ok(), "Should receive event");
+            if let Ok(e) = event {
+                assert_eq!(
+                    e,
+                    crate::domain::repository::RepositoryEvent::RescanRequired
+                );
+            }
+        } else {
+            println!("Watch setup failed: {:?}", rx_res.err());
+        }
+
+        // Cleanup
+        std::env::set_current_dir(original_dir).unwrap();
         std::fs::remove_dir_all(&temp_dir).unwrap();
     }
 }

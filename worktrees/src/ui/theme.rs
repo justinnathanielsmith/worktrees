@@ -11,21 +11,23 @@ pub struct CyberTheme {
     pub subtle: Color,       // Dim Gray
     pub selection_bg: Color, // Indigo Pulse
     pub border: Color,       // Slate Border
+    pub header_bg: Color,    // Header/Title Background
 }
 
 impl Default for CyberTheme {
     fn default() -> Self {
         Self {
-            primary: Color::Rgb(34, 211, 238),    // #22d3ee (Vibrant Cyan)
-            secondary: Color::Rgb(129, 140, 248), // #818cf8 (Indigo Glow)
-            accent: Color::Rgb(244, 114, 182),    // #f472b6 (Soft Pink)
-            success: Color::Rgb(52, 211, 153),    // #34d399 (Emerald)
-            error: Color::Rgb(248, 113, 113),     // #f87171 (Coral Red)
-            warning: Color::Rgb(251, 191, 36),    // #fbbf24 (Amber)
-            text: Color::Rgb(241, 245, 249),      // #f1f5f9 (Slate 100)
-            subtle: Color::Rgb(100, 116, 139),    // #64748b (Slate 500)
-            selection_bg: Color::Rgb(30, 41, 59), // #1e293b (Deep Slate)
-            border: Color::Rgb(51, 65, 85),       // #334155 (Border Slate)
+            primary: Color::Rgb(6, 182, 212), // #06b6d4 (Cyan 500) - Pops more
+            secondary: Color::Rgb(139, 92, 246), // #8b5cf6 (Violet 500) - Electric
+            accent: Color::Rgb(236, 72, 153), // #ec4899 (Pink 500) - Cyber Pink
+            success: Color::Rgb(16, 185, 129), // #10b981 (Emerald 500) - Vivid Green
+            error: Color::Rgb(239, 68, 68),   // #ef4444 (Red 500) - Warning Red
+            warning: Color::Rgb(245, 158, 11), // #f59e0b (Amber 500) - Bright Warning
+            text: Color::Rgb(226, 232, 240),  // #e2e8f0 (Slate 200) - High Contrast Text
+            subtle: Color::Rgb(71, 85, 105),  // #475569 (Slate 600) - Readable Subtle
+            selection_bg: Color::Rgb(30, 41, 59), // #1e293b (Slate 800) - Deep Contrast
+            border: Color::Rgb(51, 65, 85),   // #334155 (Slate 700) - Visible Border
+            header_bg: Color::Rgb(23, 37, 84), // #172554 (Blue 950) - Header Distinction
         }
     }
 }

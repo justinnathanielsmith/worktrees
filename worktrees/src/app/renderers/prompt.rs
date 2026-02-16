@@ -16,9 +16,11 @@ pub fn render_prompt(f: &mut Frame, prompt_type: &PromptType, input: &str) {
     f.render_widget(Clear, area);
 
     let title = match prompt_type {
-        PromptType::AddIntent => " ADD WORKTREE INTENT ",
         PromptType::CommitMessage => " COMMIT MESSAGE ",
         PromptType::ApiKey => " GEMINI API KEY ",
+        PromptType::NameNewWorktree { base_ref } => {
+            &format!(" NAME NEW WORKTREE (FROM {}) ", base_ref)
+        }
     };
 
     let block = Block::default()

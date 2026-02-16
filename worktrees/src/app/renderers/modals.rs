@@ -497,12 +497,12 @@ pub fn render_modals<R: ProjectRepository>(
                 )
                 .alignment(Alignment::Center);
             f.render_widget(p, main_chunks[1]);
-            f.render_widget(DetailsWidget::new(None, context), main_chunks[2]);
+            f.render_widget(DetailsWidget::new(None, &[], context), main_chunks[2]);
         }
         AppState::Error(msg, _) => {
             let table = WorktreeListWidget::new(&[]);
             f.render_stateful_widget(table, main_chunks[1], &mut TableState::default());
-            f.render_widget(DetailsWidget::new(None, context), main_chunks[2]);
+            f.render_widget(DetailsWidget::new(None, &[], context), main_chunks[2]);
 
             let area = centered_rect(70, 50, f.area());
             f.render_widget(Clear, area);

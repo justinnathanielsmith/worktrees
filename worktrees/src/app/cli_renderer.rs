@@ -227,6 +227,7 @@ impl CliRenderer {
             | AppState::ViewingStatus { .. }
             | AppState::ViewingHistory { .. }
             | AppState::SwitchingBranch { .. }
+            | AppState::PickingBaseRef { .. }
             | AppState::Committing { .. }
             | AppState::Timed { .. }
             | AppState::Exiting(_) => {

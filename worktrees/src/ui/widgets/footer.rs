@@ -13,101 +13,94 @@ impl Widget for FooterWidget {
         let theme = CyberTheme::default();
 
         let footer_text = vec![Line::from(vec![
+            // NAVIGATION GROUP
             Span::styled(
-                " [j/k/g/G] ",
+                " [j/k] ",
                 Style::default()
                     .fg(theme.primary)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("NAV", Style::default().fg(theme.text)),
-            Span::styled(" | ", Style::default().fg(theme.subtle)),
+            Span::styled("NAV", Style::default().fg(theme.subtle)),
+            Span::styled(" | ", Style::default().fg(theme.border)),
             Span::styled(
                 " [ENT] ",
                 Style::default()
                     .fg(theme.primary)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("OPEN", Style::default().fg(theme.text)),
-            Span::styled(" | ", Style::default().fg(theme.subtle)),
+            Span::styled("OPEN", Style::default().fg(theme.subtle)),
+            Span::styled(" ║ ", Style::default().fg(theme.secondary)), // Separator
+            // VIEW GROUP
             Span::styled(
                 " [V] ",
-                Style::default()
-                    .fg(theme.secondary)
-                    .add_modifier(Modifier::BOLD),
+                Style::default().fg(theme.text).add_modifier(Modifier::BOLD),
             ),
-            Span::styled("STATUS", Style::default().fg(theme.text)),
-            Span::styled(" | ", Style::default().fg(theme.subtle)),
+            Span::styled("STATUS", Style::default().fg(theme.subtle)),
+            Span::styled(" | ", Style::default().fg(theme.border)),
             Span::styled(
                 " [L] ",
-                Style::default()
-                    .fg(theme.secondary)
-                    .add_modifier(Modifier::BOLD),
+                Style::default().fg(theme.text).add_modifier(Modifier::BOLD),
             ),
-            Span::styled("LOG", Style::default().fg(theme.text)),
-            Span::styled(" | ", Style::default().fg(theme.subtle)),
-            Span::styled(
-                " [B] ",
-                Style::default()
-                    .fg(theme.secondary)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("BRANCH", Style::default().fg(theme.text)),
-            Span::styled(" | ", Style::default().fg(theme.subtle)),
-            Span::styled(
-                " [F] ",
-                Style::default()
-                    .fg(theme.secondary)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("FETCH", Style::default().fg(theme.text)),
-            Span::styled(" | ", Style::default().fg(theme.subtle)),
+            Span::styled("LOG", Style::default().fg(theme.subtle)),
+            Span::styled(" ║ ", Style::default().fg(theme.secondary)), // Separator
+            // GIT ACTIONS GROUP
             Span::styled(
                 " [S] ",
                 Style::default()
-                    .fg(theme.primary)
+                    .fg(theme.success)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("SYNC", Style::default().fg(theme.text)),
-            Span::styled(" | ", Style::default().fg(theme.subtle)),
+            Span::styled("SYNC", Style::default().fg(theme.subtle)),
+            Span::styled(" | ", Style::default().fg(theme.border)),
             Span::styled(
                 " [P] ",
                 Style::default()
-                    .fg(theme.secondary)
+                    .fg(theme.success)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("PUSH", Style::default().fg(theme.text)),
-            Span::styled(" | ", Style::default().fg(theme.subtle)),
+            Span::styled("PUSH", Style::default().fg(theme.subtle)),
+            Span::styled(" | ", Style::default().fg(theme.border)),
             Span::styled(
-                " [Shift+P] ",
+                " [B] ",
                 Style::default()
-                    .fg(theme.secondary)
+                    .fg(theme.success)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("PULL", Style::default().fg(theme.text)),
-            Span::styled(" | ", Style::default().fg(theme.subtle)),
+            Span::styled("BRANCH", Style::default().fg(theme.subtle)),
+            Span::styled(" | ", Style::default().fg(theme.border)),
             Span::styled(
                 " [A] ",
                 Style::default()
-                    .fg(theme.primary)
+                    .fg(theme.success)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("ADD", Style::default().fg(theme.text)),
-            Span::styled(" | ", Style::default().fg(theme.subtle)),
+            Span::styled("ADD", Style::default().fg(theme.subtle)),
+            Span::styled(" | ", Style::default().fg(theme.border)),
+            Span::styled(
+                " [C] ",
+                Style::default()
+                    .fg(theme.success)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("PRUNE", Style::default().fg(theme.subtle)),
+            Span::styled(" ║ ", Style::default().fg(theme.secondary)), // Separator
+            // DESTRUCTIVE GROUP
             Span::styled(
                 " [D/X] ",
                 Style::default()
                     .fg(theme.error)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("DEL", Style::default().fg(theme.text)),
-            Span::styled(" | ", Style::default().fg(theme.subtle)),
+            Span::styled("DEL", Style::default().fg(theme.subtle)),
+            Span::styled(" ║ ", Style::default().fg(theme.secondary)), // Separator
+            // SYSTEM GROUP
             Span::styled(
                 " [Q] ",
                 Style::default()
                     .fg(theme.accent)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("EXIT", Style::default().fg(theme.text)),
+            Span::styled("EXIT", Style::default().fg(theme.subtle)),
         ])];
 
         Paragraph::new(footer_text)

@@ -2,9 +2,10 @@ use crate::app::cli_renderer::CliRenderer;
 use crate::app::event_handlers::*;
 use crate::app::model::{AppState, RefreshType};
 use crate::app::renderers::*;
-use crate::domain::repository::{ProjectRepository, Worktree};
+use crate::domain::repository::{ProjectRepository, RepositoryEvent, Worktree};
 use crate::ui::widgets::{footer::FooterWidget, header::HeaderWidget};
 use anyhow::Result;
+use crossbeam_channel::Receiver;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
@@ -88,7 +89,8 @@ impl View {
         let mut terminal = Terminal::new(backend)?;
 
         let mut spinner_tick: usize = 0;
-        let res = Self::run_loop(&mut terminal, repo, &mut state, &mut spinner_tick);
+        let rx = repo.watch().ok();
+        let res = Self::run_loop(&mut terminal, repo, &mut state, &mut spinner_tick, rx);
 
         disable_raw_mode()?;
         execute!(
@@ -106,8 +108,22 @@ impl View {
         repo: &R,
         state: &mut AppState,
         spinner_tick: &mut usize,
+        rx: Option<Receiver<RepositoryEvent>>,
     ) -> Result<Option<String>> {
         loop {
+            // Handle repository events
+            if let Some(ref rx) = rx {
+                while let Ok(event) = rx.try_recv() {
+                    match event {
+                        RepositoryEvent::RescanRequired
+                        | RepositoryEvent::WorktreeListChanged
+                        | RepositoryEvent::StatusChanged(_)
+                        | RepositoryEvent::HeadChanged(_) => {
+                            state.request_refresh();
+                        }
+                    }
+                }
+            }
             if let AppState::Timed {
                 target_state,
                 start_time,
@@ -131,34 +147,30 @@ impl View {
                 ..
             } = state
             {
-                if *refresh_needed == RefreshType::Full {
-                    if let Ok(new_worktrees) = repo.list_worktrees() {
-                        let mut ts = table_state.clone();
-                        if ts.selected().is_none() && !new_worktrees.is_empty() {
-                            ts.select(Some(0));
-                        }
-
-                        let (status, history) = Self::fetch_dashboard_data(
-                            repo,
-                            &new_worktrees,
-                            ts.selected(),
-                            dashboard,
-                        );
-
-                        *state = AppState::ListingWorktrees {
-                            worktrees: new_worktrees,
-                            table_state: ts,
-                            refresh_needed: RefreshType::None,
-                            selection_mode: *selection_mode,
-                            dashboard: crate::app::model::DashboardState {
-                                active_tab: dashboard.active_tab,
-                                cached_status: status,
-                                cached_history: history,
-                            },
-                            filter_query: filter_query.clone(),
-                            is_filtering: *is_filtering,
-                        };
+                if *refresh_needed == RefreshType::Full
+                    && let Ok(new_worktrees) = repo.list_worktrees()
+                {
+                    let mut ts = table_state.clone();
+                    if ts.selected().is_none() && !new_worktrees.is_empty() {
+                        ts.select(Some(0));
                     }
+
+                    let (status, history) =
+                        Self::fetch_dashboard_data(repo, &new_worktrees, ts.selected(), dashboard);
+
+                    *state = AppState::ListingWorktrees {
+                        worktrees: new_worktrees,
+                        table_state: ts,
+                        refresh_needed: RefreshType::None,
+                        selection_mode: *selection_mode,
+                        dashboard: crate::app::model::DashboardState {
+                            active_tab: dashboard.active_tab,
+                            cached_status: status,
+                            cached_history: history,
+                        },
+                        filter_query: filter_query.clone(),
+                        is_filtering: *is_filtering,
+                    };
                 } else if *refresh_needed == RefreshType::Dashboard {
                     let (status, history) = Self::fetch_dashboard_data(
                         repo,
@@ -249,6 +261,19 @@ impl View {
                             event.clone(),
                             repo,
                             path,
+                            branches,
+                            selected_index,
+                            prev_state,
+                        )?;
+                    }
+                    AppState::PickingBaseRef {
+                        branches,
+                        selected_index,
+                        prev_state,
+                        ..
+                    } => {
+                        new_state = handle_picking_ref_events(
+                            event.clone(),
                             branches,
                             selected_index,
                             prev_state,
@@ -449,7 +474,16 @@ impl View {
                 ..
             } => {
                 Self::render_background(f, prev_state, context, chunks[1]);
-                render_branch_selection(f, branches, *selected_index);
+                render_branch_selection(f, branches, *selected_index, None);
+            }
+            AppState::PickingBaseRef {
+                branches,
+                selected_index,
+                prev_state,
+                ..
+            } => {
+                Self::render_background(f, prev_state, context, chunks[1]);
+                render_branch_selection(f, branches, *selected_index, Some("SELECT BASE BRANCH"));
             }
             AppState::SelectingEditor {
                 branch,
@@ -611,6 +645,27 @@ mod tests {
 
         fn clean_worktrees(&self, _dry_run: bool) -> anyhow::Result<Vec<String>> {
             Ok(vec![])
+        }
+
+        fn get_project_root(&self) -> anyhow::Result<std::path::PathBuf> {
+            Ok(std::path::PathBuf::from("/mock/root"))
+        }
+
+        fn convert_to_bare(
+            &self,
+            _name: Option<&str>,
+            _branch: Option<&str>,
+        ) -> anyhow::Result<std::path::PathBuf> {
+            Ok(std::path::PathBuf::from("/mock/hub"))
+        }
+
+        fn check_status(&self, _path: &std::path::Path) -> crate::domain::repository::RepoStatus {
+            crate::domain::repository::RepoStatus::BareHub
+        }
+
+        fn watch(&self) -> anyhow::Result<Receiver<RepositoryEvent>> {
+            let (_, rx) = crossbeam_channel::unbounded();
+            Ok(rx)
         }
     }
 

@@ -11,6 +11,7 @@ use ratatui::{
 
 pub struct StatusTabWidget<'a> {
     pub status: &'a Option<GitStatus>,
+    pub is_bare: bool,
 }
 
 impl<'a> Widget for StatusTabWidget<'a> {
@@ -63,6 +64,11 @@ impl<'a> Widget for StatusTabWidget<'a> {
                     }
                 }
             }
+        } else if self.is_bare {
+            lines.push(Line::from(vec![Span::styled(
+                " 󱗗 Not available for bare repository.",
+                Style::default().fg(theme.subtle),
+            )]));
         } else {
             lines.push(Line::from(vec![Span::styled(
                 " 󰚰 Loading status...",
@@ -89,6 +95,7 @@ impl<'a> Widget for StatusTabWidget<'a> {
 
 pub struct LogTabWidget<'a> {
     pub history: &'a Option<Vec<GitCommit>>,
+    pub is_bare: bool,
 }
 
 impl<'a> Widget for LogTabWidget<'a> {
@@ -117,6 +124,11 @@ impl<'a> Widget for LogTabWidget<'a> {
                     ]));
                 }
             }
+        } else if self.is_bare {
+            lines.push(Line::from(vec![Span::styled(
+                " 󱗗 Not available for bare repository.",
+                Style::default().fg(theme.subtle),
+            )]));
         } else {
             lines.push(Line::from(vec![Span::styled(
                 " 󰚰 Loading history...",
@@ -143,6 +155,7 @@ impl<'a> Widget for LogTabWidget<'a> {
 
 pub struct DashboardWidget<'a> {
     worktree: Option<&'a Worktree>,
+    all_worktrees: &'a [Worktree],
     context: ProjectContext,
     active_tab: DashboardTab,
     status: &'a Option<GitStatus>,
@@ -152,6 +165,7 @@ pub struct DashboardWidget<'a> {
 impl<'a> DashboardWidget<'a> {
     pub fn new(
         worktree: Option<&'a Worktree>,
+        all_worktrees: &'a [Worktree],
         context: ProjectContext,
         active_tab: DashboardTab,
         status: &'a Option<GitStatus>,
@@ -159,6 +173,7 @@ impl<'a> DashboardWidget<'a> {
     ) -> Self {
         Self {
             worktree,
+            all_worktrees,
             context,
             active_tab,
             status,
@@ -178,9 +193,9 @@ impl<'a> Widget for DashboardWidget<'a> {
 
         // Tab Bar
         let tabs = vec![
-            (DashboardTab::Info, " 󰋼 INFO [1] ", theme.primary),
-            (DashboardTab::Status, "  STATUS [2] ", theme.success),
-            (DashboardTab::Log, " 󰜘 LOG [3] ", theme.secondary),
+            (DashboardTab::Info, " INFO [1] ", theme.primary),
+            (DashboardTab::Status, " STATUS [2] ", theme.success),
+            (DashboardTab::Log, " LOG [3] ", theme.secondary),
         ];
 
         let mut tab_spans = Vec::new();
@@ -195,8 +210,24 @@ impl<'a> Widget for DashboardWidget<'a> {
             } else {
                 Style::default().fg(theme.subtle)
             };
+
+            // Add icon based on tab
+            let icon = match tab {
+                DashboardTab::Info => "󰋼",
+                DashboardTab::Status => "",
+                DashboardTab::Log => "󰜘",
+            };
+
+            tab_spans.push(Span::styled(
+                format!(" {} ", icon),
+                if is_active {
+                    Style::default().fg(color).bg(theme.selection_bg)
+                } else {
+                    Style::default().fg(theme.subtle)
+                },
+            ));
             tab_spans.push(Span::styled(label, style));
-            tab_spans.push(Span::styled("  ", Style::default()));
+            tab_spans.push(Span::styled(" ", Style::default())); // Spacer
         }
 
         Paragraph::new(Line::from(tab_spans))
@@ -210,14 +241,17 @@ impl<'a> Widget for DashboardWidget<'a> {
         // Content
         match self.active_tab {
             DashboardTab::Info => {
-                DetailsWidget::new(self.worktree, self.context).render(chunks[1], buf)
+                DetailsWidget::new(self.worktree, self.all_worktrees, self.context)
+                    .render(chunks[1], buf)
             }
             DashboardTab::Status => StatusTabWidget {
                 status: self.status,
+                is_bare: self.worktree.map(|wt| wt.is_bare).unwrap_or(false),
             }
             .render(chunks[1], buf),
             DashboardTab::Log => LogTabWidget {
                 history: self.history,
+                is_bare: self.worktree.map(|wt| wt.is_bare).unwrap_or(false),
             }
             .render(chunks[1], buf),
         }

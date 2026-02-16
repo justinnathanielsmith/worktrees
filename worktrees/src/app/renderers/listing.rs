@@ -1,12 +1,12 @@
-use crate::app::model::{filter_worktrees, DashboardTab};
+use crate::app::model::{DashboardTab, filter_worktrees};
 use crate::app::renderers::dashboard::render_dashboard;
 use crate::domain::repository::{GitCommit, GitStatus, ProjectContext, Worktree};
 use crate::ui::widgets::worktree_list::WorktreeListWidget;
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, Paragraph, TableState},
-    Frame,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -77,6 +77,7 @@ pub fn render_listing(
     render_dashboard(
         f,
         selected_worktree,
+        worktrees,
         context,
         active_tab,
         status,

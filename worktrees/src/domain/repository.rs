@@ -117,4 +117,49 @@ pub trait ProjectRepository {
     /// Cleans up stale worktrees (missing metadata or deleted branches).
     /// Returns a list of paths that were (or would be) removed.
     fn clean_worktrees(&self, dry_run: bool) -> Result<Vec<String>>;
+
+    /// Resolves the absolute path to the root of the project (the "Bare Hub").
+    fn get_project_root(&self) -> Result<std::path::PathBuf>;
+
+    /// Converts a standard repository to a bare hub structure.
+    /// Returns the path to the newly created hub directory.
+    fn convert_to_bare(
+        &self,
+        name: Option<&str>,
+        branch: Option<&str>,
+    ) -> Result<std::path::PathBuf>;
+
+    /// Checks the status of the current directory.
+    fn check_status(&self, path: &std::path::Path) -> RepoStatus;
+
+    /// Watches the repository for changes.
+    /// Returns a channel receiver that emits repository events.
+    fn watch(&self) -> Result<crossbeam_channel::Receiver<RepositoryEvent>>;
+}
+
+/// Events emitted by the repository watcher.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub enum RepositoryEvent {
+    /// The list of worktrees has changed (added, removed, pruned).
+    #[allow(dead_code)]
+    WorktreeListChanged,
+    /// The git status of a specific worktree has changed.
+    #[allow(dead_code)]
+    StatusChanged(String),
+    /// The HEAD of a specific worktree has changed (commit/checkout).
+    #[allow(dead_code)]
+    HeadChanged(String),
+    /// A generic change that might require a full refresh.
+    RescanRequired,
+}
+
+/// The status of the current repository.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RepoStatus {
+    /// A valid Bare Hub (root or worktree).
+    BareHub,
+    /// A standard Git repository.
+    StandardGit,
+    /// Not a known Git repository format.
+    NoRepo,
 }
