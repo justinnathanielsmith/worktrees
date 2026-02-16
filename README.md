@@ -42,16 +42,26 @@ npm install
 npm run dev
 ```
 
-#### Worktrees CLI (Rust)
-The repository also includes a Rust CLI tool for automating the Bare Hub setup, located in `worktrees/`.
+#### Installation
 
+The `worktrees` CLI can be installed quickly on macOS, Linux, and Windows.
+
+**macOS/Linux (Shell):**
 ```bash
-cd worktrees
-# Run the CLI
-cargo run -- --help
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/justinnathanielsmith/worktrees/releases/latest/download/worktrees-installer.sh | sh
 ```
 
-### Production Build
+**Windows (PowerShell):**
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://github.com/justinnathanielsmith/worktrees/releases/latest/download/worktrees-installer.ps1 | iex"
+```
+
+**From Source (Cargo):**
+```bash
+cargo install --git https://github.com/justinnathanielsmith/worktrees
+```
+
+### Local Development
 
 Generate the static site:
 

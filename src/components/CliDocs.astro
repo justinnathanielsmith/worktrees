@@ -15,22 +15,44 @@ import CodeBlock from './CodeBlock.astro';
         </p>
     </div>
 
-    <!-- 01. Installation -->
     <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
             <span class="text-blue-500 font-bold text-2xl">01</span>
             <h2 class="text-3xl font-bold text-white tracking-wide">Installation</h2>
         </div>
         
-        <div class="space-y-6">
-            <p class="text-slate-300 leading-relaxed">
-                Build the tool from source using Cargo. Ensure you have Rust installed.
-            </p>
-            <CodeBlock code={`# Build release binary
-cargo build --release
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="space-y-6">
+                <h3 class="text-lg font-bold text-slate-200">macOS / Linux</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    Install via the official shell script. This will download the latest binary for your architecture and add it to your PATH.
+                </p>
+                <CodeBlock code={`curl --proto '=https' --tlsv1.2 -LsSf https://github.com/justinnathanielsmith/worktrees/releases/latest/download/worktrees-installer.sh | sh`} label="Shell" />
+            </div>
 
-# Install to path (optional)
-cp target/release/worktrees /usr/local/bin/wt`} label="Shell" />
+            <div class="space-y-6">
+                <h3 class="text-lg font-bold text-slate-200">Windows</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    Run the PowerShell installer to fetch the latest release for Windows.
+                </p>
+                <CodeBlock code={`powershell -ExecutionPolicy ByPass -c "irm https://github.com/justinnathanielsmith/worktrees/releases/latest/download/worktrees-installer.ps1 | iex"`} label="PowerShell" />
+            </div>
+        </div>
+
+        <div class="pt-8 border-t border-slate-800">
+            <h3 class="text-lg font-bold text-slate-200 mb-4">Other Methods</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="space-y-2">
+                    <p class="text-slate-400 text-sm">Build from source using Cargo:</p>
+                    <CodeBlock code={`cargo install --git https://github.com/justinnathanielsmith/worktrees`} label="Cargo" />
+                </div>
+                <div class="space-y-2">
+                    <p class="text-slate-400 text-sm">Download pre-built binaries manually:</p>
+                    <a href="https://github.com/justinnathanielsmith/worktrees/releases" class="text-blue-500 hover:text-blue-400 transition-colors text-sm font-mono tracking-tight">
+                        github.com/justinnathanielsmith/worktrees/releases →
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
