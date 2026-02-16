@@ -71,8 +71,8 @@ impl EditorConfig {
 
 #[derive(Clone, Debug)]
 pub struct StatusViewState {
-    pub staged: Vec<String>,
-    pub unstaged: Vec<String>,
+    pub staged: Vec<(String, String)>,
+    pub unstaged: Vec<(String, String)>,
     pub untracked: Vec<String>,
     pub selected_index: usize,
     pub diff_preview: Option<String>,
@@ -87,9 +87,9 @@ impl StatusViewState {
     pub fn selected_file(&self) -> Option<&str> {
         let idx = self.selected_index;
         if idx < self.staged.len() {
-            Some(&self.staged[idx])
+            Some(&self.staged[idx].0)
         } else if idx < self.staged.len() + self.unstaged.len() {
-            Some(&self.unstaged[idx - self.staged.len()])
+            Some(&self.unstaged[idx - self.staged.len()].0)
         } else if idx < self.total() {
             Some(&self.untracked[idx - self.staged.len() - self.unstaged.len()])
         } else {
