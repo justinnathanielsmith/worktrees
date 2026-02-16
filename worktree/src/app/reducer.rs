@@ -820,25 +820,16 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
 
                 let path = wt.path.clone();
                 let branch_clone = branch.clone();
-                let repo_clone = repo.clone();
-
-                if !json_mode {
-                    println!(
-                        "{} Switching worktree '{}' to branch '{}'...",
-                        "➜".cyan().bold(),
-                        intent,
-                        branch
-                    );
-                }
-
+                let repo_clone2 = repo.clone();
                 let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.switch_branch(&path, &branch_clone)
+                    repo_clone2.switch_branch(&path, &branch_clone)
                 })
                 .await
                 .into_diagnostic()?;
 
                 match res {
                     Ok(_) => {
+                        info!(%intent, %branch, "Worktree branch switched successfully");
                         if json_mode {
                             View::render_json(&serde_json::json!({
                                 "status": "success",
@@ -848,14 +839,15 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
                             println!(
-                                "{} Successfully switched to branch '{}'.",
+                                "{} Worktree '{}' switched to branch '{}'.",
                                 "✔".green().bold(),
+                                intent,
                                 branch
                             );
                         }
                     }
                     Err(e) => {
-                        error!(error = %e, %intent, %branch, "Failed to switch branch");
+                        error!(error = %e, %intent, %branch, "Failed to switch worktree branch");
                         if json_mode {
                             View::render_json(&serde_json::json!({
                                 "status": "error",
@@ -863,10 +855,19 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                             }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            return Err(miette::miette!("Failed to switch branch: {}", e));
+                            View::render(AppState::Error(
+                                e.to_string(),
+                                Box::new(AppState::Welcome),
+                            ));
                         }
                     }
                 }
+            }
+            Intent::Completions { shell } => {
+                use clap::CommandFactory;
+                let mut cmd = crate::cli::Cli::command();
+                let bin_name = cmd.get_name().to_string();
+                clap_complete::generate(shell, &mut cmd, bin_name, &mut std::io::stdout());
             }
         }
         Ok(())

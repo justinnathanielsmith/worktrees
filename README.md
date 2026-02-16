@@ -72,6 +72,8 @@ cargo install --git https://github.com/justinnathanielsmith/worktrees
 - **Smart Branching**: Create worktrees from any branch or commit.
 - **AI Integration**: Generate commit messages with Gemini 1.5 Flash.
 - **Smart Cleanup**: reclaim disk space by purging build artifacts from inactive environments.
+- **Warp-Compatible Ergonomics**: Optimized TUI with ANSI colors and high-performance rendering.
+- **Shell Completions**: Rich completions for Zsh, Bash, Fish, and PowerShell.
 - **Cross-Platform**: Works on macOS, Linux, and Windows.
 
 ## Quick Start
@@ -98,16 +100,48 @@ worktree list
 worktree
 ```
 
-### 4. CLI Commands
+### 4. CLI Commands Reference
 
-- `worktree add <name> [branch]`: Create a new worktree.
-- `worktree remove <name>`: Remove a worktree.
-- `worktree switch <name>`: Switch to a worktree (outputs path).
-- `worktree checkout <name> <branch>`: Switch a worktree to a different branch.
-- `worktree config set-key <key>`: Set Gemini API key for AI features.
-- `worktree clean [--artifacts] [--dry-run]`: Cleanup stale worktrees or purge build artifacts.
-    - `--artifacts`: Removes `node_modules`, `target`, `build`, `dist`, `.gradle`, etc. from **inactive** worktrees.
-    - Safety: It will never touch artifacts in your current working directory.
+- `worktree init <url> [--name <name>]`: Initialize a new bare repository (clones if URL provided).
+- `worktree setup`: Opinionated setup; creates `main` and `dev` worktrees automatically.
+- `worktree add <name> [branch]`: Create a new worktree tracking a branch.
+- `worktree remove <name> [--force]`: Remove a worktree and its directory.
+- `worktree switch <name>`: Quick jump to a worktree (prints path for shell integration).
+- `worktree checkout <name> <branch>`: Switch an existing worktree to a different branch.
+- `worktree list`: Launch the interactive Terminal User Interface.
+- `worktree run <name> <command>`: Execute a command in a temporary sandbox.
+- `worktree sync [name]`: Synchronize configuration files to worktrees.
+- `worktree push [name]`: Push changes from a specific worktree to remote.
+- `worktree config set-key <key>`: Securely store your Gemini API key.
+- `worktree config get-key`: Retrieve the stored Gemini API key.
+- `worktree convert [--name <name>] [--branch <branch>]`: Convert a standard repo to Bare Hub.
+- `worktree clean [--artifacts] [--dry-run]`: Cleanup stale worktrees or heavy build artifacts.
+- `worktree completions <shell>`: Generate completion scripts for `zsh`, `bash`, `fish`, or `powershell`.
+
+## Shell Completions
+
+Enable rich command-line suggestions and descriptions in your terminal. This is highly recommended for Warp users.
+
+### Zsh (Recommended)
+Add this to your `~/.zshrc`:
+```bash
+if command -v worktree &>/dev/null; then
+    source <(worktree completions zsh)
+fi
+```
+
+### Bash
+Add this to your `~/.bashrc`:
+```bash
+if command -v worktree &>/dev/null; then
+    source <(worktree completions bash)
+fi
+```
+
+### Fish
+```bash
+worktree completions fish > ~/.config/fish/completions/worktree.fish
+```
 
 ### TUI Hotkeys (Worktree List)
 
