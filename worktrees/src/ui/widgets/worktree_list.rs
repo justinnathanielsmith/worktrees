@@ -1,10 +1,12 @@
 use crate::domain::repository::Worktree;
 use crate::ui::theme::{CyberTheme, Icons};
 use ratatui::{
-    layout::{Constraint, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
-    text::Span,
-    widgets::{Block, BorderType, Borders, Cell, Row, StatefulWidget, Table, TableState},
+    text::{Line, Span},
+    widgets::{
+        Block, BorderType, Borders, Cell, Paragraph, Row, StatefulWidget, Table, TableState, Widget,
+    },
 };
 
 pub struct WorktreeListWidget<'a> {
@@ -22,6 +24,47 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
 
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer, state: &mut Self::State) {
         let theme = CyberTheme::default();
+
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
+            .border_style(Style::default().fg(theme.border))
+            .title(Span::styled(
+                format!(" ACTIVE WORKTREES ({}) ", self.worktrees.len()),
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ));
+
+        if self.worktrees.is_empty() {
+            let inner_area = block.inner(area);
+            block.render(area, buf);
+
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Min(0),
+                    Constraint::Length(2), // Height for 2 lines of text
+                    Constraint::Min(0),
+                ])
+                .split(inner_area);
+
+            let text = vec![
+                Line::from(Span::styled(
+                    "No worktrees found.",
+                    Style::default().fg(theme.subtle),
+                )),
+                Line::from(Span::styled(
+                    "Press [A] to add a worktree.",
+                    Style::default().fg(theme.secondary),
+                )),
+            ];
+
+            Paragraph::new(text)
+                .alignment(Alignment::Center)
+                .render(chunks[1], buf);
+            return;
+        }
 
         let rows: Vec<Row> = self
             .worktrees
@@ -113,21 +156,43 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
             )
             .bottom_margin(1),
         )
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(theme.border))
-                .title(Span::styled(
-                    format!(" ACTIVE WORKTREES ({}) ", self.worktrees.len()),
-                    Style::default()
-                        .fg(theme.accent)
-                        .add_modifier(Modifier::BOLD),
-                )),
-        )
+        .block(block)
         .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">> ");
 
         StatefulWidget::render(table, area, buf, state);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ratatui::{Terminal, backend::TestBackend};
+
+    #[test]
+    fn test_render_empty_worktree_list() {
+        let backend = TestBackend::new(40, 10);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut state = TableState::default();
+        let worktrees = vec![];
+        let widget = WorktreeListWidget::new(&worktrees);
+
+        terminal
+            .draw(|f| {
+                let area = f.area();
+                f.render_stateful_widget(widget, area, &mut state);
+            })
+            .unwrap();
+
+        let buffer = terminal.backend().buffer();
+        let content = buffer
+            .content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
+
+        assert!(content.contains("No worktrees found."));
+        assert!(content.contains("Press [A] to add a worktree."));
+        assert!(content.contains("ACTIVE WORKTREES (0)"));
     }
 }
