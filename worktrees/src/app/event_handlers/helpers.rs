@@ -1,4 +1,16 @@
+use crate::app::model::AppState;
 use ratatui::widgets::TableState;
+use std::time::{Duration, Instant};
+
+/// Helper function to create a Timed state transition.
+pub fn create_timed_state(inner: AppState, target: AppState, duration_ms: u64) -> AppState {
+    AppState::Timed {
+        inner_state: Box::new(inner),
+        target_state: Box::new(target),
+        start_time: Instant::now(),
+        duration: Duration::from_millis(duration_ms),
+    }
+}
 
 /// Helper function to move table selection up or down with wrapping.
 pub fn move_selection(state: &mut TableState, len: usize, delta: isize) {

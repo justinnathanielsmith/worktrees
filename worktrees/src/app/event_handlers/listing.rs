@@ -6,7 +6,7 @@ use ratatui::{Terminal, backend::CrosstermBackend, widgets::TableState};
 use std::io;
 use std::process::Command;
 
-use super::helpers::move_selection;
+use super::helpers::{create_timed_state, move_selection};
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle_listing_events<R: ProjectRepository>(
@@ -49,12 +49,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                     branch,
                     prev_state: prev,
                 };
-                return Ok(Some(AppState::Timed {
-                    inner_state: Box::new(complete_state),
-                    target_state: prev_clone,
-                    start_time: std::time::Instant::now(),
-                    duration: std::time::Duration::from_millis(800),
-                }));
+                return Ok(Some(create_timed_state(complete_state, *prev_clone, 800)));
             }
 
             // Handle navigation keys that are case-sensitive before normalization
@@ -226,12 +221,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                             branch,
                             prev_state: prev,
                         };
-                        return Ok(Some(AppState::Timed {
-                            inner_state: Box::new(complete_state),
-                            target_state: prev_clone,
-                            start_time: std::time::Instant::now(),
-                            duration: std::time::Duration::from_millis(800),
-                        }));
+                        return Ok(Some(create_timed_state(complete_state, *prev_clone, 800)));
                     }
                 }
                 KeyCode::Char('p') => {
@@ -264,12 +254,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                             branch,
                             prev_state: prev,
                         };
-                        return Ok(Some(AppState::Timed {
-                            inner_state: Box::new(complete_state),
-                            target_state: prev_clone,
-                            start_time: std::time::Instant::now(),
-                            duration: std::time::Duration::from_millis(800),
-                        }));
+                        return Ok(Some(create_timed_state(complete_state, *prev_clone, 800)));
                     }
                 }
                 KeyCode::Char('o') => {
@@ -288,12 +273,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                                 prev_state: prev,
                             };
                             let _ = Command::new(&editor).arg(&path).spawn();
-                            return Ok(Some(AppState::Timed {
-                                inner_state: Box::new(opening_state),
-                                target_state: prev_clone,
-                                start_time: std::time::Instant::now(),
-                                duration: std::time::Duration::from_millis(800),
-                            }));
+                            return Ok(Some(create_timed_state(opening_state, *prev_clone, 800)));
                         } else {
                             let options = EditorConfig::defaults();
                             return Ok(Some(AppState::SelectingEditor {
@@ -315,12 +295,11 @@ pub fn handle_listing_events<R: ProjectRepository>(
                     let _ = repo.add_worktree("main", "main");
                     let _ = repo.add_new_worktree("dev", "dev", "main");
 
-                    return Ok(Some(AppState::Timed {
-                        inner_state: Box::new(AppState::SetupComplete),
-                        target_state: Box::new(current_state.clone()),
-                        start_time: std::time::Instant::now(),
-                        duration: std::time::Duration::from_millis(1200),
-                    }));
+                    return Ok(Some(create_timed_state(
+                        AppState::SetupComplete,
+                        current_state.clone(),
+                        1200,
+                    )));
                 }
                 KeyCode::Char('v') => {
                     if let Some(i) = table_state.selected()
@@ -421,12 +400,11 @@ pub fn handle_listing_events<R: ProjectRepository>(
                                     prev_state: prev,
                                 };
                                 let _ = Command::new(&editor).arg(&path).spawn();
-                                return Ok(Some(AppState::Timed {
-                                    inner_state: Box::new(opening_state),
-                                    target_state: prev_clone,
-                                    start_time: std::time::Instant::now(),
-                                    duration: std::time::Duration::from_millis(800),
-                                }));
+                                return Ok(Some(create_timed_state(
+                                    opening_state,
+                                    *prev_clone,
+                                    800,
+                                )));
                             } else {
                                 let options = EditorConfig::defaults();
                                 return Ok(Some(AppState::SelectingEditor {
