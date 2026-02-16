@@ -373,7 +373,7 @@ impl View {
             )
             .split(f.area());
 
-        let context = repo.detect_context();
+        let context = repo.detect_context(std::path::Path::new("."));
         f.render_widget(HeaderWidget { context }, chunks[0]);
 
         match display_state {
@@ -499,7 +499,7 @@ mod tests {
             Ok(())
         }
 
-        fn detect_context(&self) -> ProjectContext {
+        fn detect_context(&self, _base_path: &std::path::Path) -> ProjectContext {
             ProjectContext::Standard
         }
 

@@ -1,5 +1,6 @@
 use anyhow::Result;
 use serde::Serialize;
+use std::path::Path;
 
 /// Represents a Git worktree and its current state.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -59,7 +60,7 @@ pub trait ProjectRepository {
     /// Synchronizes configuration files (symlinks/copies) to the target worktree.
     fn sync_configs(&self, path: &str) -> Result<()>;
     /// Detects the project context (e.g., Standard vs KMP).
-    fn detect_context(&self) -> ProjectContext;
+    fn detect_context(&self, base_path: &Path) -> ProjectContext;
     /// Retrieves the user's preferred editor for opening worktrees.
     fn get_preferred_editor(&self) -> Result<Option<String>>;
     /// Persists the user's preferred editor command.

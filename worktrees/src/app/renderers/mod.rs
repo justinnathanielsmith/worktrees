@@ -12,7 +12,6 @@ pub mod status;
 pub use branch::render_branch_selection;
 pub use commit::render_commit_menu;
 pub use editor::render_editor_selection;
-// pub use helpers::centered_rect; // Unused
 pub use history::render_history;
 pub use listing::render_listing;
 pub use modals::render_modals;
