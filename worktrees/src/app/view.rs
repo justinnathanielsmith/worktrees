@@ -373,8 +373,22 @@ impl View {
             )
             .split(f.area());
 
+        let current_dir = std::env::current_dir().unwrap_or_default();
+        let project_name = current_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("UNKNOWN")
+            .to_string();
+
         let context = repo.detect_context(std::path::Path::new("."));
-        f.render_widget(HeaderWidget { context }, chunks[0]);
+        f.render_widget(
+            HeaderWidget {
+                context,
+                project_name,
+                state: display_state,
+            },
+            chunks[0],
+        );
 
         match display_state {
             AppState::ListingWorktrees {
