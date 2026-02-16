@@ -47,7 +47,7 @@ impl GitProjectRepository {
         }
 
         // 2. Specialized KMP/Android synchronization
-        if self.detect_context() == ProjectContext::KmpAndroid {
+        if self.detect_context(Path::new(".")) == ProjectContext::KmpAndroid {
             // 1. Sync local.properties (Android SDK paths, etc.)
             let local_props = Path::new("local.properties");
             if local_props.exists() {
@@ -334,7 +334,8 @@ impl ProjectRepository for GitProjectRepository {
             .collect()
     }
 
-    fn detect_context(&self) -> ProjectContext {
+    fn detect_context(&self, base_path: &Path) -> ProjectContext {
+        use std::ffi::OsStr;
         const INDICATORS: &[&str] = &[
             "build.gradle",
             "build.gradle.kts",
@@ -343,11 +344,15 @@ impl ProjectRepository for GitProjectRepository {
             "local.properties",
         ];
 
-        if INDICATORS.iter().any(|i| Path::new(i).exists()) {
-            ProjectContext::KmpAndroid
-        } else {
-            ProjectContext::Standard
+        if let Ok(entries) = std::fs::read_dir(base_path) {
+            for entry in entries.flatten() {
+                let file_name = entry.file_name();
+                if INDICATORS.iter().any(|&i| OsStr::new(i) == file_name) {
+                    return ProjectContext::KmpAndroid;
+                }
+            }
         }
+        ProjectContext::Standard
     }
 
     fn get_preferred_editor(&self) -> Result<Option<String>> {
@@ -702,5 +707,32 @@ mod tests {
         assert_eq!(commits.len(), 1);
         assert_eq!(commits[0].hash, "abc1234");
         assert_eq!(commits[0].message, "Message with | pipe");
+    }
+
+    #[test]
+    fn test_detect_context() {
+        // Setup a temporary directory
+        let temp_dir = std::env::temp_dir().join(format!("worktrees_test_{}", std::process::id()));
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        std::fs::create_dir(&temp_dir).unwrap();
+
+        let repo = GitProjectRepository;
+
+        // 1. Test Standard context (empty dir)
+        assert_eq!(repo.detect_context(&temp_dir), ProjectContext::Standard);
+
+        // 2. Test KmpAndroid context (with build.gradle)
+        std::fs::write(temp_dir.join("build.gradle"), "").unwrap();
+        assert_eq!(repo.detect_context(&temp_dir), ProjectContext::KmpAndroid);
+        std::fs::remove_file(temp_dir.join("build.gradle")).unwrap();
+
+        // 3. Test KmpAndroid context (with local.properties)
+        std::fs::write(temp_dir.join("local.properties"), "").unwrap();
+        assert_eq!(repo.detect_context(&temp_dir), ProjectContext::KmpAndroid);
+
+        // Cleanup
+        std::fs::remove_dir_all(&temp_dir).unwrap();
     }
 }
