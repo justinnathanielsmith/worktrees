@@ -2,12 +2,75 @@
 
 A professional CLI tool for managing Git worktrees using a bare repository architecture.
 
+## Quick Start
+
+Get up and running with a high-performance bare repository workflow in minutes.
+
+### 1. Initialize a Project
+
+You can initialize a new project from an existing remote repository or start fresh.
+
+**From a Remote URL:**
+```bash
+# Creates a new directory 'repo' with the bare repository
+wt init https://github.com/username/repo.git
+cd repo
+```
+
+**Start Fresh:**
+```bash
+# Creates a new directory 'my-project'
+wt init --name my-project
+cd my-project
+```
+
+### 2. Setup Default Worktrees
+
+Create your standard `main` and `dev` worktrees automatically:
+
+```bash
+wt setup
+```
+
+This will create:
+- `./main`: Your stable production branch.
+- `./dev`: Your integration branch (created from main if it doesn't exist).
+
+### 3. Create a Feature Worktree
+
+Start working on a new feature in isolation without switching contexts:
+
+```bash
+wt add feature-login
+```
+
+This creates a new directory `./feature-login` tracking the `feature-login` branch.
+
+### 4. Switch Contexts Efficiently
+
+To jump between worktrees quickly, you can use the `switch` command.
+
+> **Pro Tip:** Add this function to your `.zshrc` or `.bashrc` for instant navigation:
+
+```bash
+function wt-switch() {
+  cd "$(wt switch "$1")"
+}
+```
+
+Now you can run:
+```bash
+wt-switch dev
+wt-switch feature-login
+```
+
 ## Commands
 
-- `init <url>`: Initialize a new bare repository.
+- `init [url]`: Initialize a new bare repository (clones if URL provided).
 - `setup`: Setup default worktrees (`main` and `dev`).
 - `add <name> [branch]`: Create a new worktree.
 - `remove <name>`: Remove a worktree.
+- `switch <name>`: Switch to a worktree (prints path).
 - `config set-key <key>`: Set your Gemini API key securely.
 - `list`: View and manage worktrees in an interactive interface.
 
