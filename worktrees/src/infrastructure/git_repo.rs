@@ -709,7 +709,8 @@ impl ProjectRepository for GitProjectRepository {
     fn clean_worktrees(&self, dry_run: bool) -> Result<Vec<String>> {
         use std::fs;
 
-        let bare_path = Path::new(".bare");
+        let root = self.get_project_root()?;
+        let bare_path = root.join(".bare");
         if !bare_path.exists() {
             return Err(anyhow::anyhow!(
                 "Not in a bare repository project. HELP: Run this command from the project root containing .bare/"
