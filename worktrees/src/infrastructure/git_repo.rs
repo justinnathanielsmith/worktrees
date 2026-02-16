@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 use keyring::Entry;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use tracing::{debug, instrument};
 
@@ -31,6 +31,13 @@ impl GitProjectRepository {
             ));
         }
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    }
+
+    fn get_global_config_path(&self, filename: &str) -> Option<PathBuf> {
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .ok()?;
+        Some(Path::new(&home).join(filename))
     }
 
     fn handle_context_files(&self, path: &str) {
@@ -344,17 +351,20 @@ impl ProjectRepository for GitProjectRepository {
     }
 
     fn get_preferred_editor(&self) -> Result<Option<String>> {
-        let path = Path::new(".worktrees.editor");
-        if path.exists() {
-            let content = std::fs::read_to_string(path)?;
-            Ok(Some(content.trim().to_string()))
-        } else {
-            Ok(None)
+        if let Some(path) = self.get_global_config_path(".worktrees.editor") {
+            if path.exists() {
+                let content = std::fs::read_to_string(path)?;
+                return Ok(Some(content.trim().to_string()));
+            }
         }
+        Ok(None)
     }
 
     fn set_preferred_editor(&self, editor: &str) -> Result<()> {
-        std::fs::write(".worktrees.editor", editor)?;
+        let path = self.get_global_config_path(".worktrees.editor").ok_or_else(|| {
+            anyhow::anyhow!("Could not determine home directory for configuration")
+        })?;
+        std::fs::write(path, editor)?;
         Ok(())
     }
 
@@ -505,12 +515,13 @@ impl ProjectRepository for GitProjectRepository {
         }
 
         // 3. Check Legacy File
-        let path = Path::new(".worktrees.gemini_key");
-        if path.exists() {
-            let content = std::fs::read_to_string(path)?;
-            let key = content.trim().to_string();
-            if !key.is_empty() {
-                return Ok(Some(key));
+        if let Some(path) = self.get_global_config_path(".worktrees.gemini_key") {
+            if path.exists() {
+                let content = std::fs::read_to_string(path)?;
+                let key = content.trim().to_string();
+                if !key.is_empty() {
+                    return Ok(Some(key));
+                }
             }
         }
 
@@ -535,9 +546,9 @@ impl ProjectRepository for GitProjectRepository {
         }
 
         // 2. Always store in file as fallback/sync
-        let path = Path::new(".worktrees.gemini_key");
-        std::fs::write(path, key)
-            .context("Failed to store API key in fallback file '.worktrees.gemini_key'")?;
+        if let Some(path) = self.get_global_config_path(".worktrees.gemini_key") {
+            std::fs::write(path, key).context("Failed to store API key in fallback file")?;
+        }
 
         Ok(())
     }
