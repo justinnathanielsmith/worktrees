@@ -576,7 +576,7 @@ impl ProjectRepository for GitProjectRepository {
         debug!("Retrieving API key for commit message generation...");
         let api_key = self.get_api_key()?.ok_or_else(|| {
             debug!("API key not found in environment, keyring, or fallback file.");
-            anyhow::anyhow!("Gemini API key not found. Set it with 'wt config set-key <key>' or GEMINI_API_KEY environment variable.")
+            anyhow::anyhow!("Gemini API key not found. Set it with 'worktree config set-key <key>' or GEMINI_API_KEY environment variable.")
         })?;
 
         debug!(

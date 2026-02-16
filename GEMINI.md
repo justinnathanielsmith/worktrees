@@ -5,7 +5,7 @@ This project, titled **"Git Bare Hub Architecture Guide,"** is a professional ed
 
 ### Main Technologies
 - **Astro 4.x+**: Modern static site generator for performance and componentization.
-- **Rust**: Powering the `worktrees` CLI for Git automation.
+- **Rust**: Powering the `worktree` CLI for Git automation.
 - **Tailwind CSS**: Utility-first CSS for styling.
 - **TypeScript**: Ensuring type safety across components and logic.
 - **Git**: The central subject and core technology of the guide.
@@ -26,8 +26,8 @@ The project is a multi-page Astro application employing a component-based archit
 - **Deployment**: Automated via GitHub Actions to GitHub Pages (`/worktrees` base path).
 
 ## CLI Development (Rust)
-The `worktrees` directory contains the Rust-based automation tool.
-- **Run**: `cargo run -- --help` (from within `worktrees/`)
+The `worktree` directory contains the Rust-based automation tool.
+- **Run**: `cargo run -- --help` (from within `worktree/`)
 - **Test**: `cargo test`
 - **Lint**: `cargo clippy`
 - **Format**: `cargo fmt`
@@ -79,7 +79,7 @@ The agent must embody a "Senior Git Infrastructure Engineer" persona—direct, c
 ## Configuration Structure
 - **Rules Path**: `.gemini/GEMINI.md`
 - **Memory Storage**: Restricted to high-level architectural patterns.
-- **Workspace Scoping**: Tools must be scoped to the `worktrees/` subdirectory for CLI logic.
+- **Workspace Scoping**: Tools must be scoped to the `worktree/` subdirectory for CLI logic.
 
 ## Rule Syntax & Compliance
 Rules are written in standard Markdown with hierarchical headers. Compliance is mandatory for all agent sessions.

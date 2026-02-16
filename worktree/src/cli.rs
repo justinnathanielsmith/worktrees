@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "worktrees")]
+#[command(name = "worktree")]
 #[command(
     version,
     about = "Giga Chad's Bare Repository Worktree Manager",
@@ -20,7 +20,7 @@ pub struct Cli {
 pub enum Commands {
     /// Initialize a new bare repository from a remote URL
     ///
-    /// Example: worktrees init https://github.com/user/repo.git
+    /// Example: worktree init https://github.com/user/repo.git
     Init {
         /// URL of the remote repository to clone (optional)
         url: Option<String>,
@@ -30,7 +30,7 @@ pub enum Commands {
     },
     /// Add a new worktree for a specific intent/feature
     ///
-    /// Example: worktrees add feature-login
+    /// Example: worktree add feature-login
     Add {
         /// The name/intent of the worktree (e.g., dev, main, feat-x)
         intent: String,
@@ -39,7 +39,7 @@ pub enum Commands {
     },
     /// Remove an existing worktree and its associated files
     ///
-    /// Example: worktrees remove feature-login
+    /// Example: worktree remove feature-login
     Remove {
         /// The name of the worktree to remove
         intent: String,
@@ -48,7 +48,7 @@ pub enum Commands {
     List,
     /// Run a command in a temporary worktree and remove it afterward
     ///
-    /// Example: worktrees run temp-check "cargo test"
+    /// Example: worktree run temp-check "cargo test"
     Run {
         /// The name of the temporary worktree
         intent: String,
@@ -61,14 +61,14 @@ pub enum Commands {
     },
     /// Synchronize configuration files to a specific worktree or all worktrees
     ///
-    /// Example: worktrees sync feature-login
+    /// Example: worktree sync feature-login
     Sync {
         /// The name of the worktree to sync (omit to sync all)
         intent: Option<String>,
     },
     /// Push changes to the remote repository
     ///
-    /// Example: worktrees push feature-login
+    /// Example: worktree push feature-login
     Push {
         /// The name of the worktree to push (defaults to current directory if valid worktree, or fails)
         intent: Option<String>,
@@ -84,7 +84,7 @@ pub enum Commands {
     Setup,
     /// Clean up stale worktrees (directories with missing metadata or deleted branches)
     ///
-    /// Example: worktrees clean --dry-run
+    /// Example: worktree clean --dry-run
     Clean {
         /// Show what would be deleted without actually removing anything
         #[arg(long)]
@@ -92,7 +92,7 @@ pub enum Commands {
     },
     /// Switch to a worktree by name (prints path to stdout for shell integration)
     ///
-    /// Example: cd $(worktrees switch dev)
+    /// Example: cd $(worktree switch dev)
     Switch {
         /// The name or branch of the worktree to switch to
         name: Option<String>,
@@ -101,7 +101,7 @@ pub enum Commands {
     ///
     /// This will move the .git folder to .bare and create a new hub directory.
     ///
-    /// Example: worktrees convert --name my-project-hub
+    /// Example: worktree convert --name my-project-hub
     Convert {
         /// Optional name for the new hub directory (defaults to {project}-hub)
         #[arg(short, long)]
@@ -112,7 +112,7 @@ pub enum Commands {
     },
     /// Switch a worktree to a different branch
     ///
-    /// Example: worktrees checkout feature-login develop
+    /// Example: worktree checkout feature-login develop
     Checkout {
         /// The name or intent of the worktree
         intent: String,
@@ -140,7 +140,7 @@ mod tests {
     #[test]
     fn test_cli_parsing() -> Result<()> {
         // Test init
-        let cli = Cli::try_parse_from(["worktrees", "init", "url"])
+        let cli = Cli::try_parse_from(["worktree", "init", "url"])
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         match cli
             .command
@@ -154,7 +154,7 @@ mod tests {
         }
 
         // Test add
-        let cli = Cli::try_parse_from(["worktrees", "add", "feat", "branch"])
+        let cli = Cli::try_parse_from(["worktree", "add", "feat", "branch"])
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         match cli
             .command
@@ -168,7 +168,7 @@ mod tests {
         }
 
         // Test list
-        let cli = Cli::try_parse_from(["worktrees", "list"])
+        let cli = Cli::try_parse_from(["worktree", "list"])
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         assert!(matches!(
             cli.command
@@ -181,7 +181,7 @@ mod tests {
     #[test]
     fn test_cli_parsing_clean() -> Result<()> {
         // Test clean with dry-run
-        let cli = Cli::try_parse_from(["worktrees", "clean", "--dry-run"])
+        let cli = Cli::try_parse_from(["worktree", "clean", "--dry-run"])
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         match cli
             .command
@@ -194,7 +194,7 @@ mod tests {
         }
 
         // Test clean without dry-run
-        let cli = Cli::try_parse_from(["worktrees", "clean"])
+        let cli = Cli::try_parse_from(["worktree", "clean"])
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         match cli
             .command
@@ -211,7 +211,7 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_switch() -> Result<()> {
-        let cli = Cli::try_parse_from(["worktrees", "switch", "dev"])
+        let cli = Cli::try_parse_from(["worktree", "switch", "dev"])
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         match cli
             .command
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_checkout() -> Result<()> {
-        let cli = Cli::try_parse_from(["worktrees", "checkout", "feat-a", "main"])
+        let cli = Cli::try_parse_from(["worktree", "checkout", "feat-a", "main"])
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         match cli
             .command

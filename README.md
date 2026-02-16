@@ -47,16 +47,16 @@ npm run dev
 
 #### Installation
 
-The `worktrees` CLI can be installed quickly on macOS, Linux, and Windows.
+The `worktree` CLI can be installed quickly on macOS, Linux, and Windows.
 
 **macOS/Linux (Shell):**
 ```bash
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/justinnathanielsmith/worktrees/releases/latest/download/worktrees-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/justinnathanielsmith/worktrees/releases/latest/download/worktree-installer.sh | sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://github.com/justinnathanielsmith/worktrees/releases/latest/download/worktrees-installer.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://github.com/justinnathanielsmith/worktrees/releases/latest/download/worktree-installer.ps1 | iex"
 ```
 
 **From Source (Cargo):**
@@ -68,7 +68,7 @@ cargo install --git https://github.com/justinnathanielsmith/worktrees
 
 - **Bare Hub Architecture**: Automatically manages `.bare` git dir and `.git` file pointer.
 - **Reactive TUI**: Real-time updates when files or branches change.
-- **Convert Existing Repos**: Turn standard git repositories into Bare Hubs with `worktrees convert`.
+- **Convert Existing Repos**: Turn standard git repositories into Bare Hubs with `worktree convert`.
 - **Smart Branching**: Create worktrees from any branch or commit.
 - **AI Integration**: Generate commit messages with Gemini 1.5 Flash.
 - **Cross-Platform**: Works on macOS, Linux, and Windows.
@@ -78,7 +78,7 @@ cargo install --git https://github.com/justinnathanielsmith/worktrees
 ### 1. Initialize a New Project
 
 ```bash
-worktrees init https://github.com/user/repo.git --name my-project
+worktree init https://github.com/user/repo.git --name my-project
 cd my-project
 ```
 
@@ -86,25 +86,25 @@ cd my-project
 
 ```bash
 cd my-existing-repo
-worktrees convert
+worktree convert
 ```
 
 ### 3. Open the TUI
 
 ```bash
-worktrees list
+worktree list
 # or just
-worktrees
+worktree
 ```
 
 ### 4. CLI Commands
 
-- `worktrees add <name> [branch]`: Create a new worktree.
-- `worktrees remove <name>`: Remove a worktree.
-- `worktrees switch <name>`: Switch to a worktree (outputs path).
-- `worktrees checkout <name> <branch>`: Switch a worktree to a different branch.
-- `worktrees config set-key <key>`: Set Gemini API key for AI features.
-- `worktrees clean --dry-run`: cleanup stale worktrees.
+- `worktree add <name> [branch]`: Create a new worktree.
+- `worktree remove <name>`: Remove a worktree.
+- `worktree switch <name>`: Switch to a worktree (outputs path).
+- `worktree checkout <name> <branch>`: Switch a worktree to a different branch.
+- `worktree config set-key <key>`: Set Gemini API key for AI features.
+- `worktree clean --dry-run`: cleanup stale worktrees.
 
 
 ### Local Development

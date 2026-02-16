@@ -6,7 +6,7 @@ The `clean` command has been successfully implemented to help users identify and
 ## Features Implemented
 
 ### 1. Command-Line Interface
-- **Command**: `worktrees clean [--dry-run]`
+- **Command**: `worktree clean [--dry-run]`
 - **Flag**: `--dry-run` - Shows what would be deleted without actually removing anything
 - **JSON Support**: Works with `--json` flag for machine-readable output
 
@@ -26,7 +26,7 @@ The command identifies worktrees as "stale" in the following scenarios:
 
 ### Dry-Run Mode (Preview)
 ```bash
-worktrees clean --dry-run
+worktree clean --dry-run
 ```
 **Output:**
 ```
@@ -41,7 +41,7 @@ Tip: Run without --dry-run to actually remove these worktrees.
 
 ### Actual Cleanup
 ```bash
-worktrees clean
+worktree clean
 ```
 **Output:**
 ```
@@ -54,7 +54,7 @@ worktrees clean
 
 ### No Stale Worktrees
 ```bash
-worktrees clean
+worktree clean
 ```
 **Output:**
 ```
@@ -64,7 +64,7 @@ worktrees clean
 
 ### JSON Output
 ```bash
-worktrees clean --dry-run --json
+worktree clean --dry-run --json
 ```
 **Output:**
 ```json
@@ -123,8 +123,8 @@ fn clean_worktrees(&self, dry_run: bool) -> Result<Vec<String>> {
 
 ## Acceptance Criteria ✅
 
-- ✅ `worktrees clean` removes directories if worktree metadata is missing or corrupted
-- ✅ `worktrees clean --dry-run` shows what would be deleted without removing anything
+- ✅ `worktree clean` removes directories if worktree metadata is missing or corrupted
+- ✅ `worktree clean --dry-run` shows what would be deleted without removing anything
 - ✅ Command works with `--json` flag for machine-readable output
 - ✅ All tests pass (10/10 tests passing)
 - ✅ Release build compiles successfully

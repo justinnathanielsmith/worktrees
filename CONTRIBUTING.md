@@ -5,7 +5,7 @@ Thank you for your interest in improving the Bare Hub architecture. We follow a 
 ## How to Contribute
 
 1.  **Fork the Repository**: Clone it using the Bare Worktree workflow.
-2.  **Create a Worktree**: `worktrees add feature/your-feature dev` (or manually with `git worktree add -b feature/your-feature dev`)
+2.  **Create a Worktree**: `worktree add feature/your-feature dev` (or manually with `git worktree add -b feature/your-feature dev`)
 3.  **Implement Changes**: Ensure your styles follow the High-Performance Cyber aesthetic (neon gradients, glassmorphism, glowing accents).
 4.  **Submit a Pull Request**: Describe the performance impact or architectural benefit of your change.
 

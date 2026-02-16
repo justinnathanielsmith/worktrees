@@ -97,4 +97,3 @@ impl<'a> Widget for FooterWidget<'a> {
             .render(area, buf);
     }
 }
-
