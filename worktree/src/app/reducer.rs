@@ -928,6 +928,7 @@ mod tests {
                     is_bare: false,
                     is_detached: false,
                     status_summary: Some("clean".to_string()),
+                    size_bytes: 0,
                     metadata: None,
                 },
                 Worktree {
@@ -937,6 +938,7 @@ mod tests {
                     is_bare: false,
                     is_detached: false,
                     status_summary: Some("~1".to_string()),
+                    size_bytes: 0,
                     metadata: None,
                 },
             ])

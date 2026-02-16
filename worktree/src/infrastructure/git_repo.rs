@@ -240,6 +240,24 @@ impl GitProjectRepository {
             )
         })
     }
+
+    fn calculate_dir_size(path: &Path) -> u64 {
+        let mut total_size = 0;
+        if let Ok(entries) = std::fs::read_dir(path) {
+            for entry in entries.flatten() {
+                let metadata = match entry.metadata() {
+                    Ok(m) => m,
+                    Err(_) => continue,
+                };
+                if metadata.is_dir() {
+                    total_size += Self::calculate_dir_size(&entry.path());
+                } else {
+                    total_size += metadata.len();
+                }
+            }
+        }
+        total_size
+    }
 }
 
 impl ProjectRepository for GitProjectRepository {
@@ -411,6 +429,7 @@ impl ProjectRepository for GitProjectRepository {
                         is_bare: false,
                         is_detached: false,
                         status_summary: None,
+                        size_bytes: 0,
                         metadata: None,
                     },
                     |mut wt, line| {
@@ -428,6 +447,10 @@ impl ProjectRepository for GitProjectRepository {
                         wt
                     },
                 );
+
+                if !wt.path.is_empty() {
+                    wt.size_bytes = Self::calculate_dir_size(Path::new(&wt.path));
+                }
 
                 if !wt.is_bare && !wt.path.is_empty() {
                     wt.status_summary = self.get_status_summary(&wt.path).ok();

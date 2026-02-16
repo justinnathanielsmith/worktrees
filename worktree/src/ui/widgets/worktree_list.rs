@@ -128,6 +128,7 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
                     Cell::from(intent_str).style(branch_style),
                     Cell::from(wt.branch.clone()).style(Style::default().fg(theme.primary)),
                     status_cell,
+                    Cell::from(format_size(wt.size_bytes)).style(Style::default().fg(theme.subtle)),
                     Cell::from(wt.commit.chars().take(7).collect::<String>())
                         .style(Style::default().fg(theme.subtle)),
                 ])
@@ -140,14 +141,15 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
             rows,
             [
                 Constraint::Length(6), // Reduced width for icon/cursor
-                Constraint::Percentage(25),
-                Constraint::Percentage(25),
+                Constraint::Percentage(20),
+                Constraint::Percentage(20),
                 Constraint::Length(12),
-                Constraint::Length(10),
+                Constraint::Length(10), // Size column
+                Constraint::Length(10), // Commit column
             ],
         )
         .header(
-            Row::new(vec!["", "INTENT", "BRANCH", "STATUS", "COMMIT"])
+            Row::new(vec!["", "INTENT", "BRANCH", "STATUS", "SIZE", "COMMIT"])
                 .style(
                     Style::default()
                         .fg(theme.secondary)
@@ -159,6 +161,22 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
         .row_highlight_style(Style::default().add_modifier(Modifier::BOLD)); // Handled manually in row mapping, but keeping basic highlight
 
         StatefulWidget::render(table, area, buf, state);
+    }
+}
+
+fn format_size(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+
+    if bytes >= GB {
+        format!("{:.1} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.1} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{} B", bytes)
     }
 }
 
