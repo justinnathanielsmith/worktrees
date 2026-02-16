@@ -29,9 +29,39 @@ pub fn handle_listing_events<R: ProjectRepository>(
         KeyCode::Char('q') | KeyCode::Esc => return Ok(Some(AppState::Exiting(None))),
         KeyCode::Down | KeyCode::Char('j') => {
             move_selection(table_state, worktrees.len(), 1);
+            return Ok(Some(current_state.clone()));
         }
         KeyCode::Up | KeyCode::Char('k') => {
             move_selection(table_state, worktrees.len(), -1);
+            return Ok(Some(current_state.clone()));
+        }
+        KeyCode::Char('1') | KeyCode::Char('2') | KeyCode::Char('3') => {
+            if let AppState::ListingWorktrees {
+                worktrees,
+                table_state,
+                refresh_needed: _,
+                selection_mode,
+                dashboard,
+            } = current_state
+            {
+                let active_tab = match normalized_code {
+                    KeyCode::Char('1') => crate::app::model::DashboardTab::Info,
+                    KeyCode::Char('2') => crate::app::model::DashboardTab::Status,
+                    KeyCode::Char('3') => crate::app::model::DashboardTab::Log,
+                    _ => dashboard.active_tab,
+                };
+                return Ok(Some(AppState::ListingWorktrees {
+                    worktrees: worktrees.clone(),
+                    table_state: table_state.clone(),
+                    refresh_needed: true,
+                    selection_mode: *selection_mode,
+                    dashboard: crate::app::model::DashboardState {
+                        active_tab,
+                        cached_status: dashboard.cached_status.clone(),
+                        cached_history: dashboard.cached_history.clone(),
+                    },
+                }));
+            }
         }
         KeyCode::Char('a') => {
             return Ok(Some(AppState::Prompting {

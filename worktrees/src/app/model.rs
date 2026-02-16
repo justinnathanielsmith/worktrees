@@ -9,6 +9,13 @@ pub enum PromptType {
     ApiKey,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum DashboardTab {
+    Info,
+    Status,
+    Log,
+}
+
 #[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
 pub struct EditorConfig {
     pub name: String,
@@ -27,6 +34,13 @@ impl StatusViewState {
     pub fn total(&self) -> usize {
         self.staged.len() + self.unstaged.len() + self.untracked.len()
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct DashboardState {
+    pub active_tab: DashboardTab,
+    pub cached_status: Option<crate::domain::repository::GitStatus>,
+    pub cached_history: Option<Vec<crate::domain::repository::GitCommit>>,
 }
 
 /// The possible states of the TUI application.
@@ -99,6 +113,7 @@ pub enum AppState {
         table_state: TableState,
         refresh_needed: bool,
         selection_mode: bool,
+        dashboard: DashboardState,
     },
     /// Detailed Git status view for a specific worktree.
     ViewingStatus {

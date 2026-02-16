@@ -38,6 +38,11 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                             table_state: TableState::default(),
                             refresh_needed: true,
                             selection_mode: false,
+                            dashboard: crate::app::model::DashboardState {
+                                active_tab: crate::app::model::DashboardTab::Info,
+                                cached_status: None,
+                                cached_history: None,
+                            },
                         }));
                     }
                     PromptType::CommitMessage => {

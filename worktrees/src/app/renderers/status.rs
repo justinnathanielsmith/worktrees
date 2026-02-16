@@ -14,16 +14,15 @@ pub fn render_status(
     branch: &str,
     status: &crate::app::model::StatusViewState,
     prev_state: &Box<AppState>,
-    chunks: std::rc::Rc<[Rect]>,
+    area: Rect,
 ) {
     let theme = CyberTheme::default();
 
-    // Create a side-panel layout by combining main and details areas
-    let body_area = chunks[1].union(chunks[2]);
+    // Create a side-panel layout
     let body_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(25), Constraint::Percentage(75)])
-        .split(body_area);
+        .split(area);
 
     // Render background list from prev_state for context
     if let AppState::ListingWorktrees {

@@ -109,6 +109,11 @@ async fn main() -> Result<()> {
                     table_state,
                     refresh_needed: false,
                     selection_mode: true,
+                    dashboard: app::model::DashboardState {
+                        active_tab: app::model::DashboardTab::Info,
+                        cached_status: None,
+                        cached_history: None,
+                    },
                 };
                 let result = View::render_tui(&GitProjectRepository, initial_state)
                     .map_err(|e| miette::miette!("{e:?}"))?;
@@ -140,6 +145,11 @@ async fn main() -> Result<()> {
                 table_state,
                 refresh_needed: false,
                 selection_mode: false,
+                dashboard: app::model::DashboardState {
+                    active_tab: app::model::DashboardTab::Info,
+                    cached_status: None,
+                    cached_history: None,
+                },
             };
             View::render_tui(&GitProjectRepository, initial_state)
                 .map_err(|e| miette::miette!("{e:?}"))?;

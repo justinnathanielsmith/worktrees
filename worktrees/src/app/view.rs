@@ -16,7 +16,6 @@ use ratatui::{
     Frame, Terminal,
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
-    widgets::TableState,
 };
 use std::io;
 use std::time::Duration;
@@ -74,19 +73,30 @@ impl View {
             if let AppState::ListingWorktrees {
                 refresh_needed: true,
                 selection_mode,
+                dashboard,
+                table_state,
                 ..
             } = state
             {
                 if let Ok(worktrees) = repo.list_worktrees() {
-                    let mut table_state = TableState::default();
-                    if !worktrees.is_empty() {
-                        table_state.select(Some(0));
+                    let mut ts = table_state.clone();
+                    if ts.selected().is_none() && !worktrees.is_empty() {
+                        ts.select(Some(0));
                     }
+
+                    let (status, history) =
+                        Self::fetch_dashboard_data(repo, &worktrees, ts.selected(), &dashboard);
+
                     *state = AppState::ListingWorktrees {
                         worktrees,
-                        table_state,
+                        table_state: ts,
                         refresh_needed: false,
                         selection_mode: *selection_mode,
+                        dashboard: crate::app::model::DashboardState {
+                            active_tab: dashboard.active_tab,
+                            cached_status: status,
+                            cached_history: history,
+                        },
                     };
                 }
             }
@@ -264,6 +274,35 @@ impl View {
         }
     }
 
+    fn fetch_dashboard_data<R: ProjectRepository>(
+        repo: &R,
+        worktrees: &[Worktree],
+        selected_index: Option<usize>,
+        dashboard: &crate::app::model::DashboardState,
+    ) -> (
+        Option<crate::domain::repository::GitStatus>,
+        Option<Vec<crate::domain::repository::GitCommit>>,
+    ) {
+        let mut status = None;
+        let mut history = None;
+
+        if let Some(i) = selected_index {
+            if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
+                match dashboard.active_tab {
+                    crate::app::model::DashboardTab::Status => {
+                        status = repo.get_status(&wt.path).ok();
+                    }
+                    crate::app::model::DashboardTab::Log => {
+                        history = repo.get_history(&wt.path, 10).ok();
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        (status, history)
+    }
+
     pub fn draw<R: ProjectRepository>(
         f: &mut Frame,
         repo: &R,
@@ -276,8 +315,7 @@ impl View {
             .constraints(
                 [
                     Constraint::Length(3), // Header
-                    Constraint::Min(5),    // Table
-                    Constraint::Length(6), // Details
+                    Constraint::Min(5),    // Body (List + Dashboard)
                     Constraint::Length(3), // Footer
                 ]
                 .as_ref(),
@@ -287,13 +325,11 @@ impl View {
         let context = repo.detect_context();
         f.render_widget(HeaderWidget { context }, chunks[0]);
 
-        // Wrap chunks in Rc for sharing with renderers
-        let shared_chunks = chunks.clone();
-
         match state {
             AppState::ListingWorktrees {
                 worktrees,
                 table_state,
+                dashboard,
                 ..
             } => {
                 render_listing(
@@ -301,7 +337,10 @@ impl View {
                     worktrees.as_slice(),
                     table_state,
                     context,
-                    shared_chunks.clone(),
+                    chunks[1],
+                    dashboard.active_tab,
+                    &dashboard.cached_status,
+                    &dashboard.cached_history,
                 );
             }
             AppState::ViewingStatus {
@@ -310,7 +349,7 @@ impl View {
                 prev_state,
                 ..
             } => {
-                render_status(f, branch, status, prev_state, shared_chunks.clone());
+                render_status(f, branch, status, prev_state, chunks[1]);
             }
             AppState::ViewingHistory {
                 branch,
@@ -323,6 +362,7 @@ impl View {
                 if let AppState::ListingWorktrees {
                     worktrees,
                     table_state,
+                    dashboard,
                     ..
                 } = &**prev_state
                 {
@@ -331,7 +371,10 @@ impl View {
                         worktrees.as_slice(),
                         &mut table_state.clone(),
                         context,
-                        shared_chunks.clone(),
+                        chunks[1],
+                        dashboard.active_tab,
+                        &dashboard.cached_status,
+                        &dashboard.cached_history,
                     );
                 }
                 render_history(f, branch, commits, *selected_index);
@@ -346,6 +389,7 @@ impl View {
                 if let AppState::ListingWorktrees {
                     worktrees,
                     table_state,
+                    dashboard,
                     ..
                 } = &**prev_state
                 {
@@ -354,7 +398,10 @@ impl View {
                         worktrees.as_slice(),
                         &mut table_state.clone(),
                         context,
-                        shared_chunks.clone(),
+                        chunks[1],
+                        dashboard.active_tab,
+                        &dashboard.cached_status,
+                        &dashboard.cached_history,
                     );
                 } else if let AppState::ViewingStatus {
                     branch,
@@ -363,7 +410,7 @@ impl View {
                     ..
                 } = &**prev_state
                 {
-                    render_status(f, branch, status, p_prev, shared_chunks.clone());
+                    render_status(f, branch, status, p_prev, chunks[1]);
                 }
                 render_branch_selection(f, branches, *selected_index);
             }
@@ -378,6 +425,7 @@ impl View {
                 if let AppState::ListingWorktrees {
                     worktrees,
                     table_state,
+                    dashboard,
                     ..
                 } = &**prev_state
                 {
@@ -386,7 +434,10 @@ impl View {
                         worktrees.as_slice(),
                         &mut table_state.clone(),
                         context,
-                        shared_chunks.clone(),
+                        chunks[1],
+                        dashboard.active_tab,
+                        &dashboard.cached_status,
+                        &dashboard.cached_history,
                     );
                 }
                 render_editor_selection(f, branch, options, *selected);
@@ -401,6 +452,7 @@ impl View {
                 if let AppState::ListingWorktrees {
                     worktrees,
                     table_state,
+                    dashboard,
                     ..
                 } = &**prev_state
                 {
@@ -409,7 +461,10 @@ impl View {
                         worktrees.as_slice(),
                         &mut table_state.clone(),
                         context,
-                        shared_chunks.clone(),
+                        chunks[1],
+                        dashboard.active_tab,
+                        &dashboard.cached_status,
+                        &dashboard.cached_history,
                     );
                 }
                 render_prompt(f, prompt_type, input);
@@ -428,7 +483,7 @@ impl View {
                     ..
                 } = &**prev_state
                 {
-                    render_status(f, b, status, p_prev, shared_chunks.clone());
+                    render_status(f, b, status, p_prev, chunks[1]);
                 }
                 render_commit_menu(f, branch, *selected_index);
             }
@@ -438,7 +493,7 @@ impl View {
             }
         }
 
-        f.render_widget(FooterWidget, chunks[3]);
+        f.render_widget(FooterWidget, chunks[2]);
     }
 
     pub fn render(state: AppState) {
@@ -452,6 +507,7 @@ mod tests {
     use crate::domain::repository::{GitCommit, GitStatus, ProjectContext};
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::widgets::TableState;
 
     /// Minimal mock repository for testing view rendering
     struct MockRepository;
@@ -625,6 +681,11 @@ mod tests {
             table_state,
             refresh_needed: false,
             selection_mode: false,
+            dashboard: crate::app::model::DashboardState {
+                active_tab: crate::app::model::DashboardTab::Info,
+                cached_status: None,
+                cached_history: None,
+            },
         };
 
         terminal

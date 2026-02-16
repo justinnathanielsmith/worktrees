@@ -1,5 +1,6 @@
 pub mod branch;
 pub mod commit;
+pub mod dashboard;
 pub mod editor;
 pub mod helpers;
 pub mod history;
