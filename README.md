@@ -4,14 +4,17 @@
 
 This repository contains the source for the **Git Bare Hub Architecture Guide**—a comprehensive resource for developers looking to optimize their Git workflow using bare repositories and worktrees.
 
-## The Bare Hub Workflow
+## The Bare Hub Workflow: The Stash Killer
 
-The Bare Hub architecture separates your Git metadata from your working directories, offering several benefits over standard cloning:
+The Bare Hub architecture is the **Stash Killer**. Most developers rely on `git stash` to temporarily store work, but stashing is destructive and leads to "stash-amnesia." 
 
-1.  **Instant Context Switching**: Create new branches in dedicated directories (worktrees) without stashing or rewriting your current workspace.
-2.  **Parallel Development**: Run long-running tests or builds in one worktree while coding in another.
-3.  **Clean Root Directory**: Keep your project root organized by isolating the main Git engine in a hidden `.bare` directory.
-4.  **Isolated Dependencies**: Each worktree has its own `node_modules` or build artifacts, preventing conflicts when switching between branches with different dependency versions.
+By separating your Git metadata from your working directories, Bare Hub provides **persistent, named environments** for your code:
+
+1.  **Eliminate Stash Amnesia**: Your uncommitted changes stay in their own physical directory, exactly where you left them. No more "popping" errors or lost context.
+2.  **Instant Context Switching**: Move between tasks as fast as a `cd` command. No more waiting for Git to rewrite files or your IDE to re-index.
+3.  **Parallel Development**: Run long-running tests or builds on `main` while simultaneously coding a hotfix in another worktree.
+4.  **Isolated Dependencies**: Each worktree maintains its own `node_modules` and build artifacts, preventing version conflicts when jumping between branches.
+5.  **Clean Root Architecture**: Isolate the main Git engine in a hidden `.bare` directory, keeping your project root organized and clutter-free.
 
 ## Project Architecture
 

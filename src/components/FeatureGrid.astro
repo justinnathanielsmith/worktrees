@@ -9,21 +9,21 @@ import ComparisonChart from './ComparisonChart.astro';
                 Why Use Worktrees?
             </h3>
             <p class="text-slate-300 text-lg leading-relaxed">
-                Standard `git clone` bundles your history with your workspace, creating a bottleneck. 
-                The Bare Hub separates concerns, optimizing your workflow.
+                Standard workflows rely on <code class="text-blue-400 bg-blue-400/10 px-2 py-1 rounded italic">git stash</code>, a destructive process that leads to "stash-amnesia." 
+                The Bare Hub architecture is the <strong>Stash Killer</strong>—providing persistent, named workspaces that never expire or lose context.
             </p>
             <ul class="space-y-4 text-slate-400">
                 <li class="flex items-center gap-3">
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 font-bold">✓</span>
-                    <span><strong>Workflow Efficiency:</strong> Never wait for node_modules to re-index when switching context.</span>
+                    <span><strong>No More Stash Amnesia:</strong> Your uncommitted work stays in its own physical folder, exactly where you left it.</span>
                 </li>
                 <li class="flex items-center gap-3">
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 font-bold">✓</span>
-                    <span><strong>Organization:</strong> Keep dead branches from cluttering your view.</span>
+                    <span><strong>Parallel Development:</strong> Run tests on `main` while simultaneously coding a hotfix in `bug-123`.</span>
                 </li>
                 <li class="flex items-center gap-3">
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 font-bold">✓</span>
-                    <span><strong>Parallel Execution:</strong> Run tests on one branch while coding on another.</span>
+                    <span><strong>Zero-Cost Switching:</strong> Context switching is reduced to a simple `cd` command. No re-indexing required.</span>
                 </li>
             </ul>
         </div>
