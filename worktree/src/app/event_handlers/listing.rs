@@ -166,6 +166,30 @@ pub fn handle_listing_events<R: ProjectRepository>(
                     }
                     return Ok(Some(new_state));
                 }
+                KeyCode::Char('d') | KeyCode::Char('x') | KeyCode::Char('D') => {
+                    let is_force = matches!(key_code, KeyCode::Char('D'));
+                    if let Some(i) = table_state.selected()
+                        && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
+                    {
+                        return Ok(Some(AppState::Confirming {
+                            title: if is_force {
+                                " FORCE REMOVE WORKTREE ".into()
+                            } else {
+                                " REMOVE WORKTREE ".into()
+                            },
+                            message: format!(
+                                "Are you sure you want to {}remove worktree '{}'?",
+                                if is_force { "FORCE " } else { "" },
+                                wt.branch
+                            ),
+                            action: Box::new(Intent::RemoveWorktree {
+                                intent: wt.path.clone(),
+                                force: is_force,
+                            }),
+                            prev_state: Box::new(current_state.clone()),
+                        }));
+                    }
+                }
                 _ => {}
             }
 
@@ -260,23 +284,6 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         selected_index: 0,
                         prev_state: Box::new(current_state.clone()),
                     }));
-                }
-                KeyCode::Char('d') | KeyCode::Char('x') => {
-                    if let Some(i) = table_state.selected()
-                        && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
-                    {
-                        return Ok(Some(AppState::Confirming {
-                            title: " REMOVE WORKTREE ".into(),
-                            message: format!(
-                                "Are you sure you want to remove worktree '{}'?",
-                                wt.branch
-                            ),
-                            action: Box::new(Intent::RemoveWorktree {
-                                intent: wt.branch.clone(),
-                            }),
-                            prev_state: Box::new(current_state.clone()),
-                        }));
-                    }
                 }
                 KeyCode::Char('s') => {
                     if let Some(i) = table_state.selected()

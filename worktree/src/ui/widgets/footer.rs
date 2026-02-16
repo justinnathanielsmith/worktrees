@@ -26,7 +26,7 @@ impl<'a> Widget for FooterWidget<'a> {
                 ("[B]", "BRANCH", theme.success),
                 ("[A]", "ADD", theme.success),
                 ("[C]", "COMMIT", theme.success),
-                ("[D/X]", "DEL", theme.error),
+                ("[d/x/D]", "DEL", theme.error),
                 ("[Q]", "EXIT", theme.accent),
             ],
             AppState::ViewingStatus { .. } => vec![

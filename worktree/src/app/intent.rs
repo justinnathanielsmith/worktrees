@@ -10,6 +10,7 @@ pub enum Intent {
     },
     RemoveWorktree {
         intent: String,
+        force: bool,
     },
     ListWorktrees,
     SetupDefaults,

@@ -43,6 +43,9 @@ pub enum Commands {
     Remove {
         /// The name of the worktree to remove
         intent: String,
+        /// Force removal even if the worktree has uncommitted changes
+        #[arg(short, long)]
+        force: bool,
     },
     /// List all active worktrees and their status
     List,

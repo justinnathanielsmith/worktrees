@@ -161,7 +161,7 @@ async fn main() -> Result<()> {
     let intent = match cli.command {
         Some(Commands::Init { url, name }) => Intent::Initialize { url, name },
         Some(Commands::Add { intent, branch }) => Intent::AddWorktree { intent, branch },
-        Some(Commands::Remove { intent }) => Intent::RemoveWorktree { intent },
+        Some(Commands::Remove { intent, force }) => Intent::RemoveWorktree { intent, force },
         Some(Commands::List) => Intent::ListWorktrees,
         Some(Commands::Setup) => Intent::SetupDefaults,
         Some(Commands::Run {
