@@ -56,25 +56,14 @@ pub fn render_status(
         .split(inner_area);
 
     // --- STAGED COLUMN ---
-    let mut staged_items = Vec::new();
-    for (i, file) in status.staged.iter().enumerate() {
-        let is_selected = i == status.selected_index;
-        let style = if is_selected {
-            Style::default()
-                .bg(theme.selection_bg)
-                .fg(theme.primary)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(theme.success)
-        };
-
-        let prefix = if is_selected { " ▶ " } else { "   " };
-        staged_items.push(Line::from(vec![
-            Span::styled(prefix, style),
-            Span::styled("󰄬 ", style),
-            Span::styled(file, style),
-        ]));
-    }
+    let staged_items = format_file_list(
+        &status.staged,
+        &theme,
+        status.selected_index,
+        0,
+        "󰄬 ",
+        Style::default().fg(theme.success),
+    );
     let staged_list = Paragraph::new(staged_items).block(
         Block::default()
             .borders(Borders::RIGHT)
@@ -89,46 +78,23 @@ pub fn render_status(
     f.render_widget(staged_list, status_chunks[0]);
 
     // --- UNSTAGED COLUMN ---
-    let mut unstaged_items = Vec::new();
-    let unstaged_start = status.staged.len();
-    for (i, file) in status.unstaged.iter().enumerate() {
-        let is_selected = (i + unstaged_start) == status.selected_index;
-        let style = if is_selected {
-            Style::default()
-                .bg(theme.selection_bg)
-                .fg(theme.primary)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(theme.warning)
-        };
+    let mut unstaged_items = format_file_list(
+        &status.unstaged,
+        &theme,
+        status.selected_index,
+        status.staged.len(),
+        "󱇨 ",
+        Style::default().fg(theme.warning),
+    );
 
-        let prefix = if is_selected { " ▶ " } else { "   " };
-        unstaged_items.push(Line::from(vec![
-            Span::styled(prefix, style),
-            Span::styled("󱇨 ", style),
-            Span::styled(file, style),
-        ]));
-    }
-
-    let untracked_start = status.staged.len() + status.unstaged.len();
-    for (i, file) in status.untracked.iter().enumerate() {
-        let is_selected = (i + untracked_start) == status.selected_index;
-        let style = if is_selected {
-            Style::default()
-                .bg(theme.selection_bg)
-                .fg(theme.primary)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(theme.error)
-        };
-
-        let prefix = if is_selected { " ▶ " } else { "   " };
-        unstaged_items.push(Line::from(vec![
-            Span::styled(prefix, style),
-            Span::styled("󰡯 ", style),
-            Span::styled(file, style),
-        ]));
-    }
+    unstaged_items.extend(format_file_list(
+        &status.untracked,
+        &theme,
+        status.selected_index,
+        status.staged.len() + status.unstaged.len(),
+        "󰡯 ",
+        Style::default().fg(theme.error),
+    ));
 
     let unstaged_list = Paragraph::new(unstaged_items).block(
         Block::default().title(Span::styled(
@@ -183,4 +149,36 @@ pub fn render_status(
         Paragraph::new(help_text).alignment(Alignment::Center),
         footer_area,
     );
+}
+
+fn format_file_list<'a>(
+    files: &'a [String],
+    theme: &CyberTheme,
+    selected_index: usize,
+    offset: usize,
+    icon: &'static str,
+    base_style: Style,
+) -> Vec<Line<'a>> {
+    files
+        .iter()
+        .enumerate()
+        .map(|(i, file)| {
+            let is_selected = (i + offset) == selected_index;
+            let style = if is_selected {
+                Style::default()
+                    .bg(theme.selection_bg)
+                    .fg(theme.primary)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                base_style
+            };
+
+            let prefix = if is_selected { " ▶ " } else { "   " };
+            Line::from(vec![
+                Span::styled(prefix, style),
+                Span::styled(icon, style),
+                Span::styled(file.as_str(), style),
+            ])
+        })
+        .collect()
 }
