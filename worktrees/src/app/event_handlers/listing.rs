@@ -167,40 +167,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         duration: std::time::Duration::from_millis(800),
                     }));
                 } else {
-                    let options = vec![
-                        EditorConfig {
-                            name: "VS Code".into(),
-                            command: "code".into(),
-                        },
-                        EditorConfig {
-                            name: "Cursor".into(),
-                            command: "cursor".into(),
-                        },
-                        EditorConfig {
-                            name: "Zed".into(),
-                            command: "zed".into(),
-                        },
-                        EditorConfig {
-                            name: "Android Studio".into(),
-                            command: "studio".into(),
-                        },
-                        EditorConfig {
-                            name: "IntelliJ IDEA".into(),
-                            command: "idea".into(),
-                        },
-                        EditorConfig {
-                            name: "Vim".into(),
-                            command: "vim".into(),
-                        },
-                        EditorConfig {
-                            name: "Neovim".into(),
-                            command: "nvim".into(),
-                        },
-                        EditorConfig {
-                            name: "Antigravity".into(),
-                            command: "antigravity".into(),
-                        },
-                    ];
+                    let options = EditorConfig::defaults();
                     return Ok(Some(AppState::SelectingEditor {
                         branch,
                         options,
