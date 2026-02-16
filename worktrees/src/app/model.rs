@@ -23,6 +23,45 @@ pub struct EditorConfig {
     pub command: String,
 }
 
+impl EditorConfig {
+    pub fn defaults() -> Vec<Self> {
+        vec![
+            Self {
+                name: "VS Code".into(),
+                command: "code".into(),
+            },
+            Self {
+                name: "Cursor".into(),
+                command: "cursor".into(),
+            },
+            Self {
+                name: "Zed".into(),
+                command: "zed".into(),
+            },
+            Self {
+                name: "Android Studio".into(),
+                command: "studio".into(),
+            },
+            Self {
+                name: "IntelliJ IDEA".into(),
+                command: "idea".into(),
+            },
+            Self {
+                name: "Vim".into(),
+                command: "vim".into(),
+            },
+            Self {
+                name: "Neovim".into(),
+                command: "nvim".into(),
+            },
+            Self {
+                name: "Antigravity".into(),
+                command: "antigravity".into(),
+            },
+        ]
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct StatusViewState {
     pub staged: Vec<String>,
