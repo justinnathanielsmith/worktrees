@@ -24,38 +24,37 @@ pub fn handle_listing_events<R: ProjectRepository>(
         Event::Key(key) => {
             let key_code = key.code;
             // Handle Shift+P for Pull before normalization (since p is Push)
-            if let KeyCode::Char('P') = key_code {
-                if let Some(i) = table_state.selected()
-                    && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
-                {
-                    let branch = wt.branch.clone();
-                    let path = wt.path.clone();
-                    let prev = Box::new(current_state.clone());
-                    let mut pulling_state = AppState::Pulling {
-                        branch: branch.clone(),
-                        prev_state: prev.clone(),
-                    };
-                    terminal.draw(|f| {
-                        super::super::view::View::draw(f, repo, &mut pulling_state, *spinner_tick)
-                    })?;
-                    if let Err(e) = repo.pull(&path) {
-                        return Ok(Some(AppState::Error(
-                            format!("Failed to pull: {}", e),
-                            prev,
-                        )));
-                    }
-                    let prev_clone = prev.clone();
-                    let complete_state = AppState::PullComplete {
-                        branch,
-                        prev_state: prev,
-                    };
-                    return Ok(Some(AppState::Timed {
-                        inner_state: Box::new(complete_state),
-                        target_state: prev_clone,
-                        start_time: std::time::Instant::now(),
-                        duration: std::time::Duration::from_millis(800),
-                    }));
+            if let KeyCode::Char('P') = key_code
+                && let Some(i) = table_state.selected()
+                && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
+            {
+                let branch = wt.branch.clone();
+                let path = wt.path.clone();
+                let prev = Box::new(current_state.clone());
+                let mut pulling_state = AppState::Pulling {
+                    branch: branch.clone(),
+                    prev_state: prev.clone(),
+                };
+                terminal.draw(|f| {
+                    super::super::view::View::draw(f, repo, &mut pulling_state, *spinner_tick)
+                })?;
+                if let Err(e) = repo.pull(&path) {
+                    return Ok(Some(AppState::Error(
+                        format!("Failed to pull: {}", e),
+                        prev,
+                    )));
                 }
+                let prev_clone = prev.clone();
+                let complete_state = AppState::PullComplete {
+                    branch,
+                    prev_state: prev,
+                };
+                return Ok(Some(AppState::Timed {
+                    inner_state: Box::new(complete_state),
+                    target_state: prev_clone,
+                    start_time: std::time::Instant::now(),
+                    duration: std::time::Duration::from_millis(800),
+                }));
             }
 
             let normalized_code = match key_code {
@@ -67,11 +66,83 @@ pub fn handle_listing_events<R: ProjectRepository>(
                 KeyCode::Char('q') | KeyCode::Esc => return Ok(Some(AppState::Exiting(None))),
                 KeyCode::Down | KeyCode::Char('j') => {
                     move_selection(table_state, worktrees.len(), 1);
+                    if let AppState::ListingWorktrees {
+                        worktrees,
+                        table_state,
+                        selection_mode,
+                        dashboard,
+                        ..
+                    } = current_state
+                    {
+                        return Ok(Some(AppState::ListingWorktrees {
+                            worktrees: worktrees.clone(),
+                            table_state: table_state.clone(),
+                            refresh_needed: true,
+                            selection_mode: *selection_mode,
+                            dashboard: dashboard.clone(),
+                        }));
+                    }
                     return Ok(Some(current_state.clone()));
                 }
                 KeyCode::Up | KeyCode::Char('k') => {
                     move_selection(table_state, worktrees.len(), -1);
+                    if let AppState::ListingWorktrees {
+                        worktrees,
+                        table_state,
+                        selection_mode,
+                        dashboard,
+                        ..
+                    } = current_state
+                    {
+                        return Ok(Some(AppState::ListingWorktrees {
+                            worktrees: worktrees.clone(),
+                            table_state: table_state.clone(),
+                            refresh_needed: true,
+                            selection_mode: *selection_mode,
+                            dashboard: dashboard.clone(),
+                        }));
+                    }
                     return Ok(Some(current_state.clone()));
+                }
+                KeyCode::Char('g') => {
+                    table_state.select(Some(0));
+                    if let AppState::ListingWorktrees {
+                        worktrees,
+                        table_state,
+                        selection_mode,
+                        dashboard,
+                        ..
+                    } = current_state
+                    {
+                        return Ok(Some(AppState::ListingWorktrees {
+                            worktrees: worktrees.clone(),
+                            table_state: table_state.clone(),
+                            refresh_needed: true,
+                            selection_mode: *selection_mode,
+                            dashboard: dashboard.clone(),
+                        }));
+                    }
+                }
+                KeyCode::Char('G') => {
+                    if !worktrees.is_empty() {
+                        table_state.select(Some(worktrees.len() - 1));
+                    }
+                    if let AppState::ListingWorktrees {
+                        worktrees,
+                        table_state,
+                        selection_mode,
+                        dashboard,
+                        ..
+                    } = current_state
+                    {
+                        return Ok(Some(AppState::ListingWorktrees {
+                            worktrees: worktrees.clone(),
+                            table_state: table_state.clone(),
+                            refresh_needed: true,
+                            selection_mode: *selection_mode,
+                            dashboard: dashboard.clone(),
+                        }));
+                    }
                 }
                 KeyCode::Char('1') | KeyCode::Char('2') | KeyCode::Char('3') => {
                     if let AppState::ListingWorktrees {
@@ -246,7 +317,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         duration: std::time::Duration::from_millis(1200),
                     }));
                 }
-                KeyCode::Char('g') => {
+                KeyCode::Char('v') => {
                     if let Some(i) = table_state.selected()
                         && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
                         && let Ok(status) = repo.get_status(&wt.path)

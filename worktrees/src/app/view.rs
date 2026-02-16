@@ -275,10 +275,10 @@ impl View {
                     }
                     // Handle global exit if not handled by detailed handlers (or for states without handlers)
                     _ => {
-                        if let Event::Key(key) = event {
-                            if let KeyCode::Char('q') | KeyCode::Esc = key.code {
-                                return Ok(None);
-                            }
+                        if let Event::Key(key) = event
+                            && let KeyCode::Char('q') | KeyCode::Esc = key.code
+                        {
+                            return Ok(None);
                         }
                     }
                 }

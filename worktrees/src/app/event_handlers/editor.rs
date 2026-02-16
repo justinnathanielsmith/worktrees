@@ -6,7 +6,6 @@ use std::io;
 use std::process::Command;
 
 #[allow(clippy::too_many_arguments)]
-#[allow(clippy::too_many_arguments)]
 pub fn handle_editor_events<R: ProjectRepository>(
     event: crossterm::event::Event,
     repo: &R,

@@ -38,5 +38,4 @@ impl Icons {
     pub const WORKTREE: &'static str = "󰘬 "; // nf-md-source_branch
     pub const CLEAN: &'static str = " "; // nf-fa-check_circle
     pub const DIRTY: &'static str = " "; // nf-fa-edit
-    pub const CHECK: &'static str = " "; // nf-fa-check
 }
