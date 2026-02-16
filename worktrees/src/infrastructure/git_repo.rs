@@ -615,7 +615,30 @@ impl ProjectRepository for GitProjectRepository {
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent)?;
             }
-            std::fs::write(path, key).context("Failed to store API key in fallback file")?;
+
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+                let mut file = std::fs::OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .truncate(true)
+                    .mode(0o600)
+                    .open(path)
+                    .context("Failed to open API key file with secure permissions")?;
+
+                let mut perms = file.metadata()?.permissions();
+                perms.set_mode(0o600);
+                file.set_permissions(perms)?;
+
+                file.write_all(key.as_bytes())
+                    .context("Failed to write API key to file")?;
+            }
+
+            #[cfg(not(unix))]
+            {
+                std::fs::write(path, key).context("Failed to store API key in fallback file")?;
+            }
         }
 
         Ok(())
@@ -835,6 +858,74 @@ mod tests {
             Some("Development branch".to_string())
         );
         assert_eq!(loaded.get("dev").unwrap().icon, Some("🚀".to_string()));
+
+        // Cleanup
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_api_key_file_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+
+        // Setup temp dir
+        let temp_dir = std::env::temp_dir().join(format!("worktrees_test_perms_{}", std::process::id()));
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        std::fs::create_dir(&temp_dir).unwrap();
+
+        // Backup existing HOME/USERPROFILE/XDG_CONFIG_HOME
+        // Note: Environment variables are process-wide. This test should run in isolation or serially.
+        let old_home = std::env::var("HOME").ok();
+        let old_xdg = std::env::var("XDG_CONFIG_HOME").ok();
+
+        unsafe {
+            std::env::set_var("HOME", &temp_dir);
+            std::env::set_var("XDG_CONFIG_HOME", &temp_dir);
+        }
+
+        let repo = GitProjectRepository;
+        repo.set_api_key("secret_key").unwrap();
+
+        // Check file existence and permissions
+        // set_api_key tries .worktrees.gemini_key in HOME or XDG_CONFIG_HOME/worktrees/gemini_key
+        // Since we set both to temp_dir, it likely hits XDG first if dirs::config_dir uses it,
+        // or falls back to HOME/.worktrees.gemini_key.
+
+        let path1 = temp_dir.join("worktrees").join("gemini_key");
+        let path2 = temp_dir.join(".worktrees.gemini_key");
+
+        let actual_path = if path1.exists() { path1.clone() } else { path2.clone() };
+        assert!(actual_path.exists(), "API key file should be created");
+
+        // Verify initial creation is secure
+        let metadata = std::fs::metadata(&actual_path).unwrap();
+        let permissions = metadata.permissions();
+        let mode = permissions.mode() & 0o777;
+        assert_eq!(mode, 0o600, "Initial creation: API key file permissions should be 600, but were {:o}", mode);
+
+        // Test existing file scenario: Sabotage permissions to 644
+        let mut perms = metadata.permissions();
+        perms.set_mode(0o644);
+        std::fs::set_permissions(&actual_path, perms).unwrap();
+
+        // Verify sabotage worked
+        let mode_sabotaged = std::fs::metadata(&actual_path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode_sabotaged, 0o644, "Failed to sabotage permissions for test");
+
+        // Run set_api_key again - should fix permissions
+        repo.set_api_key("new_secret_key").unwrap();
+
+        // Verify fix
+        let mode_fixed = std::fs::metadata(&actual_path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode_fixed, 0o600, "Fixed API key file permissions should be 600, but were {:o}", mode_fixed);
+
+        // Restore env
+        unsafe {
+            if let Some(h) = old_home { std::env::set_var("HOME", h); } else { std::env::remove_var("HOME"); }
+            if let Some(x) = old_xdg { std::env::set_var("XDG_CONFIG_HOME", x); } else { std::env::remove_var("XDG_CONFIG_HOME"); }
+        }
 
         // Cleanup
         std::fs::remove_dir_all(&temp_dir).unwrap();
