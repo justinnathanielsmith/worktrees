@@ -586,9 +586,21 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                     }
                 }
             }
-            Intent::CleanWorktrees { dry_run } => {
+            Intent::CleanWorktrees { dry_run, artifacts } => {
                 if !json_mode {
-                    if dry_run {
+                    if artifacts {
+                        if dry_run {
+                            println!(
+                                "{} Scanning for build artifacts in inactive worktrees (dry-run)...",
+                                "➜".cyan().bold()
+                            );
+                        } else {
+                            println!(
+                                "{} Cleaning build artifacts from inactive worktrees...",
+                                "➜".cyan().bold()
+                            );
+                        }
+                    } else if dry_run {
                         println!(
                             "{} Scanning for stale worktrees (dry-run)...",
                             "➜".cyan().bold()
@@ -599,8 +611,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 }
 
                 let repo_clone = repo.clone();
-                let stale_worktrees =
-                    tokio::task::spawn_blocking(move || repo_clone.clean_worktrees(dry_run))
+                let stale_worktrees = tokio::task::spawn_blocking(move || {
+                    repo_clone.clean_worktrees(dry_run, artifacts)
+                })
                         .await
                         .into_diagnostic()?
                         .map_err(|e| miette::miette!("Failed to clean worktrees: {}", e))?;
@@ -1044,7 +1057,7 @@ mod tests {
         fn set_api_key(&self, _key: &str) -> anyhow::Result<()> {
             Ok(())
         }
-        fn clean_worktrees(&self, _dry_run: bool) -> anyhow::Result<Vec<String>> {
+        fn clean_worktrees(&self, _dry_run: bool, _artifacts: bool) -> anyhow::Result<Vec<String>> {
             Ok(vec![])
         }
         fn convert_to_bare(
@@ -1247,7 +1260,10 @@ mod tests {
         let reducer = Reducer::new(repo, false);
 
         reducer
-            .handle(Intent::CleanWorktrees { dry_run: true })
+            .handle(Intent::CleanWorktrees {
+                dry_run: true,
+                artifacts: false,
+            })
             .await
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 

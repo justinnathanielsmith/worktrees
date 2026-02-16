@@ -150,6 +150,12 @@ open -a "Android Studio" ../ui-feature`} label="Shell" />
                     For iOS, ensure your Pods or SPM setup is isolated per worktree to avoid DerivedData conflicts.
                 </p>
             </div>
+            <div class="p-6 bg-slate-900 border border-slate-800 rounded-lg col-span-1 md:col-span-3">
+                <h4 class="text-pink-400 font-bold mb-3">Hyper-Cleaning</h4>
+                <p class="text-xs text-slate-400">
+                    Kotlin projects accumulate massive <code>build/</code> and <code>.gradle/</code> folders. Use <code>worktree clean --artifacts</code> (or <code>Shift+C</code> in the TUI) to purge these from background worktrees while keeping your current environment intact.
+                </p>
+            </div>
         </div>
     </div>
 </section>

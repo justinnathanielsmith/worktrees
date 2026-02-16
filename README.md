@@ -71,6 +71,7 @@ cargo install --git https://github.com/justinnathanielsmith/worktrees
 - **Convert Existing Repos**: Turn standard git repositories into Bare Hubs with `worktree convert`.
 - **Smart Branching**: Create worktrees from any branch or commit.
 - **AI Integration**: Generate commit messages with Gemini 1.5 Flash.
+- **Smart Cleanup**: reclaim disk space by purging build artifacts from inactive environments.
 - **Cross-Platform**: Works on macOS, Linux, and Windows.
 
 ## Quick Start
@@ -104,7 +105,14 @@ worktree
 - `worktree switch <name>`: Switch to a worktree (outputs path).
 - `worktree checkout <name> <branch>`: Switch a worktree to a different branch.
 - `worktree config set-key <key>`: Set Gemini API key for AI features.
-- `worktree clean --dry-run`: cleanup stale worktrees.
+- `worktree clean [--artifacts] [--dry-run]`: Cleanup stale worktrees or purge build artifacts.
+    - `--artifacts`: Removes `node_modules`, `target`, `build`, `dist`, `.gradle`, etc. from **inactive** worktrees.
+    - Safety: It will never touch artifacts in your current working directory.
+
+### TUI Hotkeys (Worktree List)
+
+- **`c`**: **Prune** stale metadata (cleans up legacy references in `.bare/worktrees`).
+- **`Shift+C`**: **Clean** build artifacts from all worktrees except the one you are currently in. Requires confirmation.
 
 
 ### Local Development

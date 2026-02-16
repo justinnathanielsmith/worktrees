@@ -648,7 +648,7 @@ mod tests {
             Ok(())
         }
 
-        fn clean_worktrees(&self, _dry_run: bool) -> anyhow::Result<Vec<String>> {
+        fn clean_worktrees(&self, _dry_run: bool, _artifacts: bool) -> anyhow::Result<Vec<String>> {
             Ok(vec![])
         }
 

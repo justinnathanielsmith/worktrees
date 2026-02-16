@@ -35,6 +35,7 @@ pub enum Intent {
     },
     CleanWorktrees {
         dry_run: bool,
+        artifacts: bool,
     },
     SwitchWorktree {
         name: String,
