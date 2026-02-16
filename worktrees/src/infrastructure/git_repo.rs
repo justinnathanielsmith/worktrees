@@ -1,4 +1,4 @@
-use crate::domain::repository::{ProjectContext, ProjectRepository, Worktree};
+use crate::domain::repository::{GitCommit, GitStatus, ProjectContext, ProjectRepository, Worktree};
 use anyhow::{Context, Result};
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -60,6 +60,40 @@ impl GitProjectRepository {
                 if std::fs::read_to_string(&dest_gradle).map(|c| !c.contains("org.gradle.caching")).unwrap_or(false) {
                     let _ = writeln!(file, "\n# Optimized for Worktrees\norg.gradle.caching=true");
                 }
+            }
+        }
+    }
+
+    fn get_status_summary(&self, path: &str) -> Result<String> {
+        let output = Self::run_git(&["-C", path, "status", "--porcelain"])?;
+        if output.trim().is_empty() {
+            Ok("clean".to_string())
+        } else {
+            let mut staged = 0;
+            let mut unstaged = 0;
+            let mut untracked = 0;
+
+            for line in output.lines() {
+                if line.len() < 2 { continue; }
+                let s = &line[..2];
+                match s {
+                    "M " | "A " | "D " | "R " | "C " => staged += 1,
+                    " M" | " D" | " T" => unstaged += 1,
+                    "??" => untracked += 1,
+                    "MM" | "MD" => { staged += 1; unstaged += 1; }
+                    _ => unstaged += 1,
+                }
+            }
+            
+            let mut summary = Vec::new();
+            if staged > 0 { summary.push(format!("+{}", staged)); }
+            if unstaged > 0 { summary.push(format!("~{}", unstaged)); }
+            if untracked > 0 { summary.push(format!("?{}", untracked)); }
+            
+            if summary.is_empty() {
+                Ok("clean".to_string())
+            } else {
+                Ok(summary.join(" "))
             }
         }
     }
@@ -181,35 +215,38 @@ impl ProjectRepository for GitProjectRepository {
     fn list_worktrees(&self) -> Result<Vec<Worktree>> {
         let output = Self::run_git(&["worktree", "list", "--porcelain"])?;
         
-        Ok(output
-            .split("\n\n")
-            .filter(|block| !block.is_empty())
-            .map(|block| {
-                block.lines().fold(
-                    Worktree {
-                        path: String::new(),
-                        commit: String::new(),
-                        branch: String::new(),
-                        is_bare: false,
-                        is_detached: false,
-                    },
-                    |mut wt, line| {
-                        if let Some(path) = line.strip_prefix("worktree ") {
-                            wt.path = path.to_string();
-                        } else if let Some(head) = line.strip_prefix("HEAD ") {
-                            wt.commit = head.chars().take(7).collect();
-                        } else if let Some(branch) = line.strip_prefix("branch ") {
-                            wt.branch = branch.trim_start_matches("refs/heads/").to_string();
-                        } else if line == "bare" {
-                            wt.is_bare = true;
-                        } else if line == "detached" {
-                            wt.is_detached = true;
-                        }
-                        wt
-                    },
-                )
-            })
-            .collect())
+        let mut worktrees = Vec::new();
+        for block in output.split("\n\n").filter(|block| !block.is_empty()) {
+            let mut wt = Worktree {
+                path: String::new(),
+                commit: String::new(),
+                branch: String::new(),
+                is_bare: false,
+                is_detached: false,
+                status_summary: None,
+            };
+
+            for line in block.lines() {
+                if let Some(path) = line.strip_prefix("worktree ") {
+                    wt.path = path.to_string();
+                } else if let Some(head) = line.strip_prefix("HEAD ") {
+                    wt.commit = head.chars().take(7).collect();
+                } else if let Some(branch) = line.strip_prefix("branch ") {
+                    wt.branch = branch.trim_start_matches("refs/heads/").to_string();
+                } else if line == "bare" {
+                    wt.is_bare = true;
+                } else if line == "detached" {
+                    wt.is_detached = true;
+                }
+            }
+
+            if !wt.is_bare && !wt.path.is_empty() {
+                wt.status_summary = self.get_status_summary(&wt.path).ok();
+            }
+
+            worktrees.push(wt);
+        }
+        Ok(worktrees)
     }
 
     fn detect_context(&self) -> ProjectContext {
@@ -240,6 +277,88 @@ impl ProjectRepository for GitProjectRepository {
 
     fn set_preferred_editor(&self, editor: &str) -> Result<()> {
         std::fs::write(".worktrees.editor", editor)?;
+        Ok(())
+    }
+
+    fn fetch(&self, path: &str) -> Result<()> {
+        Self::run_git(&["-C", path, "fetch", "--all", "--prune"])?;
+        Ok(())
+    }
+
+    fn get_status(&self, path: &str) -> Result<GitStatus> {
+        let output = Self::run_git(&["-C", path, "status", "--porcelain"])?;
+        let mut staged = Vec::new();
+        let mut unstaged = Vec::new();
+        let mut untracked = Vec::new();
+
+        for line in output.lines() {
+            if line.len() < 4 { continue; }
+            let status = &line[..2];
+            let file = line[3..].to_string();
+
+            match status {
+                "M " | "A " | "D " | "R " | "C " => staged.push(file),
+                " M" | " D" => unstaged.push(file),
+                "??" => untracked.push(file),
+                "MM" => {
+                    staged.push(file.clone());
+                    unstaged.push(file);
+                }
+                _ => {}
+            }
+        }
+
+        Ok(GitStatus { staged, unstaged, untracked })
+    }
+
+    fn stage_file(&self, path: &str, file: &str) -> Result<()> {
+        Self::run_git(&["-C", path, "add", file])?;
+        Ok(())
+    }
+
+    fn unstage_file(&self, path: &str, file: &str) -> Result<()> {
+        Self::run_git(&["-C", path, "reset", "HEAD", "--", file])?;
+        Ok(())
+    }
+
+    fn commit(&self, path: &str, message: &str) -> Result<()> {
+        Self::run_git(&["-C", path, "commit", "-m", message])?;
+        Ok(())
+    }
+
+    fn get_history(&self, path: &str, limit: usize) -> Result<Vec<GitCommit>> {
+        let limit_str = limit.to_string();
+        let output = Self::run_git(&[
+            "-C", path, "log", 
+            &format!("-{}", limit_str),
+            "--pretty=format:%h|%an|%ad|%s",
+            "--date=short"
+        ])?;
+
+        Ok(output.lines()
+            .filter_map(|line| {
+                let parts: Vec<&str> = line.split('|').collect();
+                if parts.len() == 4 {
+                    Some(GitCommit {
+                        hash: parts[0].to_string(),
+                        author: parts[1].to_string(),
+                        date: parts[2].to_string(),
+                        message: parts[3].to_string(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect())
+    }
+
+    fn list_branches(&self) -> Result<Vec<String>> {
+        let output = Self::run_git(&["branch", "--format=%(refname:short)"])?;
+        Ok(output.lines().map(|s| s.to_string()).collect())
+    }
+
+    fn switch_branch(&self, path: &str, branch: &str) -> Result<()> {
+        Self::run_git(&["-C", path, "checkout", branch])?;
         Ok(())
     }
 }

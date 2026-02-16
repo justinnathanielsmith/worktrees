@@ -5,6 +5,7 @@ use ratatui::widgets::TableState;
 pub enum PromptType {
     AddIntent,
     InitUrl,
+    CommitMessage,
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
@@ -22,19 +23,41 @@ pub enum AppState {
     WorktreeAdded { intent: String },
     RemovingWorktree { intent: String },
     WorktreeRemoved,
-    Syncing { branch: String },
-    SyncComplete { branch: String },
+    Syncing { branch: String, prev_state: Box<AppState> },
+    SyncComplete { branch: String, prev_state: Box<AppState> },
     SelectingEditor { 
         branch: String, 
         options: Vec<EditorConfig>,
         selected: usize,
         prev_state: Box<AppState> 
     },
-    OpeningEditor { branch: String, editor: String },
+    OpeningEditor { branch: String, editor: String, prev_state: Box<AppState> },
     ListingWorktrees { 
         worktrees: Vec<Worktree>, 
         table_state: TableState,
         refresh_needed: bool,
+    },
+    ViewingStatus {
+        path: String,
+        branch: String,
+        staged: Vec<String>,
+        unstaged: Vec<String>,
+        untracked: Vec<String>,
+        selected_index: usize, // Combined index for all three lists
+        prev_state: Box<AppState>,
+    },
+    ViewingHistory {
+        path: String,
+        branch: String,
+        commits: Vec<crate::domain::repository::GitCommit>,
+        selected_index: usize,
+        prev_state: Box<AppState>,
+    },
+    SwitchingBranch {
+        path: String,
+        branches: Vec<String>,
+        selected_index: usize,
+        prev_state: Box<AppState>,
     },
     Prompting {
         prompt_type: PromptType,

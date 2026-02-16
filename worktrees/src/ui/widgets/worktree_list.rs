@@ -53,9 +53,21 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
 
                 let prefix = if is_selected { "  ▶ " } else { "    " };
 
+                let status_cell = if let Some(summary) = &wt.status_summary {
+                    let color = if summary == "clean" {
+                        theme.success
+                    } else {
+                        theme.accent
+                    };
+                    Cell::from(summary.clone()).style(Style::default().fg(color))
+                } else {
+                    Cell::from("-")
+                };
+
                 Row::new(vec![
                     Cell::from(format!("{}{}", prefix, icon)),
                     Cell::from(branch_str).style(branch_style),
+                    status_cell,
                     Cell::from(wt.commit.clone()).style(Style::default().fg(theme.primary)),
                     Cell::from(wt.path.clone()).style(Style::default().fg(theme.subtle)),
                 ])
@@ -68,13 +80,14 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
             rows,
             [
                 Constraint::Length(8),
-                Constraint::Percentage(30),
+                Constraint::Percentage(25),
+                Constraint::Length(10),
                 Constraint::Length(12),
                 Constraint::Min(20),
             ],
         )
         .header(
-            Row::new(vec!["", "  BRANCH / INTENT", "COMMIT", "LOCAL PATH"])
+            Row::new(vec!["", "  BRANCH / INTENT", "STATUS", "COMMIT", "LOCAL PATH"])
                 .style(Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD))
                 .bottom_margin(1),
         )

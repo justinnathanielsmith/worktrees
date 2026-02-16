@@ -461,6 +461,7 @@ mod tests {
                     branch: "main".to_string(),
                     is_bare: false,
                     is_detached: false,
+                    status_summary: Some("clean".to_string()),
                 },
                 Worktree {
                     path: "dev".to_string(),
@@ -468,6 +469,7 @@ mod tests {
                     branch: "dev".to_string(),
                     is_bare: false,
                     is_detached: false,
+                    status_summary: Some("~1".to_string()),
                 }
             ])
         }
@@ -488,6 +490,20 @@ mod tests {
         fn set_preferred_editor(&self, _editor: &str) -> anyhow::Result<()> {
             Ok(())
         }
+        fn fetch(&self, _path: &str) -> anyhow::Result<()> { Ok(()) }
+        fn get_status(&self, _path: &str) -> anyhow::Result<domain::repository::GitStatus> {
+            Ok(domain::repository::GitStatus { staged: vec![], unstaged: vec![], untracked: vec![] })
+        }
+        fn stage_file(&self, _path: &str, _file: &str) -> anyhow::Result<()> { Ok(()) }
+        fn unstage_file(&self, _path: &str, _file: &str) -> anyhow::Result<()> { Ok(()) }
+        fn commit(&self, _path: &str, _message: &str) -> anyhow::Result<()> { Ok(()) }
+        fn get_history(&self, _path: &str, _limit: usize) -> anyhow::Result<Vec<domain::repository::GitCommit>> {
+            Ok(vec![])
+        }
+        fn list_branches(&self) -> anyhow::Result<Vec<String>> {
+            Ok(vec!["main".to_string(), "dev".to_string()])
+        }
+        fn switch_branch(&self, _path: &str, _branch: &str) -> anyhow::Result<()> { Ok(()) }
     }
 
     #[test]

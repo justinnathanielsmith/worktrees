@@ -1,5 +1,6 @@
 use crate::app::model::{AppState, EditorConfig, PromptType};
 use crate::domain::repository::{ProjectRepository, Worktree};
+use crate::ui::theme::CyberTheme;
 use crate::ui::widgets::{
     details::DetailsWidget, footer::FooterWidget, header::HeaderWidget,
     worktree_list::WorktreeListWidget,
@@ -164,13 +165,17 @@ impl View {
                                         && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
                                             let branch = wt.branch.clone();
                                             let path = wt.path.clone();
-                                            *state = AppState::Syncing { branch: branch.clone() };
+                                            let prev = Box::new(state.clone());
+                                            *state = AppState::Syncing { branch: branch.clone(), prev_state: prev.clone() };
                                             terminal.draw(|f| Self::draw(f, repo, state))?;
                                             let _ = repo.sync_configs(&path);
-                                            *state = AppState::SyncComplete { branch: branch.clone() };
+                                            *state = AppState::SyncComplete { branch: branch.clone(), prev_state: prev };
                                             terminal.draw(|f| Self::draw(f, repo, state))?;
                                             std::thread::sleep(Duration::from_millis(800));
-                                            state.request_refresh();
+                                            if let AppState::SyncComplete { prev_state, .. } = state {
+                                                *state = *prev_state.clone();
+                                                state.request_refresh();
+                                            }
                                         }
                                 }
                                 KeyCode::Char('S') => {
@@ -179,31 +184,40 @@ impl View {
                                         .map(|wt| (wt.branch.clone(), wt.path.clone()))
                                         .collect();
                                     
-                                    *state = AppState::Syncing { branch: "ALL".to_string() };
+                                    let prev = Box::new(state.clone());
+                                    *state = AppState::Syncing { branch: "ALL".to_string(), prev_state: prev.clone() };
                                     terminal.draw(|f| Self::draw(f, repo, state))?;
                                     for (_, path) in targets {
                                         let _ = repo.sync_configs(&path);
                                     }
-                                    *state = AppState::SyncComplete { branch: "ALL".to_string() };
+                                    *state = AppState::SyncComplete { branch: "ALL".to_string(), prev_state: prev };
                                     terminal.draw(|f| Self::draw(f, repo, state))?;
                                     std::thread::sleep(Duration::from_millis(800));
-                                    state.request_refresh();
+                                    if let AppState::SyncComplete { prev_state, .. } = state {
+                                        *state = *prev_state.clone();
+                                        state.request_refresh();
+                                    }
                                 }
                                 KeyCode::Char('o') => {
                                     if let Some(i) = table_state.selected()
                                         && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
                                             let branch = wt.branch.clone();
                                             let path = wt.path.clone();
+                                            let prev = Box::new(state.clone());
                                             
                                             if let Ok(Some(editor)) = repo.get_preferred_editor() {
                                                 *state = AppState::OpeningEditor { 
                                                     branch: branch.clone(), 
-                                                    editor: editor.clone() 
+                                                    editor: editor.clone(),
+                                                    prev_state: prev.clone(),
                                                 };
                                                 terminal.draw(|f| Self::draw(f, repo, state))?;
                                                 let _ = Command::new(&editor).arg(&path).spawn();
                                                 std::thread::sleep(Duration::from_millis(800));
-                                                state.request_refresh();
+                                                if let AppState::OpeningEditor { prev_state, .. } = state {
+                                                    *state = *prev_state.clone();
+                                                    state.request_refresh();
+                                                }
                                             } else {
                                                 let options = vec![
                                                     EditorConfig { name: "VS Code".into(), command: "code".into() },
@@ -219,7 +233,7 @@ impl View {
                                                     branch,
                                                     options,
                                                     selected: 0,
-                                                    prev_state: Box::new(state.clone()),
+                                                    prev_state: prev,
                                                 };
                                             }
                                         }
@@ -250,6 +264,137 @@ impl View {
                                     let _ = repo.add_worktree("dev", "dev");
                                     state.request_refresh();
                                 }
+                                KeyCode::Char('g') => {
+                                    if let Some(i) = table_state.selected()
+                                        && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
+                                            if let Ok(status) = repo.get_status(&wt.path) {
+                                                *state = AppState::ViewingStatus {
+                                                    path: wt.path.clone(),
+                                                    branch: wt.branch.clone(),
+                                                    staged: status.staged,
+                                                    unstaged: status.unstaged,
+                                                    untracked: status.untracked,
+                                                    selected_index: 0,
+                                                    prev_state: Box::new(state.clone()),
+                                                };
+                                            }
+                                        }
+                                }
+                                KeyCode::Char('l') => {
+                                    if let Some(i) = table_state.selected()
+                                        && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
+                                            if let Ok(commits) = repo.get_history(&wt.path, 50) {
+                                                *state = AppState::ViewingHistory {
+                                                    path: wt.path.clone(),
+                                                    branch: wt.branch.clone(),
+                                                    commits,
+                                                    selected_index: 0,
+                                                    prev_state: Box::new(state.clone()),
+                                                };
+                                            }
+                                        }
+                                }
+                                KeyCode::Char('b') => {
+                                    if let Some(i) = table_state.selected()
+                                        && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
+                                            if let Ok(branches) = repo.list_branches() {
+                                                *state = AppState::SwitchingBranch {
+                                                    path: wt.path.clone(),
+                                                    branches,
+                                                    selected_index: 0,
+                                                    prev_state: Box::new(state.clone()),
+                                                };
+                                            }
+                                        }
+                                }
+                                KeyCode::Char('f') => {
+                                    if let Some(i) = table_state.selected()
+                                        && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
+                                            let _ = repo.fetch(&wt.path);
+                                            state.request_refresh();
+                                        }
+                                }
+                                _ => {}
+                            }
+                        }
+                        AppState::ViewingStatus { path, staged, unstaged, untracked, selected_index, prev_state, .. } => {
+                            let total = staged.len() + unstaged.len() + untracked.len();
+                            match key.code {
+                                KeyCode::Esc | KeyCode::Char('q') => {
+                                    *state = *prev_state.clone();
+                                }
+                                KeyCode::Down | KeyCode::Char('j') => {
+                                    if total > 0 { *selected_index = (*selected_index + 1) % total; }
+                                }
+                                KeyCode::Up | KeyCode::Char('k') => {
+                                    if total > 0 { *selected_index = (*selected_index + total - 1) % total; }
+                                }
+                                KeyCode::Char(' ') => {
+                                    // Stage/Unstage
+                                    let idx = *selected_index;
+                                    if idx < staged.len() {
+                                        let file = staged[idx].clone();
+                                        let _ = repo.unstage_file(path, &file);
+                                    } else if idx < staged.len() + unstaged.len() {
+                                        let file = unstaged[idx - staged.len()].clone();
+                                        let _ = repo.stage_file(path, &file);
+                                    } else if idx < total {
+                                        let file = untracked[idx - staged.len() - unstaged.len()].clone();
+                                        let _ = repo.stage_file(path, &file);
+                                    }
+                                    // Refresh status
+                                    if let Ok(status) = repo.get_status(path) {
+                                        *staged = status.staged;
+                                        *unstaged = status.unstaged;
+                                        *untracked = status.untracked;
+                                        let new_total = staged.len() + unstaged.len() + untracked.len();
+                                        if new_total > 0 && *selected_index >= new_total {
+                                            *selected_index = new_total - 1;
+                                        }
+                                    }
+                                }
+                                KeyCode::Char('c') => {
+                                    *state = AppState::Prompting {
+                                        prompt_type: PromptType::CommitMessage,
+                                        input: String::new(),
+                                        prev_state: Box::new(state.clone()),
+                                    };
+                                }
+                                _ => {}
+                            }
+                        }
+                        AppState::ViewingHistory { selected_index, commits, prev_state, .. } => {
+                            match key.code {
+                                KeyCode::Esc | KeyCode::Char('q') => {
+                                    *state = *prev_state.clone();
+                                }
+                                KeyCode::Down | KeyCode::Char('j') => {
+                                    if !commits.is_empty() { *selected_index = (*selected_index + 1) % commits.len(); }
+                                }
+                                KeyCode::Up | KeyCode::Char('k') => {
+                                    if !commits.is_empty() { *selected_index = (*selected_index + commits.len() - 1) % commits.len(); }
+                                }
+                                _ => {}
+                            }
+                        }
+                        AppState::SwitchingBranch { path, branches, selected_index, prev_state } => {
+                            match key.code {
+                                KeyCode::Esc | KeyCode::Char('q') => {
+                                    *state = *prev_state.clone();
+                                }
+                                KeyCode::Down | KeyCode::Char('j') => {
+                                    if !branches.is_empty() { *selected_index = (*selected_index + 1) % branches.len(); }
+                                }
+                                KeyCode::Up | KeyCode::Char('k') => {
+                                    if !branches.is_empty() { *selected_index = (*selected_index + branches.len() - 1) % branches.len(); }
+                                }
+                                KeyCode::Enter => {
+                                    if let Some(branch) = branches.get(*selected_index) {
+                                        let _ = repo.switch_branch(path, branch);
+                                    }
+                                    *state = *prev_state.clone();
+                                    state.request_refresh();
+                                }
                                 _ => {}
                             }
                         }
@@ -275,16 +420,29 @@ impl View {
                                     if let Some(p) = path {
                                         *state = AppState::OpeningEditor { 
                                             branch: branch.clone(), 
-                                            editor: editor.clone() 
+                                            editor: editor.clone(),
+                                            prev_state: prev_state.clone(),
                                         };
                                         terminal.draw(|f| Self::draw(f, repo, state))?;
                                         let _ = Command::new(&editor).arg(&p).spawn();
                                         std::thread::sleep(Duration::from_millis(800));
+                                        if let AppState::OpeningEditor { prev_state, .. } = state {
+                                            *state = *prev_state.clone();
+                                        }
                                     }
                                     state.request_refresh();
                                 }
                                 KeyCode::Esc => {
                                     *state = *prev_state.clone();
+                                }
+                                _ => {}
+                            }
+                        }
+                        AppState::Syncing { prev_state, .. } | AppState::SyncComplete { prev_state, .. } | AppState::OpeningEditor { prev_state, .. } => {
+                            match key.code {
+                                KeyCode::Char('q') | KeyCode::Esc | KeyCode::Enter => {
+                                    *state = *prev_state.clone();
+                                    state.request_refresh();
                                 }
                                 _ => {}
                             }
@@ -297,17 +455,43 @@ impl View {
                                         match prompt_type {
                                             PromptType::AddIntent => {
                                                 let _ = repo.add_worktree(&val, &val);
+                                                *state = AppState::ListingWorktrees {
+                                                    worktrees: Vec::new(),
+                                                    table_state: TableState::default(),
+                                                    refresh_needed: true,
+                                                };
                                             }
                                             PromptType::InitUrl => {
                                                 let _ = repo.init_bare_repo(&val, "project");
+                                                *state = AppState::ListingWorktrees {
+                                                    worktrees: Vec::new(),
+                                                    table_state: TableState::default(),
+                                                    refresh_needed: true,
+                                                };
+                                            }
+                                            PromptType::CommitMessage => {
+                                                if let AppState::ViewingStatus { path, .. } = &**prev_state {
+                                                    let _ = repo.commit(path, &val);
+                                                    // Refresh status
+                                                    if let Ok(status) = repo.get_status(path) {
+                                                        let mut new_state = (**prev_state).clone();
+                                                        if let AppState::ViewingStatus { staged, unstaged, untracked, .. } = &mut new_state {
+                                                            *staged = status.staged;
+                                                            *unstaged = status.unstaged;
+                                                            *untracked = status.untracked;
+                                                        }
+                                                        *state = new_state;
+                                                    } else {
+                                                        *state = *prev_state.clone();
+                                                    }
+                                                } else {
+                                                    *state = *prev_state.clone();
+                                                }
                                             }
                                         }
+                                    } else {
+                                        *state = *prev_state.clone();
                                     }
-                                    *state = AppState::ListingWorktrees {
-                                        worktrees: Vec::new(),
-                                        table_state: TableState::default(),
-                                        refresh_needed: true,
-                                    };
                                 }
                                 KeyCode::Esc => {
                                     *state = *prev_state.clone();
@@ -391,7 +575,185 @@ impl View {
                 
                 f.render_widget(DetailsWidget::new(selected_worktree, context), chunks[2]);
             }
+            AppState::ViewingStatus { branch, staged, unstaged, untracked, selected_index, .. } => {
+                let theme = CyberTheme::default();
+                let area = centered_rect(90, 85, f.area());
+                f.render_widget(Clear, area);
+
+                let outer_block = Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Thick)
+                    .border_style(Style::default().fg(theme.primary))
+                    .title(Span::styled(format!("  GIT STATUS: {} ", branch), Style::default().fg(theme.primary).add_modifier(Modifier::BOLD)));
+                
+                let inner_area = outer_block.inner(area);
+                f.render_widget(outer_block, area);
+
+                let chunks = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                    .split(inner_area);
+
+                // --- STAGED COLUMN ---
+                let mut staged_items = Vec::new();
+                for (i, file) in staged.iter().enumerate() {
+                    let is_selected = i == *selected_index;
+                    let style = if is_selected {
+                        Style::default().bg(theme.selection_bg).fg(theme.primary).add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(theme.success)
+                    };
+                    
+                    let prefix = if is_selected { " ▶ " } else { "   " };
+                    staged_items.push(Line::from(vec![
+                        Span::styled(prefix, style),
+                        Span::styled("󰄬 ", style),
+                        Span::styled(file, style),
+                    ]));
+                }
+                let staged_list = Paragraph::new(staged_items)
+                    .block(Block::default()
+                        .borders(Borders::RIGHT)
+                        .border_style(Style::default().fg(theme.border))
+                        .title(Span::styled(" 󰄬 STAGED CHANGES ", Style::default().fg(theme.success).add_modifier(Modifier::BOLD))));
+                f.render_widget(staged_list, chunks[0]);
+
+                // --- UNSTAGED COLUMN ---
+                let mut unstaged_items = Vec::new();
+                let unstaged_start = staged.len();
+                for (i, file) in unstaged.iter().enumerate() {
+                    let is_selected = (i + unstaged_start) == *selected_index;
+                    let style = if is_selected {
+                        Style::default().bg(theme.selection_bg).fg(theme.primary).add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(theme.warning)
+                    };
+                    
+                    let prefix = if is_selected { " ▶ " } else { "   " };
+                    unstaged_items.push(Line::from(vec![
+                        Span::styled(prefix, style),
+                        Span::styled("󱇨 ", style),
+                        Span::styled(file, style),
+                    ]));
+                }
+
+                let untracked_start = staged.len() + unstaged.len();
+                for (i, file) in untracked.iter().enumerate() {
+                    let is_selected = (i + untracked_start) == *selected_index;
+                    let style = if is_selected {
+                        Style::default().bg(theme.selection_bg).fg(theme.primary).add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(theme.error)
+                    };
+                    
+                    let prefix = if is_selected { " ▶ " } else { "   " };
+                    unstaged_items.push(Line::from(vec![
+                        Span::styled(prefix, style),
+                        Span::styled("󰡯 ", style),
+                        Span::styled(file, style),
+                    ]));
+                }
+
+                let unstaged_list = Paragraph::new(unstaged_items)
+                    .block(Block::default()
+                        .title(Span::styled(" 󱇨 UNSTAGED / UNTRACKED ", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD))));
+                f.render_widget(unstaged_list, chunks[1]);
+
+                // --- HELPER FOOTER ---
+                let footer_area = Rect::new(area.x + 2, area.y + area.height - 1, area.width - 4, 1);
+                let help_text = Line::from(vec![
+                    Span::styled(" [SPACE]", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                    Span::raw(" TOGGLE STAGE  "),
+                    Span::styled(" [C]", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                    Span::raw(" COMMIT  "),
+                    Span::styled(" [ESC/Q]", Style::default().fg(theme.subtle).add_modifier(Modifier::BOLD)),
+                    Span::raw(" BACK "),
+                ]);
+                f.render_widget(Paragraph::new(help_text).alignment(Alignment::Center), footer_area);
+            }
+            AppState::ViewingHistory { branch, commits, selected_index, .. } => {
+                let theme = CyberTheme::default();
+                let area = centered_rect(85, 80, f.area());
+                f.render_widget(Clear, area);
+
+                let outer_block = Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(theme.secondary))
+                    .title(Span::styled(format!(" 󰊚 COMMIT LOG: {} ", branch), Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)));
+                
+                let inner_area = outer_block.inner(area);
+                f.render_widget(outer_block, area);
+
+                let mut items = Vec::new();
+                for (i, commit) in commits.iter().enumerate() {
+                    let is_selected = i == *selected_index;
+                    let row_style = if is_selected {
+                        Style::default().bg(theme.selection_bg).fg(theme.text).add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(theme.text)
+                    };
+
+                    let prefix = if is_selected { " ▶ " } else { "   " };
+                    
+                    items.push(Line::from(vec![
+                        Span::styled(prefix, row_style.fg(theme.primary)),
+                        Span::styled(&commit.hash, row_style.fg(theme.warning)),
+                        Span::raw(" "),
+                        Span::styled(format!(" {:<10} ", commit.date), row_style.fg(theme.subtle)),
+                        Span::styled(format!(" {:<15} ", commit.author), row_style.fg(theme.accent)),
+                        Span::styled(&commit.message, row_style),
+                    ]));
+                }
+
+                let p = Paragraph::new(items)
+                    .alignment(Alignment::Left);
+                f.render_widget(p, inner_area);
+
+                // Footer
+                let footer_area = Rect::new(area.x + 2, area.y + area.height - 1, area.width - 4, 1);
+                let help_text = Paragraph::new(Line::from(vec![
+                    Span::styled(" [UP/DOWN]", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                    Span::raw(" NAVIGATE  "),
+                    Span::styled(" [ESC/Q]", Style::default().fg(theme.subtle).add_modifier(Modifier::BOLD)),
+                    Span::raw(" BACK "),
+                ])).alignment(Alignment::Center);
+                f.render_widget(help_text, footer_area);
+            }
+            AppState::SwitchingBranch { branches, selected_index, .. } => {
+                let theme = CyberTheme::default();
+                let area = centered_rect(50, 60, f.area());
+                f.render_widget(Clear, area);
+
+                let block = Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(theme.primary))
+                    .title(Span::styled("  SWITCH BRANCH ", Style::default().fg(theme.primary).add_modifier(Modifier::BOLD)));
+
+                let inner_area = block.inner(area);
+                f.render_widget(block, area);
+
+                let mut items = Vec::new();
+                for (i, branch) in branches.iter().enumerate() {
+                    let is_selected = i == *selected_index;
+                    let style = if is_selected {
+                        Style::default().bg(theme.selection_bg).fg(theme.primary).add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(theme.text)
+                    };
+                    
+                    let prefix = if is_selected { " ▶ " } else { "   " };
+                    items.push(Line::from(vec![
+                        Span::styled(prefix, style.fg(theme.primary)),
+                        Span::styled(branch, style),
+                    ]));
+                }
+
+                f.render_widget(Paragraph::new(items), inner_area);
+            }
             AppState::Prompting { prompt_type, input, .. } => {
+                let theme = CyberTheme::default();
                 let table = WorktreeListWidget::new(&[]);
                 f.render_stateful_widget(table, chunks[1], &mut TableState::default());
                 f.render_widget(DetailsWidget::new(None, context), chunks[2]);
@@ -399,19 +761,22 @@ impl View {
                 let area = centered_rect(60, 20, f.area());
                 f.render_widget(Clear, area);
                 
-                let title = match prompt_type {
-                    PromptType::AddIntent => " ADD NEW WORKTREE (Name) ",
-                    PromptType::InitUrl => " INITIALIZE REPOSITORY (URL) ",
+                let (title, icon) = match prompt_type {
+                    PromptType::AddIntent => (" ADD NEW WORKTREE ", "󰙅 "),
+                    PromptType::InitUrl => (" INITIALIZE REPOSITORY ", "󰚚 "),
+                    PromptType::CommitMessage => (" COMMIT MESSAGE ", "󰊚 "),
                 };
 
-                let input_widget = Paragraph::new(Span::styled(
-                    format!(" > {}_", input),
-                    Style::default().fg(RatatuiColor::Cyan).add_modifier(Modifier::BOLD)
-                ))
+                let input_widget = Paragraph::new(Line::from(vec![
+                    Span::styled(format!(" {} > ", icon), Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                    Span::styled(input.as_str(), Style::default().fg(theme.text)),
+                    Span::styled("_", Style::default().fg(theme.primary).add_modifier(Modifier::SLOW_BLINK)),
+                ]))
                 .block(Block::default()
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
-                    .title(Span::styled(title, Style::default().add_modifier(Modifier::BOLD))));
+                    .border_style(Style::default().fg(theme.accent))
+                    .title(Span::styled(title, Style::default().fg(theme.accent).add_modifier(Modifier::BOLD))));
                 
                 f.render_widget(input_widget, area);
             }
@@ -448,7 +813,7 @@ impl View {
                 
                 f.render_widget(p, area);
             }
-            AppState::Syncing { branch } => {
+            AppState::Syncing { branch, .. } => {
                 let table = WorktreeListWidget::new(&[]);
                 f.render_stateful_widget(table, chunks[1], &mut TableState::default());
                 f.render_widget(DetailsWidget::new(None, context), chunks[2]);
@@ -465,7 +830,7 @@ impl View {
                 .alignment(Alignment::Center);
                 f.render_widget(p, area);
             }
-            AppState::SyncComplete { branch } => {
+            AppState::SyncComplete { branch, .. } => {
                 let table = WorktreeListWidget::new(&[]);
                 f.render_stateful_widget(table, chunks[1], &mut TableState::default());
                 f.render_widget(DetailsWidget::new(None, context), chunks[2]);
@@ -482,7 +847,7 @@ impl View {
                 .alignment(Alignment::Center);
                 f.render_widget(p, area);
             }
-            AppState::OpeningEditor { branch, editor } => {
+            AppState::OpeningEditor { branch, editor, .. } => {
                 let table = WorktreeListWidget::new(&[]);
                 f.render_stateful_widget(table, chunks[1], &mut TableState::default());
                 f.render_widget(DetailsWidget::new(None, context), chunks[2]);
@@ -584,7 +949,7 @@ impl View {
                     "WORKTREE REMOVED".green().bold()
                 );
             }
-            AppState::Syncing { branch } => {
+            AppState::Syncing { branch, .. } => {
                 println!(
                     "{} {} [{} {}]",
                     "🔄".cyan(),
@@ -593,7 +958,7 @@ impl View {
                     "SYNCHRONIZING".yellow()
                 );
             }
-            AppState::SyncComplete { branch } => {
+            AppState::SyncComplete { branch, .. } => {
                 println!(
                     "   {} {} {}",
                     "┗━".dimmed(),
@@ -610,7 +975,7 @@ impl View {
                     "PENDING SELECTION".yellow()
                 );
             }
-            AppState::OpeningEditor { branch, editor } => {
+            AppState::OpeningEditor { branch, editor, .. } => {
                 println!(
                     "{} {} [{} {}]",
                     "📝".yellow(),
@@ -656,7 +1021,7 @@ impl View {
                     "Check git state and permissions.".dimmed()
                 );
             }
-            AppState::Welcome | AppState::Prompting { .. } => {
+            AppState::Welcome | AppState::Prompting { .. } | AppState::ViewingStatus { .. } | AppState::ViewingHistory { .. } | AppState::SwitchingBranch { .. } => {
                 // These are handled by render_tui, no-op for CLI log view
             }
         }
