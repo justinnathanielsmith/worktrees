@@ -119,6 +119,25 @@ impl GitProjectRepository {
             }
         }
     }
+
+    fn parse_git_history(output: &str) -> Vec<GitCommit> {
+        output
+            .lines()
+            .filter_map(|line| {
+                let parts: Vec<&str> = line.splitn(4, '|').collect();
+                if parts.len() == 4 {
+                    Some(GitCommit {
+                        hash: parts[0].to_string(),
+                        author: parts[1].to_string(),
+                        date: parts[2].to_string(),
+                        message: parts[3].to_string(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }
 
 impl ProjectRepository for GitProjectRepository {
@@ -446,22 +465,7 @@ impl ProjectRepository for GitProjectRepository {
             "--date=short",
         ])?;
 
-        Ok(output
-            .lines()
-            .filter_map(|line| {
-                let parts: Vec<&str> = line.split('|').collect();
-                if parts.len() == 4 {
-                    Some(GitCommit {
-                        hash: parts[0].to_string(),
-                        author: parts[1].to_string(),
-                        date: parts[2].to_string(),
-                        message: parts[3].to_string(),
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect())
+        Ok(Self::parse_git_history(&output))
     }
 
     fn list_branches(&self) -> Result<Vec<String>> {
@@ -627,5 +631,62 @@ impl ProjectRepository for GitProjectRepository {
         }
 
         Ok(to_remove)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_git_history_normal() {
+        let output = "abc1234|John Doe|2023-01-01|Fix bug\ndef4567|Jane Smith|2023-01-02|Add feature";
+        let commits = GitProjectRepository::parse_git_history(output);
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].hash, "abc1234");
+        assert_eq!(commits[0].author, "John Doe");
+        assert_eq!(commits[0].date, "2023-01-01");
+        assert_eq!(commits[0].message, "Fix bug");
+        assert_eq!(commits[1].hash, "def4567");
+        assert_eq!(commits[1].author, "Jane Smith");
+        assert_eq!(commits[1].date, "2023-01-02");
+        assert_eq!(commits[1].message, "Add feature");
+    }
+
+    #[test]
+    fn test_parse_git_history_single() {
+        let output = "abc1234|John Doe|2023-01-01|Fix bug";
+        let commits = GitProjectRepository::parse_git_history(output);
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].hash, "abc1234");
+    }
+
+    #[test]
+    fn test_parse_git_history_empty() {
+        let output = "";
+        let commits = GitProjectRepository::parse_git_history(output);
+        assert!(commits.is_empty());
+    }
+
+    #[test]
+    fn test_parse_git_history_malformed() {
+        let output = "abc1234|John Doe|2023-01-01\ndef4567|Jane Smith|2023-01-02|Add feature|Extra";
+        let commits = GitProjectRepository::parse_git_history(output);
+        // First line is missing a part, second line has extra part (but splitn(4) handles it)
+        // Wait, splitn(4, '|') on "def4567|Jane Smith|2023-01-02|Add feature|Extra"
+        // will give ["def4567", "Jane Smith", "2023-01-02", "Add feature|Extra"]
+        // So it will have len 4 and be included.
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].hash, "def4567");
+        assert_eq!(commits[0].message, "Add feature|Extra");
+    }
+
+    #[test]
+    fn test_parse_git_history_with_pipes() {
+        let output = "abc1234|John Doe|2023-01-01|Message with | pipe";
+        let commits = GitProjectRepository::parse_git_history(output);
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].hash, "abc1234");
+        assert_eq!(commits[0].message, "Message with | pipe");
     }
 }
