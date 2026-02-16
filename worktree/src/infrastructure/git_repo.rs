@@ -750,7 +750,15 @@ impl ProjectRepository for GitProjectRepository {
             let current_dir = std::env::current_dir().context("Failed to get current directory")?;
             let worktrees = self.list_worktrees()?;
 
-            let artifact_dirs = ["node_modules", "target", "build", "dist", ".gradle", "bin", "obj"];
+            let artifact_dirs = [
+                "node_modules",
+                "target",
+                "build",
+                "dist",
+                ".gradle",
+                "bin",
+                "obj",
+            ];
 
             for wt in worktrees {
                 if wt.is_bare {
@@ -758,7 +766,7 @@ impl ProjectRepository for GitProjectRepository {
                 }
 
                 let wt_path = Path::new(&wt.path);
-                
+
                 // Safety: Only clean worktrees that are NOT the current one
                 if wt_path == current_dir {
                     debug!(path = ?wt_path, "Skipping current worktree for artifact cleaning");
@@ -778,7 +786,9 @@ impl ProjectRepository for GitProjectRepository {
                         } else {
                             match fs::remove_dir_all(&target) {
                                 Ok(_) => cleaned_paths.push(format!("cleaned: {}", path_str)),
-                                Err(e) => error!(error = %e, path = %path_str, "Failed to remove artifact directory"),
+                                Err(e) => {
+                                    error!(error = %e, path = %path_str, "Failed to remove artifact directory")
+                                }
                             }
                         }
                     }
@@ -1478,7 +1488,7 @@ mod tests {
         // 3. Add dev worktree
         Command::new(&git_cmd)
             .args(["worktree", "add", "../dev", "dev"])
-            .current_dir(&hub_dir.join("main"))
+            .current_dir(hub_dir.join("main"))
             .output()
             .unwrap();
 

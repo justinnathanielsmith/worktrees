@@ -142,7 +142,9 @@ pub fn render_status(
             let base_style = if is_deleted {
                 Style::default().fg(theme.error)
             } else {
-                Style::default().fg(theme.success).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme.success)
+                    .add_modifier(Modifier::BOLD)
             };
 
             let style = if is_selected {
@@ -194,7 +196,9 @@ pub fn render_status(
             let base_style = if is_deleted {
                 Style::default().fg(theme.error)
             } else {
-                Style::default().fg(theme.warning).add_modifier(Modifier::DIM)
+                Style::default()
+                    .fg(theme.warning)
+                    .add_modifier(Modifier::DIM)
             };
 
             let style = if is_selected {

@@ -61,7 +61,8 @@ pub fn handle_status_events<R: ProjectRepository>(
                     if idx < status.staged.len() {
                         let _ = repo.unstage_file(path, &status.staged[idx].0);
                     } else if idx < status.staged.len() + status.unstaged.len() {
-                        let _ = repo.stage_file(path, &status.unstaged[idx - status.staged.len()].0);
+                        let _ =
+                            repo.stage_file(path, &status.unstaged[idx - status.staged.len()].0);
                     } else if idx < status.total() {
                         let _ = repo.stage_file(
                             path,
