@@ -6,9 +6,7 @@ use crate::domain::repository::{ProjectRepository, Worktree};
 use crate::ui::widgets::{footer::FooterWidget, header::HeaderWidget};
 use anyhow::Result;
 use crossterm::{
-    event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode,
-    },
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -278,7 +276,7 @@ impl View {
                     // Handle global exit if not handled by detailed handlers (or for states without handlers)
                     _ => {
                         if let Event::Key(key) = event {
-                             if let KeyCode::Char('q') | KeyCode::Esc = key.code {
+                            if let KeyCode::Char('q') | KeyCode::Esc = key.code {
                                 return Ok(None);
                             }
                         }

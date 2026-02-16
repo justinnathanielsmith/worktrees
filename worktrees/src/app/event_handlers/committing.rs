@@ -12,7 +12,11 @@ pub fn handle_committing_events<R: ProjectRepository>(
     current_state: &AppState,
 ) -> Result<Option<AppState>> {
     use crossterm::event::{Event, KeyCode};
-    let key_code = if let Event::Key(key) = event { key.code } else { return Ok(None) };
+    let key_code = if let Event::Key(key) = event {
+        key.code
+    } else {
+        return Ok(None);
+    };
 
     let options = ["Manual Commit", "AI Commit", "Set API Key"];
     let normalized_code = match key_code {

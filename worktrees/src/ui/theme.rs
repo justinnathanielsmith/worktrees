@@ -33,10 +33,10 @@ impl Default for CyberTheme {
 pub struct Icons;
 
 impl Icons {
-    pub const BARE: &'static str = "󰋜 ";      // nf-md-home
-    pub const DETACHED: &'static str = " ";  // nf-fa-warning
-    pub const WORKTREE: &'static str = "󰘬 ";  // nf-md-source_branch
-    pub const CLEAN: &'static str = " ";     // nf-fa-check_circle
-    pub const DIRTY: &'static str = " ";     // nf-fa-edit
-    pub const CHECK: &'static str = " ";     // nf-fa-check
+    pub const BARE: &'static str = "󰋜 "; // nf-md-home
+    pub const DETACHED: &'static str = " "; // nf-fa-warning
+    pub const WORKTREE: &'static str = "󰘬 "; // nf-md-source_branch
+    pub const CLEAN: &'static str = " "; // nf-fa-check_circle
+    pub const DIRTY: &'static str = " "; // nf-fa-edit
+    pub const CHECK: &'static str = " "; // nf-fa-check
 }

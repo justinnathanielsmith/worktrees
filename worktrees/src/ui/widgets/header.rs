@@ -77,7 +77,9 @@ impl<'a> Widget for HeaderWidget<'a> {
             Span::styled("MODE: ", Style::default().fg(theme.subtle)),
             Span::styled(
                 mode_str,
-                Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(" │ ", Style::default().fg(theme.border)),
             Span::styled("CONTEXT: ", Style::default().fg(theme.subtle)),

@@ -10,7 +10,11 @@ pub fn handle_confirm_events<R: ProjectRepository>(
     prev_state: &AppState,
 ) -> Result<Option<AppState>> {
     use crossterm::event::{Event, KeyCode};
-    let key_code = if let Event::Key(key) = event { key.code } else { return Ok(None) };
+    let key_code = if let Event::Key(key) = event {
+        key.code
+    } else {
+        return Ok(None);
+    };
 
     let normalized_code = match key_code {
         KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),

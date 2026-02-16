@@ -14,7 +14,11 @@ pub fn handle_prompt_events<R: ProjectRepository>(
     spinner_tick: &mut usize,
 ) -> Result<Option<AppState>> {
     use crossterm::event::{Event, KeyCode};
-    let key_code = if let Event::Key(key) = event { key.code } else { return Ok(None) };
+    let key_code = if let Event::Key(key) = event {
+        key.code
+    } else {
+        return Ok(None);
+    };
 
     match key_code {
         KeyCode::Enter => {

@@ -777,22 +777,26 @@ mod tests {
     #[test]
     fn test_load_metadata() {
         use crate::domain::repository::WorktreeMetadata;
-        
+
         // Setup temp dir
-        let temp_dir = std::env::temp_dir().join(format!("worktrees_test_metadata_{}", std::process::id()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("worktrees_test_metadata_{}", std::process::id()));
         if temp_dir.exists() {
             std::fs::remove_dir_all(&temp_dir).unwrap();
         }
         std::fs::create_dir(&temp_dir).unwrap();
-        
+
         let metadata_path = temp_dir.join(".worktree_info");
         let mut metadata_map = std::collections::HashMap::new();
-        metadata_map.insert("dev".to_string(), WorktreeMetadata {
-            created_at: Some("2023-10-27".to_string()),
-            description: Some("Development branch".to_string()),
-            color: Some("#FF0000".to_string()),
-            icon: Some("🚀".to_string())
-        });
+        metadata_map.insert(
+            "dev".to_string(),
+            WorktreeMetadata {
+                created_at: Some("2023-10-27".to_string()),
+                description: Some("Development branch".to_string()),
+                color: Some("#FF0000".to_string()),
+                icon: Some("🚀".to_string()),
+            },
+        );
 
         let content = serde_json::to_string(&metadata_map).unwrap();
         std::fs::write(&metadata_path, content).unwrap();
@@ -800,10 +804,14 @@ mod tests {
         // Verify serialization/deserialization logic
         // We can't strictly test GitProjectRepository::load_metadata without mocking file system or running in the specific dir
         // But we can verify our serde logic is correct.
-        
-        let loaded: std::collections::HashMap<String, WorktreeMetadata> = serde_json::from_str(&std::fs::read_to_string(&metadata_path).unwrap()).unwrap();
-        assert_eq!(loaded.get("dev").unwrap().description, Some("Development branch".to_string()));
-         assert_eq!(loaded.get("dev").unwrap().icon, Some("🚀".to_string()));
+
+        let loaded: std::collections::HashMap<String, WorktreeMetadata> =
+            serde_json::from_str(&std::fs::read_to_string(&metadata_path).unwrap()).unwrap();
+        assert_eq!(
+            loaded.get("dev").unwrap().description,
+            Some("Development branch".to_string())
+        );
+        assert_eq!(loaded.get("dev").unwrap().icon, Some("🚀".to_string()));
 
         // Cleanup
         std::fs::remove_dir_all(&temp_dir).unwrap();
