@@ -5,6 +5,8 @@ use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
 use std::process::Command;
 
+use super::helpers::create_timed_state;
+
 #[allow(clippy::too_many_arguments)]
 pub fn handle_editor_events<R: ProjectRepository>(
     event: crossterm::event::Event,
@@ -67,12 +69,7 @@ pub fn handle_editor_events<R: ProjectRepository>(
                     prev_state: Box::new(prev_state.clone()),
                 };
                 let _ = Command::new(&options[*selected].command).arg(&p).spawn();
-                return Ok(Some(AppState::Timed {
-                    inner_state: Box::new(opening_state),
-                    target_state: Box::new(prev_clone),
-                    start_time: std::time::Instant::now(),
-                    duration: std::time::Duration::from_millis(800),
-                }));
+                return Ok(Some(create_timed_state(opening_state, prev_clone, 800)));
             }
         }
         KeyCode::Esc => {
