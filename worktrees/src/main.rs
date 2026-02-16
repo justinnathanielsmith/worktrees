@@ -5,7 +5,7 @@ mod infrastructure;
 mod ui;
 
 use app::intent::Intent;
-use app::model::AppState;
+use app::model::{AppState, RefreshType};
 use app::reducer::Reducer;
 use app::view::View;
 use clap::Parser;
@@ -107,7 +107,7 @@ async fn main() -> Result<()> {
                 let initial_state = AppState::ListingWorktrees {
                     worktrees,
                     table_state,
-                    refresh_needed: false,
+                    refresh_needed: RefreshType::None,
                     selection_mode: true,
                     dashboard: app::model::DashboardState {
                         active_tab: app::model::DashboardTab::Info,
@@ -143,7 +143,7 @@ async fn main() -> Result<()> {
             let initial_state = AppState::ListingWorktrees {
                 worktrees,
                 table_state,
-                refresh_needed: false,
+                refresh_needed: RefreshType::None,
                 selection_mode: false,
                 dashboard: app::model::DashboardState {
                     active_tab: app::model::DashboardTab::Info,

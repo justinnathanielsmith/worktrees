@@ -1,5 +1,5 @@
 use crate::app::intent::Intent;
-use crate::app::model::{AppState, EditorConfig, PromptType};
+use crate::app::model::{AppState, EditorConfig, PromptType, RefreshType};
 use crate::domain::repository::{ProjectRepository, Worktree};
 use anyhow::Result;
 use ratatui::{Terminal, backend::CrosstermBackend, widgets::TableState};
@@ -72,7 +72,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         return Ok(Some(AppState::ListingWorktrees {
                             worktrees: worktrees.to_vec(),
                             table_state: table_state.clone(),
-                            refresh_needed: true,
+                            refresh_needed: RefreshType::Dashboard,
                             selection_mode: *selection_mode,
                             dashboard: dashboard.clone(),
                         }));
@@ -93,7 +93,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         return Ok(Some(AppState::ListingWorktrees {
                             worktrees: worktrees.to_vec(),
                             table_state: table_state.clone(),
-                            refresh_needed: true,
+                            refresh_needed: RefreshType::Dashboard,
                             selection_mode: *selection_mode,
                             dashboard: dashboard.clone(),
                         }));
@@ -122,7 +122,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         return Ok(Some(AppState::ListingWorktrees {
                             worktrees: worktrees.to_vec(),
                             table_state: table_state.clone(),
-                            refresh_needed: true,
+                            refresh_needed: RefreshType::Dashboard,
                             selection_mode: *selection_mode,
                             dashboard: dashboard.clone(),
                         }));
@@ -142,7 +142,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         return Ok(Some(AppState::ListingWorktrees {
                             worktrees: worktrees.to_vec(),
                             table_state: table_state.clone(),
-                            refresh_needed: true,
+                            refresh_needed: RefreshType::Dashboard,
                             selection_mode: *selection_mode,
                             dashboard: dashboard.clone(),
                         }));
@@ -167,7 +167,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         return Ok(Some(AppState::ListingWorktrees {
                             worktrees: worktrees.clone(),
                             table_state: table_state.clone(),
-                            refresh_needed: true,
+                            refresh_needed: RefreshType::Dashboard,
                             selection_mode: *selection_mode,
                             dashboard: crate::app::model::DashboardState {
                                 active_tab,
@@ -486,7 +486,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                                     return Ok(Some(AppState::ListingWorktrees {
                                         worktrees: worktrees.to_vec(),
                                         table_state: table_state.clone(),
-                                        refresh_needed: true,
+                                        refresh_needed: RefreshType::Dashboard,
                                         selection_mode: *selection_mode,
                                         dashboard: dashboard.clone(),
                                     }));
@@ -523,7 +523,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                                     return Ok(Some(AppState::ListingWorktrees {
                                         worktrees: worktrees.clone(),
                                         table_state: table_state.clone(),
-                                        refresh_needed: true,
+                                        refresh_needed: RefreshType::Dashboard,
                                         selection_mode: *selection_mode,
                                         dashboard: crate::app::model::DashboardState {
                                             active_tab: tab,

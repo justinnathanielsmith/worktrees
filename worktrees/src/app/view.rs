@@ -1,6 +1,6 @@
 use crate::app::cli_renderer::CliRenderer;
 use crate::app::event_handlers::*;
-use crate::app::model::AppState;
+use crate::app::model::{AppState, RefreshType};
 use crate::app::renderers::*;
 use crate::domain::repository::{ProjectRepository, Worktree};
 use crate::ui::widgets::{footer::FooterWidget, header::HeaderWidget};
@@ -117,33 +117,59 @@ impl View {
             }
 
             if let AppState::ListingWorktrees {
-                refresh_needed: true,
+                refresh_needed,
                 selection_mode,
                 dashboard,
                 table_state,
-                ..
+                worktrees,
             } = state
-                && let Ok(worktrees) = repo.list_worktrees()
             {
-                let mut ts = table_state.clone();
-                if ts.selected().is_none() && !worktrees.is_empty() {
-                    ts.select(Some(0));
+                if *refresh_needed == RefreshType::Full {
+                    if let Ok(new_worktrees) = repo.list_worktrees() {
+                        let mut ts = table_state.clone();
+                        if ts.selected().is_none() && !new_worktrees.is_empty() {
+                            ts.select(Some(0));
+                        }
+
+                        let (status, history) = Self::fetch_dashboard_data(
+                            repo,
+                            &new_worktrees,
+                            ts.selected(),
+                            dashboard,
+                        );
+
+                        *state = AppState::ListingWorktrees {
+                            worktrees: new_worktrees,
+                            table_state: ts,
+                            refresh_needed: RefreshType::None,
+                            selection_mode: *selection_mode,
+                            dashboard: crate::app::model::DashboardState {
+                                active_tab: dashboard.active_tab,
+                                cached_status: status,
+                                cached_history: history,
+                            },
+                        };
+                    }
+                } else if *refresh_needed == RefreshType::Dashboard {
+                    let (status, history) = Self::fetch_dashboard_data(
+                        repo,
+                        worktrees,
+                        table_state.selected(),
+                        dashboard,
+                    );
+
+                    *state = AppState::ListingWorktrees {
+                        worktrees: worktrees.clone(),
+                        table_state: table_state.clone(),
+                        refresh_needed: RefreshType::None,
+                        selection_mode: *selection_mode,
+                        dashboard: crate::app::model::DashboardState {
+                            active_tab: dashboard.active_tab,
+                            cached_status: status,
+                            cached_history: history,
+                        },
+                    };
                 }
-
-                let (status, history) =
-                    Self::fetch_dashboard_data(repo, &worktrees, ts.selected(), dashboard);
-
-                *state = AppState::ListingWorktrees {
-                    worktrees,
-                    table_state: ts,
-                    refresh_needed: false,
-                    selection_mode: *selection_mode,
-                    dashboard: crate::app::model::DashboardState {
-                        active_tab: dashboard.active_tab,
-                        cached_status: status,
-                        cached_history: history,
-                    },
-                };
             }
 
             terminal.draw(|f| Self::draw(f, repo, state, *spinner_tick))?;
@@ -636,7 +662,7 @@ mod tests {
         let mut state = AppState::ListingWorktrees {
             worktrees,
             table_state,
-            refresh_needed: false,
+            refresh_needed: RefreshType::None,
             selection_mode: false,
             dashboard: crate::app::model::DashboardState {
                 active_tab: crate::app::model::DashboardTab::Info,

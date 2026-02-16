@@ -17,6 +17,13 @@ pub enum DashboardTab {
     Log,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum RefreshType {
+    None,
+    Dashboard,
+    Full,
+}
+
 #[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
 pub struct EditorConfig {
     pub name: String,
@@ -187,7 +194,7 @@ pub enum AppState {
     ListingWorktrees {
         worktrees: Vec<Worktree>,
         table_state: TableState,
-        refresh_needed: bool,
+        refresh_needed: RefreshType,
         selection_mode: bool,
         dashboard: DashboardState,
     },
@@ -246,7 +253,7 @@ impl AppState {
     /// Signals that the worktree list needs to be re-fetched from the repository.
     pub fn request_refresh(&mut self) {
         if let AppState::ListingWorktrees { refresh_needed, .. } = self {
-            *refresh_needed = true;
+            *refresh_needed = RefreshType::Full;
         }
     }
 
