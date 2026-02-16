@@ -519,7 +519,7 @@ impl View {
             }
         }
 
-        f.render_widget(FooterWidget, chunks[2]);
+        f.render_widget(FooterWidget { state: display_state }, chunks[2]);
     }
 
     pub fn render(state: AppState) {
