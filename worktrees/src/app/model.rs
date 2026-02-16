@@ -197,6 +197,8 @@ pub enum AppState {
         refresh_needed: RefreshType,
         selection_mode: bool,
         dashboard: DashboardState,
+        filter_query: String,
+        is_filtering: bool,
     },
     /// Detailed Git status view for a specific worktree.
     ViewingStatus {
@@ -281,5 +283,85 @@ impl AppState {
             AppState::Error(_, prev_state) => prev_state,
             _ => panic!("State does not have a previous state"),
         }
+    }
+}
+
+pub fn filter_worktrees(worktrees: &[Worktree], query: &str) -> Vec<Worktree> {
+    if query.is_empty() {
+        return worktrees.to_vec();
+    }
+    let query = query.to_lowercase();
+    worktrees
+        .iter()
+        .filter(|wt| {
+            wt.branch.to_lowercase().contains(&query) || wt.path.to_lowercase().contains(&query)
+        })
+        .cloned()
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_filter_worktrees() {
+        let worktrees = vec![
+            Worktree {
+                path: "/path/to/main".to_string(),
+                branch: "main".to_string(),
+                commit: "123".to_string(),
+                is_bare: false,
+                is_detached: false,
+                status_summary: None,
+                metadata: None,
+            },
+            Worktree {
+                path: "/path/to/dev".to_string(),
+                branch: "dev".to_string(),
+                commit: "456".to_string(),
+                is_bare: false,
+                is_detached: false,
+                status_summary: None,
+                metadata: None,
+            },
+            Worktree {
+                path: "/path/to/feature-login".to_string(),
+                branch: "feature/login".to_string(),
+                commit: "789".to_string(),
+                is_bare: false,
+                is_detached: false,
+                status_summary: None,
+                metadata: None,
+            },
+        ];
+
+        // Empty query returns all
+        let filtered = filter_worktrees(&worktrees, "");
+        assert_eq!(filtered.len(), 3);
+
+        // Exact match branch
+        let filtered = filter_worktrees(&worktrees, "main");
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].branch, "main");
+
+        // Partial match branch
+        let filtered = filter_worktrees(&worktrees, "login");
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].branch, "feature/login");
+
+        // Match path
+        let filtered = filter_worktrees(&worktrees, "feature-login");
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].branch, "feature/login");
+
+        // Case insensitive
+        let filtered = filter_worktrees(&worktrees, "MAIN");
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].branch, "main");
+
+        // No match
+        let filtered = filter_worktrees(&worktrees, "xyz");
+        assert_eq!(filtered.len(), 0);
     }
 }

@@ -49,6 +49,8 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                                 cached_status: None,
                                 cached_history: None,
                             },
+                            filter_query: String::new(),
+                            is_filtering: false,
                         }));
                     }
                     PromptType::CommitMessage => {

@@ -48,6 +48,8 @@ impl View {
                 worktrees,
                 table_state,
                 dashboard,
+                filter_query,
+                is_filtering,
                 ..
             } => {
                 render_listing(
@@ -59,6 +61,8 @@ impl View {
                     dashboard.active_tab,
                     &dashboard.cached_status,
                     &dashboard.cached_history,
+                    filter_query,
+                    *is_filtering,
                 );
             }
             AppState::ViewingStatus {
@@ -122,6 +126,9 @@ impl View {
                 dashboard,
                 table_state,
                 worktrees,
+                filter_query,
+                is_filtering,
+                ..
             } = state
             {
                 if *refresh_needed == RefreshType::Full {
@@ -148,6 +155,8 @@ impl View {
                                 cached_status: status,
                                 cached_history: history,
                             },
+                            filter_query: filter_query.clone(),
+                            is_filtering: *is_filtering,
                         };
                     }
                 } else if *refresh_needed == RefreshType::Dashboard {
@@ -168,6 +177,8 @@ impl View {
                             cached_status: status,
                             cached_history: history,
                         },
+                        filter_query: filter_query.clone(),
+                        is_filtering: *is_filtering,
                     };
                 }
             }
@@ -396,6 +407,8 @@ impl View {
                 worktrees,
                 table_state,
                 dashboard,
+                filter_query,
+                is_filtering,
                 ..
             } => {
                 render_listing(
@@ -407,6 +420,8 @@ impl View {
                     dashboard.active_tab,
                     &dashboard.cached_status,
                     &dashboard.cached_history,
+                    filter_query,
+                    *is_filtering,
                 );
             }
             AppState::ViewingStatus {
@@ -669,6 +684,8 @@ mod tests {
                 cached_status: None,
                 cached_history: None,
             },
+            filter_query: String::new(),
+            is_filtering: false,
         };
 
         terminal
