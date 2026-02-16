@@ -38,4 +38,12 @@ pub enum Intent {
     SwitchWorktree {
         name: String,
     },
+    Convert {
+        name: Option<String>,
+        branch: Option<String>,
+    },
+    CheckoutWorktree {
+        intent: String,
+        branch: String,
+    },
 }

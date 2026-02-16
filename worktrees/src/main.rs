@@ -10,10 +10,11 @@ use app::reducer::Reducer;
 use app::view::View;
 use clap::Parser;
 use cli::{Cli, Commands};
-use domain::repository::ProjectRepository;
+use domain::repository::{ProjectRepository, RepoStatus};
 use infrastructure::git_repo::GitProjectRepository;
 use miette::Result;
 use ratatui::widgets::TableState;
+use std::io::{self, Write};
 use tracing::{error, info};
 
 fn setup_logging(json_mode: bool) {
@@ -57,6 +58,98 @@ async fn wait_for_shutdown() {
     }
 }
 
+fn check_and_handle_repo_state(repo: &GitProjectRepository) -> Result<bool> {
+    let current_dir = std::env::current_dir().map_err(|e| miette::miette!(e))?;
+    match repo.check_status(&current_dir) {
+        RepoStatus::BareHub => Ok(true),
+        RepoStatus::StandardGit => {
+            print!(
+                "This directory is a standard Git repository. The tool requires a Bare Hub setup. Do you want to convert it? (y/N): "
+            );
+            io::stdout().flush().map_err(|e| miette::miette!(e))?;
+            let mut input = String::new();
+            io::stdin()
+                .read_line(&mut input)
+                .map_err(|e| miette::miette!(e))?;
+            if input.trim().to_lowercase() == "y" {
+                let path = repo
+                    .convert_to_bare(None, None)
+                    .map_err(|e| miette::miette!(e))?;
+                println!(
+                    "Conversion successful! The Bare Hub is located at: {}",
+                    path.display()
+                );
+                println!(
+                    "Please navigate to that directory (or one of its worktrees) to continue."
+                );
+                Ok(false)
+            } else {
+                Ok(false)
+            }
+        }
+        RepoStatus::NoRepo => {
+            print!(
+                "No Git repository found. Do you want to create a new Bare Hub project? (y/N): "
+            );
+            io::stdout().flush().map_err(|e| miette::miette!(e))?;
+            let mut input = String::new();
+            io::stdin()
+                .read_line(&mut input)
+                .map_err(|e| miette::miette!(e))?;
+            if input.trim().to_lowercase() == "y" {
+                print!("Enter project name: ");
+                io::stdout().flush().map_err(|e| miette::miette!(e))?;
+                let mut name = String::new();
+                io::stdin()
+                    .read_line(&mut name)
+                    .map_err(|e| miette::miette!(e))?;
+                let name = name.trim();
+                if name.is_empty() {
+                    println!("Operation cancelled.");
+                    return Ok(false);
+                }
+                repo.init_bare_repo(None, name)
+                    .map_err(|e| miette::miette!(e))?;
+                println!(
+                    "Project initialized! Please navigate to '{}' to continue.",
+                    name
+                );
+                Ok(false)
+            } else {
+                Ok(false)
+            }
+        }
+    }
+}
+
+fn render_tui_mode(repo: &GitProjectRepository, selection_mode: bool) -> Result<Option<String>> {
+    if !check_and_handle_repo_state(repo)? {
+        return Ok(None);
+    }
+    View::render_banner();
+    let worktrees = repo
+        .list_worktrees()
+        .map_err(|e| miette::miette!("{e:?}"))?;
+    let mut table_state = TableState::default();
+    if !worktrees.is_empty() {
+        table_state.select(Some(0));
+    }
+    let initial_state = AppState::ListingWorktrees {
+        worktrees,
+        table_state,
+        refresh_needed: RefreshType::None,
+        selection_mode,
+        dashboard: app::model::DashboardState {
+            active_tab: app::model::DashboardTab::Info,
+            cached_status: None,
+            cached_history: None,
+        },
+        filter_query: String::new(),
+        is_filtering: false,
+    };
+    View::render_tui(repo, initial_state).map_err(|e| miette::miette!("{e:?}"))
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -96,36 +189,15 @@ async fn main() -> Result<()> {
         Some(Commands::Switch { name }) => match name {
             Some(n) => Intent::SwitchWorktree { name: n },
             None => {
-                View::render_banner();
-                let worktrees = GitProjectRepository
-                    .list_worktrees()
-                    .map_err(|e| miette::miette!("{e:?}"))?;
-                let mut table_state = TableState::default();
-                if !worktrees.is_empty() {
-                    table_state.select(Some(0));
-                }
-                let initial_state = AppState::ListingWorktrees {
-                    worktrees,
-                    table_state,
-                    refresh_needed: RefreshType::None,
-                    selection_mode: true,
-                    dashboard: app::model::DashboardState {
-                        active_tab: app::model::DashboardTab::Info,
-                        cached_status: None,
-                        cached_history: None,
-                    },
-                    filter_query: String::new(),
-                    is_filtering: false,
-                };
-                let result = View::render_tui(&GitProjectRepository, initial_state)
-                    .map_err(|e| miette::miette!("{e:?}"))?;
-
+                let result = render_tui_mode(&GitProjectRepository, true)?;
                 if let Some(path) = result {
                     println!("{}", path);
                 }
                 return Ok(());
             }
         },
+        Some(Commands::Convert { name, branch }) => Intent::Convert { name, branch },
+        Some(Commands::Checkout { intent, branch }) => Intent::CheckoutWorktree { intent, branch },
         None => {
             if cli.json {
                 let worktrees = GitProjectRepository
@@ -134,29 +206,7 @@ async fn main() -> Result<()> {
                 return View::render_json(&worktrees).map_err(|e| miette::miette!("{e:?}"));
             }
             // TUI Mode
-            View::render_banner();
-            let worktrees = GitProjectRepository
-                .list_worktrees()
-                .map_err(|e| miette::miette!("{e:?}"))?;
-            let mut table_state = TableState::default();
-            if !worktrees.is_empty() {
-                table_state.select(Some(0));
-            }
-            let initial_state = AppState::ListingWorktrees {
-                worktrees,
-                table_state,
-                refresh_needed: RefreshType::None,
-                selection_mode: false,
-                dashboard: app::model::DashboardState {
-                    active_tab: app::model::DashboardTab::Info,
-                    cached_status: None,
-                    cached_history: None,
-                },
-                filter_query: String::new(),
-                is_filtering: false,
-            };
-            View::render_tui(&GitProjectRepository, initial_state)
-                .map_err(|e| miette::miette!("{e:?}"))?;
+            render_tui_mode(&GitProjectRepository, false)?;
             return Ok(());
         }
     };

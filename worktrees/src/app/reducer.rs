@@ -705,6 +705,155 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                     }
                 }
             }
+            Intent::Convert { name, branch } => {
+                if !json_mode {
+                    println!(
+                        "{} Converting standard repository to Bare Hub structure...",
+                        "➜".cyan().bold()
+                    );
+                }
+
+                let pb = if !json_mode {
+                    let pb = ProgressBar::new_spinner();
+                    pb.set_style(
+                        ProgressStyle::default_spinner()
+                            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
+                            .template("{spinner:.cyan} {msg}")
+                            .into_diagnostic()?,
+                    );
+                    pb.set_message("Migrating .git to .bare and setting up hub...");
+                    pb.enable_steady_tick(Duration::from_millis(100));
+                    Some(pb)
+                } else {
+                    None
+                };
+
+                let name_clone = name.clone();
+                let branch_clone = branch.clone();
+                let repo_clone = repo.clone();
+
+                let res = tokio::task::spawn_blocking(move || {
+                    repo_clone.convert_to_bare(name_clone.as_deref(), branch_clone.as_deref())
+                })
+                .await
+                .into_diagnostic()?;
+
+                match res {
+                    Ok(hub_path) => {
+                        if let Some(pb) = pb {
+                            pb.finish_and_clear();
+                        }
+                        info!(path = ?hub_path, "Repository converted successfully");
+                        if json_mode {
+                            View::render_json(&serde_json::json!({
+                                "status": "success",
+                                "hub_path": hub_path.to_string_lossy()
+                            }))
+                            .map_err(|e| miette::miette!("{e:?}"))?;
+                        } else {
+                            println!("{} Conversion complete!", "✔".green().bold());
+                            println!(
+                                "{} New hub created at: {}",
+                                "➜".cyan().bold(),
+                                hub_path.to_string_lossy().bold()
+                            );
+                            println!(
+                                "\n{} You can now move into the new hub and start working:",
+                                "Tip:".cyan().bold()
+                            );
+                            println!("   cd {}", hub_path.to_string_lossy());
+                        }
+                    }
+                    Err(e) => {
+                        if let Some(pb) = pb {
+                            pb.finish_and_clear();
+                        }
+                        error!(error = %e, "Failed to convert repository");
+                        if json_mode {
+                            View::render_json(&serde_json::json!({
+                                "status": "error",
+                                "message": e.to_string()
+                            }))
+                            .map_err(|e| miette::miette!("{e:?}"))?;
+                        } else {
+                            View::render(AppState::Error(
+                                e.to_string(),
+                                Box::new(AppState::Welcome),
+                            ));
+                        }
+                    }
+                }
+            }
+            Intent::CheckoutWorktree { intent, branch } => {
+                let repo_clone = repo.clone();
+                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
+                    .await
+                    .into_diagnostic()?
+                    .map_err(|e| miette::miette!("{e:?}"))?;
+
+                let needle = intent.to_lowercase();
+                let wt = worktrees
+                    .iter()
+                    .filter(|wt| !wt.is_bare)
+                    .find(|wt| {
+                        wt.branch.to_lowercase() == needle
+                            || Path::new(&wt.path)
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .is_some_and(|n| n.to_lowercase() == needle)
+                    })
+                    .ok_or_else(|| miette::miette!("Worktree '{}' not found.", intent))?;
+
+                let path = wt.path.clone();
+                let branch_clone = branch.clone();
+                let repo_clone = repo.clone();
+
+                if !json_mode {
+                    println!(
+                        "{} Switching worktree '{}' to branch '{}'...",
+                        "➜".cyan().bold(),
+                        intent,
+                        branch
+                    );
+                }
+
+                let res = tokio::task::spawn_blocking(move || {
+                    repo_clone.switch_branch(&path, &branch_clone)
+                })
+                .await
+                .into_diagnostic()?;
+
+                match res {
+                    Ok(_) => {
+                        if json_mode {
+                            View::render_json(&serde_json::json!({
+                                "status": "success",
+                                "intent": intent,
+                                "branch": branch
+                            }))
+                            .map_err(|e| miette::miette!("{e:?}"))?;
+                        } else {
+                            println!(
+                                "{} Successfully switched to branch '{}'.",
+                                "✔".green().bold(),
+                                branch
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        error!(error = %e, %intent, %branch, "Failed to switch branch");
+                        if json_mode {
+                            View::render_json(&serde_json::json!({
+                                "status": "error",
+                                "message": e.to_string()
+                            }))
+                            .map_err(|e| miette::miette!("{e:?}"))?;
+                        } else {
+                            return Err(miette::miette!("Failed to switch branch: {}", e));
+                        }
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -713,8 +862,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::repository::{ProjectRepository, Worktree};
+    use crate::domain::repository::{ProjectRepository, RepositoryEvent, Worktree};
     use anyhow::Result;
+    use crossbeam_channel::Receiver;
 
     use std::sync::{Arc, Mutex};
 
@@ -798,6 +948,16 @@ mod tests {
                 .push(format!("sync:{}", path));
             Ok(())
         }
+
+        fn get_project_root(&self) -> anyhow::Result<std::path::PathBuf> {
+            self.tracker
+                .lock()
+                .unwrap()
+                .calls
+                .push("get_project_root".to_string());
+            Ok(std::path::PathBuf::from("/mock/root"))
+        }
+
         fn pull(&self, path: &str) -> anyhow::Result<()> {
             self.tracker
                 .lock()
@@ -861,7 +1021,12 @@ mod tests {
         fn list_branches(&self) -> anyhow::Result<Vec<String>> {
             Ok(vec!["main".to_string(), "dev".to_string()])
         }
-        fn switch_branch(&self, _path: &str, _branch: &str) -> anyhow::Result<()> {
+        fn switch_branch(&self, path: &str, branch: &str) -> anyhow::Result<()> {
+            self.tracker
+                .lock()
+                .unwrap()
+                .calls
+                .push(format!("switch:{}|{}", path, branch));
             Ok(())
         }
         fn get_diff(&self, _path: &str) -> anyhow::Result<String> {
@@ -878,6 +1043,27 @@ mod tests {
         }
         fn clean_worktrees(&self, _dry_run: bool) -> anyhow::Result<Vec<String>> {
             Ok(vec![])
+        }
+        fn convert_to_bare(
+            &self,
+            name: Option<&str>,
+            branch: Option<&str>,
+        ) -> Result<std::path::PathBuf> {
+            self.tracker
+                .lock()
+                .unwrap()
+                .calls
+                .push(format!("convert:{:?}|{:?}", name, branch));
+            Ok(std::path::PathBuf::from("hub"))
+        }
+
+        fn check_status(&self, _path: &Path) -> crate::domain::repository::RepoStatus {
+            crate::domain::repository::RepoStatus::BareHub
+        }
+
+        fn watch(&self) -> Result<Receiver<RepositoryEvent>> {
+            let (_, rx) = crossbeam_channel::unbounded();
+            Ok(rx)
         }
     }
 
@@ -1096,5 +1282,25 @@ mod tests {
             .await;
 
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_reducer_handle_checkout() -> Result<()> {
+        let tracker = Arc::new(Mutex::new(CallTracker::default()));
+        let repo = MockRepo::new(tracker.clone());
+        let reducer = Reducer::new(repo, false);
+
+        reducer
+            .handle(Intent::CheckoutWorktree {
+                intent: "dev".to_string(),
+                branch: "feature-y".to_string(),
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let calls = tracker.lock().unwrap().calls.clone();
+        assert!(calls.contains(&"list".to_string()));
+        assert!(calls.contains(&"switch:dev|feature-y".to_string()));
+        Ok(())
     }
 }

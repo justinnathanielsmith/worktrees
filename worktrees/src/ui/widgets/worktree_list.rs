@@ -32,7 +32,7 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
             .title(Span::styled(
                 format!(" ACTIVE WORKTREES ({}) ", self.worktrees.len()),
                 Style::default()
-                    .fg(theme.accent)
+                    .fg(theme.primary)
                     .add_modifier(Modifier::BOLD),
             ));
 
@@ -83,48 +83,49 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
                 } else if wt.is_detached {
                     (Icons::DETACHED, Style::default().fg(theme.error))
                 } else {
-                    (Icons::WORKTREE, Style::default().fg(theme.success))
+                    (Icons::WORKTREE, Style::default().fg(theme.primary)) // Changed to primary for better visibility
                 };
 
-                let branch_str = if wt.is_bare {
+                let intent_str = if wt.is_bare {
                     "MAIN".to_string()
-                } else if wt.is_detached {
-                    format!(
-                        "DETACHED @ {}",
-                        &wt.commit[..std::cmp::min(wt.commit.len(), 7)]
-                    )
                 } else {
-                    wt.branch.clone()
+                    std::path::Path::new(&wt.path)
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_else(|| wt.branch.clone())
                 };
 
                 let row_style = if is_selected {
                     Style::default()
                         .bg(theme.selection_bg)
-                        .fg(theme.text)
+                        .fg(theme.primary) // Text highlights in primary color on selection
                         .add_modifier(Modifier::BOLD)
                 } else {
                     Style::default().fg(theme.text)
                 };
 
-                let prefix = if is_selected { "  ▶ " } else { "    " };
+                // Cyber-style cursor
+                let prefix = if is_selected { " ▊ " } else { "   " };
 
                 let status_cell = if let Some(summary) = &wt.status_summary {
                     let (color, icon) = if summary == "clean" {
                         (theme.success, Icons::CLEAN)
                     } else {
-                        (theme.accent, Icons::DIRTY)
+                        (theme.warning, Icons::DIRTY) // Changed to warning for dirty state
                     };
-                    Cell::from(format!("{} {}", icon, summary)).style(Style::default().fg(color))
+                    Cell::from(format!("{} {}", icon, summary.to_uppercase()))
+                        .style(Style::default().fg(color))
                 } else {
                     Cell::from("-")
                 };
 
                 Row::new(vec![
                     Cell::from(format!("{}{}", prefix, icon)),
-                    Cell::from(branch_str).style(branch_style),
+                    Cell::from(intent_str).style(branch_style),
+                    Cell::from(wt.branch.clone()).style(Style::default().fg(theme.primary)),
                     status_cell,
-                    Cell::from(wt.commit.clone()).style(Style::default().fg(theme.primary)),
-                    Cell::from(wt.path.clone()).style(Style::default().fg(theme.subtle)),
+                    Cell::from(wt.commit.chars().take(7).collect::<String>())
+                        .style(Style::default().fg(theme.subtle)),
                 ])
                 .style(row_style)
                 .height(1)
@@ -134,31 +135,24 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
         let table = Table::new(
             rows,
             [
-                Constraint::Length(8),
+                Constraint::Length(6), // Reduced width for icon/cursor
                 Constraint::Percentage(25),
-                Constraint::Length(10),
+                Constraint::Percentage(25),
                 Constraint::Length(12),
-                Constraint::Min(20),
+                Constraint::Length(10),
             ],
         )
         .header(
-            Row::new(vec![
-                "",
-                "  BRANCH / INTENT",
-                "STATUS",
-                "COMMIT",
-                "LOCAL PATH",
-            ])
-            .style(
-                Style::default()
-                    .fg(theme.secondary)
-                    .add_modifier(Modifier::BOLD),
-            )
-            .bottom_margin(1),
+            Row::new(vec!["", "INTENT", "BRANCH", "STATUS", "COMMIT"])
+                .style(
+                    Style::default()
+                        .fg(theme.secondary)
+                        .add_modifier(Modifier::BOLD),
+                )
+                .bottom_margin(1),
         )
         .block(block)
-        .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
-        .highlight_symbol(">> ");
+        .row_highlight_style(Style::default().add_modifier(Modifier::BOLD)); // Handled manually in row mapping, but keeping basic highlight
 
         StatefulWidget::render(table, area, buf, state);
     }

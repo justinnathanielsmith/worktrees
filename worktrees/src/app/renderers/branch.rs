@@ -8,7 +8,12 @@ use ratatui::{
 
 use super::helpers::centered_rect;
 
-pub fn render_branch_selection(f: &mut Frame, branches: &[String], selected_index: usize) {
+pub fn render_branch_selection(
+    f: &mut Frame,
+    branches: &[String],
+    selected_index: usize,
+    title: Option<&str>,
+) {
     let theme = CyberTheme::default();
     let area = centered_rect(50, 60, f.area());
     f.render_widget(Clear, area);
@@ -18,7 +23,7 @@ pub fn render_branch_selection(f: &mut Frame, branches: &[String], selected_inde
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.primary))
         .title(Span::styled(
-            "  SWITCH BRANCH ",
+            format!("  {} ", title.unwrap_or("SWITCH BRANCH")),
             Style::default()
                 .fg(theme.primary)
                 .add_modifier(Modifier::BOLD),

@@ -25,33 +25,68 @@ pub fn handle_prompt_events<R: ProjectRepository>(
             let val = input.trim().to_string();
             if !val.is_empty() {
                 match prompt_type {
-                    PromptType::AddIntent => {
-                        let mut adding_state = AppState::AddingWorktree {
-                            intent: val.clone(),
-                            branch: val.clone(),
-                        };
-                        terminal.draw(|f| {
-                            super::super::view::View::draw(
-                                f,
-                                repo,
-                                &mut adding_state,
-                                *spinner_tick,
-                            )
-                        })?;
-                        let _ = repo.add_worktree(&val, &val);
-                        return Ok(Some(AppState::ListingWorktrees {
-                            worktrees: Vec::new(),
-                            table_state: TableState::default(),
-                            refresh_needed: RefreshType::Full,
-                            selection_mode: false,
-                            dashboard: crate::app::model::DashboardState {
-                                active_tab: crate::app::model::DashboardTab::Info,
-                                cached_status: None,
-                                cached_history: None,
-                            },
-                            filter_query: String::new(),
-                            is_filtering: false,
-                        }));
+                    PromptType::NameNewWorktree { base_ref } => {
+                        let val = input.trim();
+                        if !val.is_empty() {
+                            let mut adding_state = AppState::AddingWorktree {
+                                intent: val.to_string(),
+                                branch: if val == base_ref {
+                                    base_ref.clone()
+                                } else {
+                                    val.to_string()
+                                },
+                            };
+                            terminal.draw(|f| {
+                                super::super::view::View::draw(
+                                    f,
+                                    repo,
+                                    &mut adding_state,
+                                    *spinner_tick,
+                                )
+                            })?;
+
+                            // Smart Add Logic
+                            let res = if val == base_ref {
+                                repo.add_worktree(val, base_ref)
+                            } else {
+                                repo.add_new_worktree(val, val, base_ref)
+                            };
+
+                            if let Err(e) = res {
+                                return Ok(Some(AppState::Error(
+                                    e.to_string(),
+                                    Box::new(AppState::ListingWorktrees {
+                                        worktrees: Vec::new(),
+                                        table_state: TableState::default(),
+                                        refresh_needed: RefreshType::Full,
+                                        selection_mode: false,
+                                        dashboard: crate::app::model::DashboardState {
+                                            active_tab: crate::app::model::DashboardTab::Info,
+                                            cached_status: None,
+                                            cached_history: None,
+                                        },
+                                        filter_query: String::new(),
+                                        is_filtering: false,
+                                    }),
+                                )));
+                            }
+
+                            return Ok(Some(AppState::ListingWorktrees {
+                                worktrees: Vec::new(),
+                                table_state: TableState::default(),
+                                refresh_needed: RefreshType::Full,
+                                selection_mode: false,
+                                dashboard: crate::app::model::DashboardState {
+                                    active_tab: crate::app::model::DashboardTab::Info,
+                                    cached_status: None,
+                                    cached_history: None,
+                                },
+                                filter_query: String::new(),
+                                is_filtering: false,
+                            }));
+                        } else {
+                            return Ok(Some(prev_state.clone()));
+                        }
                     }
                     PromptType::CommitMessage => {
                         let (path, target_state) =
