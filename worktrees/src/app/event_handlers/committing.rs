@@ -1,10 +1,9 @@
 use crate::app::model::{AppState, PromptType};
 use crate::domain::repository::ProjectRepository;
 use anyhow::Result;
-use crossterm::event::KeyCode;
 
 pub fn handle_committing_events<R: ProjectRepository>(
-    key_code: KeyCode,
+    event: crossterm::event::Event,
     repo: &R,
     path: &str,
     branch: &str,
@@ -12,6 +11,9 @@ pub fn handle_committing_events<R: ProjectRepository>(
     prev_state: &AppState,
     current_state: &AppState,
 ) -> Result<Option<AppState>> {
+    use crossterm::event::{Event, KeyCode};
+    let key_code = if let Event::Key(key) = event { key.code } else { return Ok(None) };
+
     let options = ["Manual Commit", "AI Commit", "Set API Key"];
     let normalized_code = match key_code {
         KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),

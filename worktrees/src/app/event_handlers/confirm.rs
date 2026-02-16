@@ -2,14 +2,16 @@ use crate::app::intent::Intent;
 use crate::app::model::AppState;
 use crate::domain::repository::ProjectRepository;
 use anyhow::Result;
-use crossterm::event::KeyCode;
 
 pub fn handle_confirm_events<R: ProjectRepository>(
-    key_code: KeyCode,
+    event: crossterm::event::Event,
     repo: &R,
     action: &Intent,
     prev_state: &AppState,
 ) -> Result<Option<AppState>> {
+    use crossterm::event::{Event, KeyCode};
+    let key_code = if let Event::Key(key) = event { key.code } else { return Ok(None) };
+
     let normalized_code = match key_code {
         KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
         _ => key_code,

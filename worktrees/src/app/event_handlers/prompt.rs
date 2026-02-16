@@ -1,12 +1,11 @@
 use crate::app::model::{AppState, PromptType};
 use crate::domain::repository::ProjectRepository;
 use anyhow::Result;
-use crossterm::event::KeyCode;
 use ratatui::{Terminal, backend::CrosstermBackend, widgets::TableState};
 use std::io;
 
 pub fn handle_prompt_events<R: ProjectRepository>(
-    key_code: KeyCode,
+    event: crossterm::event::Event,
     repo: &R,
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     prompt_type: &PromptType,
@@ -14,6 +13,9 @@ pub fn handle_prompt_events<R: ProjectRepository>(
     prev_state: &AppState,
     spinner_tick: &mut usize,
 ) -> Result<Option<AppState>> {
+    use crossterm::event::{Event, KeyCode};
+    let key_code = if let Event::Key(key) = event { key.code } else { return Ok(None) };
+
     match key_code {
         KeyCode::Enter => {
             let val = input.trim().to_string();

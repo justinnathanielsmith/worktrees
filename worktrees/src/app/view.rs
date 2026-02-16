@@ -7,7 +7,7 @@ use crate::ui::widgets::{footer::FooterWidget, header::HeaderWidget};
 use anyhow::Result;
 use crossterm::{
     event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseButton, MouseEventKind,
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode,
     },
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
@@ -152,168 +152,145 @@ impl View {
             *spinner_tick = spinner_tick.wrapping_add(1);
 
             if event::poll(Duration::from_millis(100))? {
-                if let Event::Key(key) = event::read()? {
-                    let mut new_state = None;
-                    let current_state_clone = state.clone();
-                    // ... key handling ...
-                    match state {
-                        // ... existing key matching ...
-                        AppState::ListingWorktrees {
+                let event = event::read()?;
+                let mut new_state = None;
+                let current_state_clone = state.clone();
+
+                match state {
+                    AppState::ListingWorktrees {
+                        worktrees,
+                        table_state,
+                        ..
+                    } => {
+                        new_state = handle_listing_events(
+                            event.clone(),
+                            repo,
+                            terminal,
                             worktrees,
                             table_state,
-                            ..
-                        } => {
-                            new_state = handle_listing_events(
-                                key.code,
-                                repo,
-                                terminal,
-                                worktrees,
-                                table_state,
-                                &current_state_clone,
-                                spinner_tick,
-                            )?;
-                        }
-                        AppState::ViewingStatus {
+                            &current_state_clone,
+                            spinner_tick,
+                        )?;
+                    }
+                    AppState::ViewingStatus {
+                        path,
+                        branch,
+                        status,
+                        prev_state,
+                        ..
+                    } => {
+                        new_state = handle_status_events(
+                            event.clone(),
+                            repo,
                             path,
                             branch,
                             status,
                             prev_state,
-                            ..
-                        } => {
-                            new_state = handle_status_events(
-                                key.code,
-                                repo,
-                                path,
-                                branch,
-                                status,
-                                prev_state,
-                                &current_state_clone,
-                            )?;
-                        }
-                        AppState::ViewingHistory {
-                            branch: _,
+                            &current_state_clone,
+                        )?;
+                    }
+                    AppState::ViewingHistory {
+                        branch: _,
+                        commits,
+                        selected_index,
+                        prev_state,
+                        ..
+                    } => {
+                        new_state = handle_history_events(
+                            event.clone(),
                             commits,
                             selected_index,
                             prev_state,
-                            ..
-                        } => {
-                            new_state = handle_history_events(
-                                key.code,
-                                commits,
-                                selected_index,
-                                prev_state,
-                            )?;
-                        }
-                        AppState::SwitchingBranch {
+                        )?;
+                    }
+                    AppState::SwitchingBranch {
+                        path,
+                        branches,
+                        selected_index,
+                        prev_state,
+                        ..
+                    } => {
+                        new_state = handle_branch_events(
+                            event.clone(),
+                            repo,
                             path,
                             branches,
                             selected_index,
                             prev_state,
-                            ..
-                        } => {
-                            new_state = handle_branch_events(
-                                key.code,
-                                repo,
-                                path,
-                                branches,
-                                selected_index,
-                                prev_state,
-                            )?;
-                        }
-                        AppState::SelectingEditor {
+                        )?;
+                    }
+                    AppState::SelectingEditor {
+                        branch,
+                        options,
+                        selected,
+                        prev_state,
+                        ..
+                    } => {
+                        new_state = handle_editor_events(
+                            event.clone(),
+                            repo,
+                            terminal,
                             branch,
                             options,
                             selected,
                             prev_state,
-                            ..
-                        } => {
-                            new_state = handle_editor_events(
-                                key.code,
-                                repo,
-                                terminal,
-                                branch,
-                                options,
-                                selected,
-                                prev_state,
-                                spinner_tick,
-                            )?;
-                        }
-                        AppState::Prompting {
+                            spinner_tick,
+                        )?;
+                    }
+                    AppState::Prompting {
+                        prompt_type,
+                        input,
+                        prev_state,
+                        ..
+                    } => {
+                        new_state = handle_prompt_events(
+                            event.clone(),
+                            repo,
+                            terminal,
                             prompt_type,
                             input,
                             prev_state,
-                            ..
-                        } => {
-                            new_state = handle_prompt_events(
-                                key.code,
-                                repo,
-                                terminal,
-                                prompt_type,
-                                input,
-                                prev_state,
-                                spinner_tick,
-                            )?;
-                        }
-                        AppState::Confirming {
-                            action, prev_state, ..
-                        } => {
-                            new_state = handle_confirm_events(key.code, repo, action, prev_state)?;
-                        }
-                        AppState::Committing {
+                            spinner_tick,
+                        )?;
+                    }
+                    AppState::Confirming {
+                        action, prev_state, ..
+                    } => {
+                        new_state = handle_confirm_events(event.clone(), repo, action, prev_state)?;
+                    }
+                    AppState::Committing {
+                        path,
+                        branch,
+                        selected_index,
+                        prev_state,
+                        ..
+                    } => {
+                        new_state = handle_committing_events(
+                            event.clone(),
+                            repo,
                             path,
                             branch,
                             selected_index,
                             prev_state,
-                            ..
-                        } => {
-                            new_state = handle_committing_events(
-                                key.code,
-                                repo,
-                                path,
-                                branch,
-                                selected_index,
-                                prev_state,
-                                &current_state_clone,
-                            )?;
-                        }
-                        // ... other states ...
-                        _ => {
-                            if let KeyCode::Char('q') | KeyCode::Esc = key.code {
+                            &current_state_clone,
+                        )?;
+                    }
+                    // Handle global exit if not handled by detailed handlers (or for states without handlers)
+                    _ => {
+                        if let Event::Key(key) = event {
+                             if let KeyCode::Char('q') | KeyCode::Esc = key.code {
                                 return Ok(None);
                             }
                         }
                     }
-                    if let Some(ns) = new_state {
-                        if let AppState::Exiting(res) = ns {
-                            return Ok(res);
-                        }
-                        *state = ns;
-                        state.request_refresh();
-                    }
-                } else if let Event::Mouse(mouse) = event::read()?
-                    && let MouseEventKind::Down(MouseButton::Left) = mouse.kind
-                    && let AppState::ListingWorktrees {
-                        worktrees,
-                        table_state,
-                        ..
-                    } = state
-                {
-                    // Hardcoded layout assumption:
-                    // Margin: 1
-                    // Header: 3
-                    // Table starts at y = 1 + 3 = 4
-                    // Table header is 1 row
-                    // Data starts at y = 5
-                    let header_height = 4; // Margin + Header widget
-                    let table_header = 1;
-                    let data_start_y = header_height + table_header;
+                }
 
-                    let row_index = mouse.row as i16 - data_start_y as i16;
-
-                    if row_index >= 0 && (row_index as usize) < worktrees.len() {
-                        table_state.select(Some(row_index as usize));
-                        state.request_refresh();
+                if let Some(ns) = new_state {
+                    if let AppState::Exiting(res) = ns {
+                        return Ok(res);
                     }
+                    *state = ns;
+                    state.request_refresh();
                 }
             }
         }

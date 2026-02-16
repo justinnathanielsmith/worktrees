@@ -1,14 +1,14 @@
 use crate::app::model::{AppState, EditorConfig};
 use crate::domain::repository::ProjectRepository;
 use anyhow::Result;
-use crossterm::event::KeyCode;
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
 use std::process::Command;
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 pub fn handle_editor_events<R: ProjectRepository>(
-    key_code: KeyCode,
+    event: crossterm::event::Event,
     repo: &R,
     _terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     branch: &str,
@@ -17,6 +17,9 @@ pub fn handle_editor_events<R: ProjectRepository>(
     prev_state: &AppState,
     _spinner_tick: &mut usize,
 ) -> Result<Option<AppState>> {
+    use crossterm::event::{Event, KeyCode};
+    let key_code = if let Event::Key(key) = event { key.code } else { return Ok(None) };
+
     let normalized_code = match key_code {
         KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
         _ => key_code,
