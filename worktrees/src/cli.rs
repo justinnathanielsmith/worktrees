@@ -94,7 +94,7 @@ pub enum Commands {
     /// Example: cd $(worktrees switch dev)
     Switch {
         /// The name or branch of the worktree to switch to
-        name: String,
+        name: Option<String>,
     },
 }
 
@@ -107,4 +107,98 @@ pub enum ConfigAction {
     },
     /// Get the current Gemini API key
     GetKey,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+
+    #[test]
+    fn test_cli_parsing() -> Result<()> {
+        // Test init
+        let cli = Cli::try_parse_from(["worktrees", "init", "url"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match cli
+            .command
+            .ok_or_else(|| anyhow::anyhow!("Missing command"))?
+        {
+            Commands::Init { url, name } => {
+                assert_eq!(url, "url");
+                assert_eq!(name, None);
+            }
+            _ => anyhow::bail!("Expected Init"),
+        }
+
+        // Test add
+        let cli = Cli::try_parse_from(["worktrees", "add", "feat", "branch"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match cli
+            .command
+            .ok_or_else(|| anyhow::anyhow!("Missing command"))?
+        {
+            Commands::Add { intent, branch } => {
+                assert_eq!(intent, "feat");
+                assert_eq!(branch, Some("branch".to_string()));
+            }
+            _ => anyhow::bail!("Expected Add"),
+        }
+
+        // Test list
+        let cli = Cli::try_parse_from(["worktrees", "list"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        assert!(matches!(
+            cli.command
+                .ok_or_else(|| anyhow::anyhow!("Missing command"))?,
+            Commands::List
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn test_cli_parsing_clean() -> Result<()> {
+        // Test clean with dry-run
+        let cli = Cli::try_parse_from(["worktrees", "clean", "--dry-run"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match cli
+            .command
+            .ok_or_else(|| anyhow::anyhow!("Missing command"))?
+        {
+            Commands::Clean { dry_run } => {
+                assert!(dry_run);
+            }
+            _ => anyhow::bail!("Expected Clean"),
+        }
+
+        // Test clean without dry-run
+        let cli = Cli::try_parse_from(["worktrees", "clean"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match cli
+            .command
+            .ok_or_else(|| anyhow::anyhow!("Missing command"))?
+        {
+            Commands::Clean { dry_run } => {
+                assert!(!dry_run);
+            }
+            _ => anyhow::bail!("Expected Clean"),
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_cli_parsing_switch() -> Result<()> {
+        let cli = Cli::try_parse_from(["worktrees", "switch", "dev"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match cli
+            .command
+            .ok_or_else(|| anyhow::anyhow!("Missing command"))?
+        {
+            Commands::Switch { name } => {
+                assert_eq!(name, Some("dev".to_string()));
+            }
+            _ => anyhow::bail!("Expected Switch"),
+        }
+        Ok(())
+    }
 }

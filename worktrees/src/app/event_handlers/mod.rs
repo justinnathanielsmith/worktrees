@@ -12,7 +12,6 @@ pub use branch::handle_branch_events;
 pub use committing::handle_committing_events;
 pub use confirm::handle_confirm_events;
 pub use editor::handle_editor_events;
-// pub use helpers::move_selection; // Unused
 pub use history::handle_history_events;
 pub use listing::handle_listing_events;
 pub use prompt::handle_prompt_events;

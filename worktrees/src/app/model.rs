@@ -5,7 +5,6 @@ use ratatui::widgets::TableState;
 #[derive(Debug, Clone)]
 pub enum PromptType {
     AddIntent,
-    InitUrl,
     CommitMessage,
     ApiKey,
 }
@@ -99,6 +98,7 @@ pub enum AppState {
         worktrees: Vec<Worktree>,
         table_state: TableState,
         refresh_needed: bool,
+        selection_mode: bool,
     },
     /// Detailed Git status view for a specific worktree.
     ViewingStatus {
@@ -141,7 +141,7 @@ pub enum AppState {
     /// An error state with a message.
     Error(String, Box<AppState>),
     /// Signal to exit the application.
-    Exiting,
+    Exiting(Option<String>),
 }
 
 impl AppState {

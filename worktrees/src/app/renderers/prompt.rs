@@ -21,7 +21,6 @@ pub fn render_prompt(
 
     let title = match prompt_type {
         PromptType::AddIntent => " ADD WORKTREE INTENT ",
-        PromptType::InitUrl => " REPOSITORY URL ",
         PromptType::CommitMessage => " COMMIT MESSAGE ",
         PromptType::ApiKey => " GEMINI API KEY ",
     };

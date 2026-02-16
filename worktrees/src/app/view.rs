@@ -1,12 +1,12 @@
 use crate::app::cli_renderer::CliRenderer;
 use crate::app::event_handlers::*;
-use crate::app::model::{AppState, PromptType};
+use crate::app::model::AppState;
 use crate::app::renderers::*;
 use crate::domain::repository::{ProjectRepository, Worktree};
 use crate::ui::widgets::{footer::FooterWidget, header::HeaderWidget};
 use anyhow::Result;
 use crossterm::{
-    event::{self, Event, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseButton, MouseEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -38,10 +38,10 @@ impl View {
         CliRenderer::render_feedback_prompt();
     }
 
-    pub fn render_tui<R: ProjectRepository>(repo: &R, mut state: AppState) -> Result<()> {
+    pub fn render_tui<R: ProjectRepository>(repo: &R, mut state: AppState) -> Result<Option<String>> {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
-        execute!(stdout, EnterAlternateScreen)?;
+        execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
 
@@ -49,7 +49,7 @@ impl View {
         let res = Self::run_loop(&mut terminal, repo, &mut state, &mut spinner_tick);
 
         disable_raw_mode()?;
-        execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+        execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
         terminal.show_cursor()?;
 
         res
@@ -60,10 +60,11 @@ impl View {
         repo: &R,
         state: &mut AppState,
         spinner_tick: &mut usize,
-    ) -> Result<()> {
+    ) -> Result<Option<String>> {
         loop {
             if let AppState::ListingWorktrees {
                 refresh_needed: true,
+                selection_mode,
                 ..
             } = state
             {
@@ -76,6 +77,7 @@ impl View {
                         worktrees,
                         table_state,
                         refresh_needed: false,
+                        selection_mode: *selection_mode,
                     };
                 }
             }
@@ -85,9 +87,11 @@ impl View {
 
             if event::poll(Duration::from_millis(100))? {
                 if let Event::Key(key) = event::read()? {
-                    let mut new_state = None;
-                    let current_state_clone = state.clone();
-                    match state {
+                     let mut new_state = None;
+                     let current_state_clone = state.clone();
+                     // ... key handling ...
+                     match state {
+                        // ... existing key matching ...
                         AppState::ListingWorktrees {
                             worktrees,
                             table_state,
@@ -121,6 +125,7 @@ impl View {
                             )?;
                         }
                         AppState::ViewingHistory {
+                            branch: _,
                             commits,
                             selected_index,
                             prev_state,
@@ -134,6 +139,7 @@ impl View {
                             branches,
                             selected_index,
                             prev_state,
+                            ..
                         } => {
                             new_state = handle_branch_events(
                                 key.code,
@@ -144,35 +150,12 @@ impl View {
                                 prev_state,
                             )?;
                         }
-                        AppState::Confirming {
-                            action,
-                            prev_state,
-                            ..
-                        } => {
-                            new_state =
-                                handle_confirm_events(key.code, repo, action, prev_state)?;
-                        }
-                        AppState::Committing {
-                            path,
-                            branch,
-                            selected_index,
-                            prev_state,
-                        } => {
-                            new_state = handle_committing_events(
-                                key.code,
-                                repo,
-                                path,
-                                branch,
-                                selected_index,
-                                prev_state,
-                                &current_state_clone,
-                            )?;
-                        }
                         AppState::SelectingEditor {
                             branch,
                             options,
                             selected,
                             prev_state,
+                            ..
                         } => {
                             new_state = handle_editor_events(
                                 key.code,
@@ -185,22 +168,11 @@ impl View {
                                 spinner_tick,
                             )?;
                         }
-                        AppState::Syncing { prev_state, .. }
-                        | AppState::SyncComplete { prev_state, .. }
-                        | AppState::Help { prev_state }
-                        | AppState::Fetching { prev_state, .. }
-                        | AppState::Pushing { prev_state, .. }
-                        | AppState::PushComplete { prev_state, .. }
-                        | AppState::OpeningEditor { prev_state, .. }
-                        | AppState::Error(_, prev_state) => {
-                            if let KeyCode::Char('q') | KeyCode::Esc | KeyCode::Enter = key.code {
-                                new_state = Some(*prev_state.clone());
-                            }
-                        }
                         AppState::Prompting {
                             prompt_type,
                             input,
                             prev_state,
+                            ..
                         } => {
                             new_state = handle_prompt_events(
                                 key.code,
@@ -212,30 +184,62 @@ impl View {
                                 spinner_tick,
                             )?;
                         }
-                        AppState::Welcome => {
-                            if let KeyCode::Char('q') | KeyCode::Esc = key.code {
-                                return Ok(());
-                            }
-                            if let KeyCode::Char('i') = key.code {
-                                new_state = Some(AppState::Prompting {
-                                    prompt_type: PromptType::InitUrl,
-                                    input: String::new(),
-                                    prev_state: Box::new(AppState::Welcome),
-                                });
-                            }
+                        AppState::Confirming {
+                            action, prev_state, ..
+                        } => {
+                            new_state = handle_confirm_events(key.code, repo, action, prev_state)?;
                         }
+                        AppState::Committing {
+                            path,
+                            branch,
+                            selected_index,
+                            prev_state,
+                            ..
+                        } => {
+                            new_state = handle_committing_events(
+                                key.code,
+                                repo,
+                                path,
+                                branch,
+                                selected_index,
+                                prev_state,
+                                &current_state_clone,
+                            )?;
+                        }
+                        // ... other states ...
                         _ => {
-                            if let KeyCode::Char('q') | KeyCode::Esc = key.code {
-                                return Ok(());
+                             if let KeyCode::Char('q') | KeyCode::Esc = key.code {
+                                return Ok(None);
                             }
                         }
-                    }
-                    if let Some(ns) = new_state {
-                        if matches!(ns, AppState::Exiting) {
-                            return Ok(());
-                        }
-                        *state = ns;
-                        state.request_refresh();
+                     }
+                     if let Some(ns) = new_state {
+                         if let AppState::Exiting(res) = ns {
+                             return Ok(res);
+                         }
+                         *state = ns;
+                         state.request_refresh();
+                     }
+                } else if let Event::Mouse(mouse) = event::read()? {
+                    if let MouseEventKind::Down(MouseButton::Left) = mouse.kind {
+                         if let AppState::ListingWorktrees { worktrees, table_state, .. } = state {
+                            // Hardcoded layout assumption:
+                            // Margin: 1
+                            // Header: 3
+                            // Table starts at y = 1 + 3 = 4
+                            // Table header is 1 row
+                            // Data starts at y = 5
+                            let header_height = 4; // Margin + Header widget
+                            let table_header = 1; 
+                            let data_start_y = header_height + table_header;
+                            
+                            let row_index = mouse.row as i16 - data_start_y as i16;
+                            
+                            if row_index >= 0 && (row_index as usize) < worktrees.len() {
+                                table_state.select(Some(row_index as usize));
+                                state.request_refresh();
+                            }
+                         }
                     }
                 }
             }
@@ -573,6 +577,7 @@ mod tests {
             worktrees,
             table_state,
             refresh_needed: false,
+            selection_mode: false,
         };
 
         terminal

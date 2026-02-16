@@ -26,7 +26,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
     };
 
     match normalized_code {
-        KeyCode::Char('q') | KeyCode::Esc => return Ok(Some(AppState::Exiting)),
+        KeyCode::Char('q') | KeyCode::Esc => return Ok(Some(AppState::Exiting(None))),
         KeyCode::Down | KeyCode::Char('j') => {
             move_selection(table_state, worktrees.len(), 1);
         }
@@ -235,6 +235,21 @@ pub fn handle_listing_events<R: ProjectRepository>(
                     terminal.draw(|f| super::super::view::View::draw(f, repo, &mut fetching_state, *spinner_tick))?;
                     let _ = repo.fetch(&path);
                     return Ok(Some(*prev));
+                }
+            }
+        }
+        KeyCode::Enter => {
+            if let AppState::ListingWorktrees {
+                worktrees,
+                table_state,
+                selection_mode: true,
+                ..
+            } = current_state
+            {
+                if let Some(i) = table_state.selected() {
+                    if let Some(wt) = worktrees.get(i) {
+                        return Ok(Some(AppState::Exiting(Some(wt.path.clone()))));
+                    }
                 }
             }
         }

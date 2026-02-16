@@ -30,18 +30,7 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                             worktrees: Vec::new(),
                             table_state: TableState::default(),
                             refresh_needed: true,
-                        }));
-                    }
-                    PromptType::InitUrl => {
-                        let mut init_state = AppState::Initializing {
-                            project_name: "project".into(),
-                        };
-                        terminal.draw(|f| super::super::view::View::draw(f, repo, &mut init_state, *spinner_tick))?;
-                        let _ = repo.init_bare_repo(&val, "project");
-                        return Ok(Some(AppState::ListingWorktrees {
-                            worktrees: Vec::new(),
-                            table_state: TableState::default(),
-                            refresh_needed: true,
+                            selection_mode: false,
                         }));
                     }
                     PromptType::CommitMessage => {
