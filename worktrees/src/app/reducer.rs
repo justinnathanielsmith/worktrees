@@ -741,7 +741,7 @@ mod tests {
                 .push(format!("sync:{}", path));
             Ok(())
         }
-        fn detect_context(&self) -> crate::domain::repository::ProjectContext {
+        fn detect_context(&self, _base_path: &std::path::Path) -> crate::domain::repository::ProjectContext {
             crate::domain::repository::ProjectContext::Standard
         }
         fn get_preferred_editor(&self) -> anyhow::Result<Option<String>> {

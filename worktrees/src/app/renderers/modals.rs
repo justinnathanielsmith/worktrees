@@ -41,7 +41,7 @@ pub fn render_modals<R: ProjectRepository>(
         )
         .split(f.area());
 
-    let context = repo.detect_context();
+    let context = repo.detect_context(std::path::Path::new("."));
 
     match state {
         AppState::Syncing { branch, .. } => {
