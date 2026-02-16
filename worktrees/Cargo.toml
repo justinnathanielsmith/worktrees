@@ -2,6 +2,13 @@
 name = "worktrees"
 version = "0.1.0"
 edition = "2024"
+authors = ["Justin Smith"]
+description = "A professional CLI for managing Git worktrees using the Bare Hub Architecture."
+license = "MIT"
+repository = "https://github.com/justinnathanielsmith/worktrees"
+homepage = "https://justinnathanielsmith.github.io/worktrees/"
+keywords = ["git", "worktree", "workflow", "bare-hub", "tui"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anyhow = "1.0.101"
@@ -27,3 +34,8 @@ codegen-units = 1
 panic = "abort"
 strip = true
 incremental = false
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
