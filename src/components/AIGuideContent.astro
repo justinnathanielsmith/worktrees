@@ -54,7 +54,7 @@ import CodeBlock from './CodeBlock.astro';
                 </div>
                 <p class="text-slate-400 max-w-2xl">Create a dedicated worktree for the specific ticket or task. This ensures the agent has a clean, branch-specific slate.</p>
                 <CodeBlock code={`# Create a new worktree at ../agent-fix for a specific feature
-worktrees add agent-fix ai/fix-issue-123
+worktree add agent-fix ai/fix-issue-123
 cd ../agent-fix`} label="Shell" />
             </div>
 
@@ -85,7 +85,7 @@ git push origin ai/fix-issue-123
 
 # Clean up the workspace
 cd ..
-worktrees remove agent-fix`} label="Shell" />
+worktree remove agent-fix`} label="Shell" />
             </div>
         </div>
     </div>
@@ -136,7 +136,7 @@ worktrees remove agent-fix`} label="Shell" />
             </div>
             <div class="border-l-2 border-blue-400 pl-6 py-2">
                 <h4 class="text-white font-bold mb-2">Secure AI Config</h4>
-                <p class="text-slate-400 text-sm">Use <code>worktrees config set-key &lt;YOUR_KEY&gt;</code> to securely store your Gemini API key in the system keyring for AI commit generation.</p>
+                <p class="text-slate-400 text-sm">Use <code>worktree config set-key &lt;YOUR_KEY&gt;</code> to securely store your Gemini API key in the system keyring for AI commit generation.</p>
             </div>
         </div>
     </div>

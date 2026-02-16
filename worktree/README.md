@@ -13,14 +13,14 @@ You can initialize a new project from an existing remote repository or start fre
 **From a Remote URL:**
 ```bash
 # Creates a new directory 'repo' with the bare repository
-wt init https://github.com/username/repo.git
+worktree init https://github.com/username/repo.git
 cd repo
 ```
 
 **Start Fresh:**
 ```bash
 # Creates a new directory 'my-project'
-wt init --name my-project
+worktree init --name my-project
 cd my-project
 ```
 
@@ -29,7 +29,7 @@ cd my-project
 Create your standard `main` and `dev` worktrees automatically:
 
 ```bash
-wt setup
+worktree setup
 ```
 
 This will create:
@@ -41,7 +41,7 @@ This will create:
 Start working on a new feature in isolation without switching contexts:
 
 ```bash
-wt add feature-login
+worktree add feature-login
 ```
 
 This creates a new directory `./feature-login` tracking the `feature-login` branch.
@@ -53,15 +53,15 @@ To jump between worktrees quickly, you can use the `switch` command.
 > **Pro Tip:** Add this function to your `.zshrc` or `.bashrc` for instant navigation:
 
 ```bash
-function wt-switch() {
-  cd "$(wt switch "$1")"
+function worktree-switch() {
+  cd "$(worktree switch "$1")"
 }
 ```
 
 Now you can run:
 ```bash
-wt-switch dev
-wt-switch feature-login
+worktree-switch dev
+worktree-switch feature-login
 ```
 
 ## Commands
@@ -114,7 +114,7 @@ cargo run -- list
 
 ```bash
 cargo build --release
-cp target/release/worktrees /usr/local/bin/wt
+cp target/release/worktree /usr/local/bin/worktree
 ```
 
 ## Quality Control

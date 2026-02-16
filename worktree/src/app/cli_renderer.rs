@@ -102,7 +102,7 @@ impl CliRenderer {
                 println!(
                     "   {} {}",
                     "└─ Action:  ".dimmed(),
-                    format!("cd {} && wt setup", project_name).blue().bold()
+                    format!("cd {} && worktree setup", project_name).blue().bold()
                 );
             }
             AppState::AddingWorktree { intent, branch } => {
