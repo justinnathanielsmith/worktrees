@@ -10,13 +10,16 @@ use std::process::Command;
 use std::time::Duration;
 use tracing::{error, info, instrument};
 
-fn get_project_name(url: &str, name: Option<String>) -> String {
+fn get_project_name(url: &Option<String>, name: Option<String>) -> String {
     name.unwrap_or_else(|| {
-        Path::new(url.trim_end_matches('/'))
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("project")
-            .to_string()
+        url.as_ref()
+            .and_then(|u| {
+                Path::new(u.trim_end_matches('/'))
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .map(|s| s.to_string())
+            })
+            .unwrap_or_else(|| "project".to_string())
     })
 }
 
@@ -70,11 +73,17 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 let repo_clone = repo.clone();
 
                 let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.init_bare_repo(&url_clone, &project_name_clone)
+                    repo_clone.init_bare_repo(url_clone.as_deref(), &project_name_clone)
                 }).await.into_diagnostic()?;
 
                 match res {
                     Ok(_) => {
+                        if url.is_none() {
+                            // Automatically create main worktree for fresh projects
+                            if let Err(e) = repo.add_new_worktree("main", "main", "HEAD") {
+                                error!(error = %e, "Failed to create default main worktree");
+                            }
+                        }
                         if let Some(pb) = pb {
                             pb.finish_and_clear();
                         }
@@ -647,12 +656,12 @@ mod tests {
     }
 
     impl ProjectRepository for MockRepo {
-        fn init_bare_repo(&self, url: &str, name: &str) -> anyhow::Result<()> {
+        fn init_bare_repo(&self, url: Option<&str>, name: &str) -> anyhow::Result<()> {
             self.tracker
                 .lock()
                 .unwrap()
                 .calls
-                .push(format!("init:{}|{}", url, name));
+                .push(format!("init:{:?}|{}", url, name));
             Ok(())
         }
         fn add_worktree(&self, intent: &str, branch: &str) -> anyhow::Result<()> {
@@ -783,21 +792,42 @@ mod tests {
     #[test]
     fn test_get_project_name() {
         assert_eq!(
-            get_project_name("https://github.com/user/repo.git", None),
+            get_project_name(&Some("https://github.com/user/repo.git".to_string()), None),
             "repo"
         );
         assert_eq!(
-            get_project_name("git@github.com:user/my-project", None),
+            get_project_name(&Some("git@github.com:user/my-project".to_string()), None),
             "my-project"
         );
         assert_eq!(
             get_project_name(
-                "https://github.com/user/repo.git",
+                &Some("https://github.com/user/repo.git".to_string()),
                 Some("custom".to_string())
             ),
             "custom"
         );
-        assert_eq!(get_project_name("/path/to/local/repo", None), "repo");
+        assert_eq!(get_project_name(&Some("/path/to/local/repo".to_string()), None), "repo");
+        assert_eq!(get_project_name(&None, Some("my-project".to_string())), "my-project");
+        assert_eq!(get_project_name(&None, None), "project");
+    }
+
+    #[tokio::test]
+    async fn test_reducer_handle_init_fresh() -> Result<()> {
+        let tracker = Arc::new(Mutex::new(CallTracker::default()));
+        let repo = MockRepo::new(tracker.clone());
+        let reducer = Reducer::new(repo, false);
+
+        reducer
+            .handle(Intent::Initialize {
+                url: None,
+                name: Some("fresh-project".to_string()),
+            }).await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let calls = tracker.lock().unwrap().calls.clone();
+        assert_eq!(calls[0], "init:None|fresh-project");
+        assert_eq!(calls[1], "add_new:main|main|HEAD");
+        Ok(())
     }
 
     #[tokio::test]
@@ -808,14 +838,14 @@ mod tests {
 
         reducer
             .handle(Intent::Initialize {
-                url: "https://github.com/user/repo.git".to_string(),
+                url: Some("https://github.com/user/repo.git".to_string()),
                 name: None,
             }).await
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
         assert_eq!(
             tracker.lock().unwrap().calls,
-            vec!["init:https://github.com/user/repo.git|repo"]
+            vec!["init:Some(\"https://github.com/user/repo.git\")|repo"]
         );
         Ok(())
     }

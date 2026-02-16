@@ -22,9 +22,10 @@ pub enum Commands {
     ///
     /// Example: worktrees init https://github.com/user/repo.git
     Init {
-        /// URL of the remote repository (HTTPS or SSH)
-        url: String,
-        /// Directory name for the project (defaults to repo name)
+        /// URL of the remote repository to clone (optional)
+        url: Option<String>,
+        /// Directory name for the project (defaults to repo name or 'project')
+        #[arg(short, long)]
         name: Option<String>,
     },
     /// Add a new worktree for a specific intent/feature
@@ -124,7 +125,7 @@ mod tests {
             .ok_or_else(|| anyhow::anyhow!("Missing command"))?
         {
             Commands::Init { url, name } => {
-                assert_eq!(url, "url");
+                assert_eq!(url, Some("url".to_string()));
                 assert_eq!(name, None);
             }
             _ => anyhow::bail!("Expected Init"),

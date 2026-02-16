@@ -122,7 +122,7 @@ impl GitProjectRepository {
 }
 
 impl ProjectRepository for GitProjectRepository {
-    fn init_bare_repo(&self, url: &str, project_name: &str) -> Result<()> {
+    fn init_bare_repo(&self, url: Option<&str>, project_name: &str) -> Result<()> {
         if Path::new(project_name).exists() {
             return Err(anyhow::anyhow!(
                 "Directory '{}' already exists. HELP: Choose a different name or remove the existing directory.",
@@ -133,15 +133,25 @@ impl ProjectRepository for GitProjectRepository {
         std::fs::create_dir(project_name).context("Failed to create project directory. HELP: Ensure you have write permissions in the current folder.")?;
         std::env::set_current_dir(project_name).context("Failed to enter project directory.")?;
 
-        Self::run_git(&["clone", "--bare", "--", url, ".bare"]).context("Failed to clone bare repository. HELP: Verify the repository URL and your SSH/HTTP credentials.")?;
+        if let Some(url_str) = url {
+            Self::run_git(&["clone", "--bare", "--", url_str, ".bare"]).context("Failed to clone bare repository. HELP: Verify the repository URL and your SSH/HTTP credentials.")?;
+        } else {
+            Self::run_git(&["init", "--bare", ".bare"]).context("Failed to initialize bare repository.")?;
+            // Ensure default branch is main
+            Self::run_git(&["-C", ".bare", "symbolic-ref", "HEAD", "refs/heads/main"])?;
+        }
+
         std::fs::write(".git", "gitdir: ./.bare\n")
             .context("Failed to write .git redirection file.")?;
-        Self::run_git(&[
-            "config",
-            "remote.origin.fetch",
-            "+refs/heads/*:refs/remotes/origin/*",
-        ])?;
-        Self::run_git(&["fetch", "origin"])?;
+        
+        if url.is_some() {
+            Self::run_git(&[
+                "config",
+                "remote.origin.fetch",
+                "+refs/heads/*:refs/remotes/origin/*",
+            ])?;
+            Self::run_git(&["fetch", "origin"])?;
+        }
 
         Ok(())
     }
@@ -156,7 +166,17 @@ impl ProjectRepository for GitProjectRepository {
     }
 
     fn add_new_worktree(&self, path: &str, branch: &str, base: &str) -> Result<()> {
-        Self::run_git(&["worktree", "add", "-b", branch, "--", path, base]).context(format!("Failed to create new worktree '{}' from '{}'. HELP: Ensure the base branch '{}' is valid.", path, base, base))?;
+        let res = Self::run_git(&["worktree", "add", "-b", branch, "--", path, base]);
+        
+        if res.is_err() && base == "HEAD" {
+            debug!("Normal worktree add failed on HEAD, trying --orphan for fresh repository...");
+            Self::run_git(&["worktree", "add", "--orphan", "-b", branch, path])
+                .context(format!("Failed to create orphan worktree '{}'. HELP: Ensure your Git version is 2.42+ or manually create the first commit.", path))?;
+            self.handle_context_files(path);
+            return Ok(());
+        }
+
+        res.context(format!("Failed to create new worktree '{}' from '{}'. HELP: Ensure the base branch '{}' is valid.", path, base, base))?;
         self.handle_context_files(path);
         Ok(())
     }

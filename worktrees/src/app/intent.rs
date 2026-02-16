@@ -1,7 +1,7 @@
 #[derive(Clone, Debug)]
 pub enum Intent {
     Initialize {
-        url: String,
+        url: Option<String>,
         name: Option<String>,
     },
     AddWorktree {

@@ -410,7 +410,7 @@ mod tests {
     struct MockRepository;
 
     impl ProjectRepository for MockRepository {
-        fn init_bare_repo(&self, _url: &str, _project_name: &str) -> anyhow::Result<()> {
+        fn init_bare_repo(&self, _url: Option<&str>, _project_name: &str) -> anyhow::Result<()> {
             Ok(())
         }
 

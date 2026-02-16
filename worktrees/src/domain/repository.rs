@@ -47,7 +47,7 @@ pub enum ProjectContext {
 /// The core abstraction for interacting with Git and project-specific configurations.
 pub trait ProjectRepository {
     /// Initializes a new bare repository at the specified project name directory.
-    fn init_bare_repo(&self, url: &str, project_name: &str) -> Result<()>;
+    fn init_bare_repo(&self, url: Option<&str>, project_name: &str) -> Result<()>;
     /// Adds an existing branch as a new worktree at the given path.
     fn add_worktree(&self, path: &str, branch: &str) -> Result<()>;
     /// Creates a new branch from a base and adds it as a worktree.
