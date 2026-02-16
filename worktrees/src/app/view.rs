@@ -39,6 +39,42 @@ impl View {
         CliRenderer::render_feedback_prompt();
     }
 
+    fn render_background(
+        f: &mut Frame,
+        state: &AppState,
+        context: crate::domain::repository::ProjectContext,
+        area: ratatui::layout::Rect,
+    ) {
+        match state {
+            AppState::ListingWorktrees {
+                worktrees,
+                table_state,
+                dashboard,
+                ..
+            } => {
+                render_listing(
+                    f,
+                    worktrees.as_slice(),
+                    &mut table_state.clone(),
+                    context,
+                    area,
+                    dashboard.active_tab,
+                    &dashboard.cached_status,
+                    &dashboard.cached_history,
+                );
+            }
+            AppState::ViewingStatus {
+                branch,
+                status,
+                prev_state,
+                ..
+            } => {
+                render_status(f, branch, status, prev_state, area);
+            }
+            _ => {}
+        }
+    }
+
     pub fn render_tui<R: ProjectRepository>(
         repo: &R,
         mut state: AppState,
@@ -373,25 +409,7 @@ impl View {
                 prev_state,
                 ..
             } => {
-                // Background
-                if let AppState::ListingWorktrees {
-                    worktrees,
-                    table_state,
-                    dashboard,
-                    ..
-                } = &**prev_state
-                {
-                    render_listing(
-                        f,
-                        worktrees.as_slice(),
-                        &mut table_state.clone(),
-                        context,
-                        chunks[1],
-                        dashboard.active_tab,
-                        &dashboard.cached_status,
-                        &dashboard.cached_history,
-                    );
-                }
+                Self::render_background(f, prev_state, context, chunks[1]);
                 render_history(f, branch, commits, *selected_index);
             }
             AppState::SwitchingBranch {
@@ -400,33 +418,7 @@ impl View {
                 prev_state,
                 ..
             } => {
-                // Background
-                if let AppState::ListingWorktrees {
-                    worktrees,
-                    table_state,
-                    dashboard,
-                    ..
-                } = &**prev_state
-                {
-                    render_listing(
-                        f,
-                        worktrees.as_slice(),
-                        &mut table_state.clone(),
-                        context,
-                        chunks[1],
-                        dashboard.active_tab,
-                        &dashboard.cached_status,
-                        &dashboard.cached_history,
-                    );
-                } else if let AppState::ViewingStatus {
-                    branch,
-                    status,
-                    prev_state: p_prev,
-                    ..
-                } = &**prev_state
-                {
-                    render_status(f, branch, status, p_prev, chunks[1]);
-                }
+                Self::render_background(f, prev_state, context, chunks[1]);
                 render_branch_selection(f, branches, *selected_index);
             }
             AppState::SelectingEditor {
@@ -436,25 +428,7 @@ impl View {
                 prev_state,
                 ..
             } => {
-                // Background
-                if let AppState::ListingWorktrees {
-                    worktrees,
-                    table_state,
-                    dashboard,
-                    ..
-                } = &**prev_state
-                {
-                    render_listing(
-                        f,
-                        worktrees.as_slice(),
-                        &mut table_state.clone(),
-                        context,
-                        chunks[1],
-                        dashboard.active_tab,
-                        &dashboard.cached_status,
-                        &dashboard.cached_history,
-                    );
-                }
+                Self::render_background(f, prev_state, context, chunks[1]);
                 render_editor_selection(f, branch, options, *selected);
             }
             AppState::Prompting {
@@ -463,25 +437,7 @@ impl View {
                 prev_state,
                 ..
             } => {
-                // Background
-                if let AppState::ListingWorktrees {
-                    worktrees,
-                    table_state,
-                    dashboard,
-                    ..
-                } = &**prev_state
-                {
-                    render_listing(
-                        f,
-                        worktrees.as_slice(),
-                        &mut table_state.clone(),
-                        context,
-                        chunks[1],
-                        dashboard.active_tab,
-                        &dashboard.cached_status,
-                        &dashboard.cached_history,
-                    );
-                }
+                Self::render_background(f, prev_state, context, chunks[1]);
                 render_prompt(f, prompt_type, input);
             }
             AppState::Committing {
@@ -490,16 +446,7 @@ impl View {
                 prev_state,
                 ..
             } => {
-                // Background
-                if let AppState::ViewingStatus {
-                    branch: b,
-                    status,
-                    prev_state: p_prev,
-                    ..
-                } = &**prev_state
-                {
-                    render_status(f, b, status, p_prev, chunks[1]);
-                }
+                Self::render_background(f, prev_state, context, chunks[1]);
                 render_commit_menu(f, branch, *selected_index);
             }
             _ => {
