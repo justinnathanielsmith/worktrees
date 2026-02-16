@@ -41,13 +41,13 @@ pub fn render_modals<R: ProjectRepository>(
         )
         .split(f.area());
 
-    let context = repo.detect_context(std::path::Path::new("."));
+    let context = repo.detect_context();
+    let standard_area = centered_rect(60, 20, f.area());
 
     match state {
         AppState::Syncing { branch, .. } => {
             let theme = CyberTheme::default();
-            let area = centered_rect(60, 20, f.area());
-            f.render_widget(Clear, area);
+            f.render_widget(Clear, standard_area);
 
             let p = Paragraph::new(vec![
                 Line::from(vec![Span::styled(
@@ -74,11 +74,10 @@ pub fn render_modals<R: ProjectRepository>(
                     .border_style(Style::default().fg(theme.primary)),
             )
             .alignment(Alignment::Center);
-            f.render_widget(p, area);
+            f.render_widget(p, standard_area);
         }
         AppState::SyncComplete { branch, .. } => {
-            let area = centered_rect(60, 20, f.area());
-            f.render_widget(Clear, area);
+            f.render_widget(Clear, standard_area);
 
             let p = Paragraph::new(vec![
                 Line::from(vec![Span::styled(
@@ -104,12 +103,11 @@ pub fn render_modals<R: ProjectRepository>(
                     .border_type(BorderType::Rounded),
             )
             .alignment(Alignment::Center);
-            f.render_widget(p, area);
+            f.render_widget(p, standard_area);
         }
         AppState::Pushing { branch, .. } => {
             let theme = CyberTheme::default();
-            let area = centered_rect(60, 20, f.area());
-            f.render_widget(Clear, area);
+            f.render_widget(Clear, standard_area);
 
             let p = Paragraph::new(vec![
                 Line::from(vec![Span::styled(
@@ -136,11 +134,10 @@ pub fn render_modals<R: ProjectRepository>(
                     .border_style(Style::default().fg(theme.primary)),
             )
             .alignment(Alignment::Center);
-            f.render_widget(p, area);
+            f.render_widget(p, standard_area);
         }
         AppState::PushComplete { branch, .. } => {
-            let area = centered_rect(60, 20, f.area());
-            f.render_widget(Clear, area);
+            f.render_widget(Clear, standard_area);
 
             let p = Paragraph::new(vec![
                 Line::from(vec![Span::styled(
@@ -166,7 +163,7 @@ pub fn render_modals<R: ProjectRepository>(
                     .border_type(BorderType::Rounded),
             )
             .alignment(Alignment::Center);
-            f.render_widget(p, area);
+            f.render_widget(p, standard_area);
         }
         AppState::Help { .. } => {
             let theme = CyberTheme::default();
@@ -306,8 +303,7 @@ pub fn render_modals<R: ProjectRepository>(
         }
         AppState::Fetching { branch, .. } => {
             let theme = CyberTheme::default();
-            let area = centered_rect(60, 20, f.area());
-            f.render_widget(Clear, area);
+            f.render_widget(Clear, standard_area);
 
             let p = Paragraph::new(vec![
                 Line::from(vec![Span::styled(
@@ -334,7 +330,7 @@ pub fn render_modals<R: ProjectRepository>(
                     .border_style(Style::default().fg(theme.primary)),
             )
             .alignment(Alignment::Center);
-            f.render_widget(p, area);
+            f.render_widget(p, standard_area);
         }
         AppState::Confirming { title, message, .. } => {
             let theme = CyberTheme::default();
@@ -387,8 +383,7 @@ pub fn render_modals<R: ProjectRepository>(
         }
         AppState::OpeningEditor { branch, editor, .. } => {
             let theme = CyberTheme::default();
-            let area = centered_rect(60, 20, f.area());
-            f.render_widget(Clear, area);
+            f.render_widget(Clear, standard_area);
 
             let p = Paragraph::new(vec![
                 Line::from(vec![Span::styled(
@@ -424,7 +419,7 @@ pub fn render_modals<R: ProjectRepository>(
                     .border_style(Style::default().fg(theme.primary)),
             )
             .alignment(Alignment::Center);
-            f.render_widget(p, area);
+            f.render_widget(p, standard_area);
         }
         AppState::Welcome => {
             let theme = CyberTheme::default();
@@ -586,8 +581,7 @@ pub fn render_modals<R: ProjectRepository>(
         | AppState::AddingWorktree { .. }
         | AppState::SettingUpDefaults => {
             let theme = CyberTheme::default();
-            let area = centered_rect(60, 20, f.area());
-            f.render_widget(Clear, area);
+            f.render_widget(Clear, standard_area);
             let title = if matches!(state, AppState::Initializing { .. }) {
                 "INITIALIZING REPOSITORY"
             } else if matches!(state, AppState::AddingWorktree { .. }) {
@@ -609,11 +603,10 @@ pub fn render_modals<R: ProjectRepository>(
                     .border_style(Style::default().fg(theme.primary)),
             )
             .alignment(Alignment::Center);
-            f.render_widget(p, area);
+            f.render_widget(p, standard_area);
         }
         AppState::SetupComplete => {
-            let area = centered_rect(60, 20, f.area());
-            f.render_widget(Clear, area);
+            f.render_widget(Clear, standard_area);
 
             let p = Paragraph::new(vec![
                 Line::from(vec![Span::styled(
@@ -631,7 +624,7 @@ pub fn render_modals<R: ProjectRepository>(
                     .border_type(BorderType::Rounded),
             )
             .alignment(Alignment::Center);
-            f.render_widget(p, area);
+            f.render_widget(p, standard_area);
         }
         _ => {}
     }
