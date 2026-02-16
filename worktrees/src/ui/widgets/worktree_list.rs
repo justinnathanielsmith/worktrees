@@ -1,5 +1,5 @@
 use crate::domain::repository::Worktree;
-use crate::ui::theme::CyberTheme;
+use crate::ui::theme::{CyberTheme, Icons};
 use ratatui::{
     layout::{Constraint, Rect},
     style::{Modifier, Style},
@@ -32,15 +32,15 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
 
                 let (icon, branch_style) = if wt.is_bare {
                     (
-                        " 🏠 ",
+                        Icons::BARE,
                         Style::default()
                             .fg(theme.subtle)
                             .add_modifier(Modifier::ITALIC),
                     )
                 } else if wt.is_detached {
-                    (" ⚠️ ", Style::default().fg(theme.error))
+                    (Icons::DETACHED, Style::default().fg(theme.error))
                 } else {
-                    (" 📁 ", Style::default().fg(theme.success))
+                    (Icons::WORKTREE, Style::default().fg(theme.success))
                 };
 
                 let branch_str = if wt.is_bare {
@@ -66,12 +66,12 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
                 let prefix = if is_selected { "  ▶ " } else { "    " };
 
                 let status_cell = if let Some(summary) = &wt.status_summary {
-                    let color = if summary == "clean" {
-                        theme.success
+                    let (color, icon) = if summary == "clean" {
+                        (theme.success, Icons::CLEAN)
                     } else {
-                        theme.accent
+                        (theme.accent, Icons::DIRTY)
                     };
-                    Cell::from(summary.clone()).style(Style::default().fg(color))
+                    Cell::from(format!("{} {}", icon, summary)).style(Style::default().fg(color))
                 } else {
                     Cell::from("-")
                 };
