@@ -19,7 +19,8 @@ impl<'a> Widget for StatusTabWidget<'a> {
         let mut lines = Vec::new();
 
         if let Some(status) = self.status {
-            if status.staged.is_empty() && status.unstaged.is_empty() && status.untracked.is_empty() {
+            if status.staged.is_empty() && status.unstaged.is_empty() && status.untracked.is_empty()
+            {
                 lines.push(Line::from(vec![Span::styled(
                     " ✨ Working directory clean.",
                     Style::default().fg(theme.success),

@@ -298,7 +298,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 if !json_mode {
                     if status == "ready" {
                         let created_from = dev_res.get("created_from").and_then(|v| v.as_str());
-                        if let Some(_) = created_from {
+                        if created_from.is_some() {
                             println!("   Dev:  {}", "READY (Created from main)".green().bold());
                         } else {
                             println!("   Dev:  {}", "READY".green().bold());
@@ -560,39 +560,37 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                         }))
                         .map_err(|e| miette::miette!("{e:?}"))?;
                     }
-                } else {
-                    if !json_mode {
-                        if dry_run {
-                            println!(
-                                "\n{} Found {} stale worktree(s) that would be removed:",
-                                "⚠".yellow().bold(),
-                                stale_worktrees.len()
-                            );
-                        } else {
-                            println!(
-                                "\n{} Removed {} stale worktree(s):",
-                                "✔".green().bold(),
-                                stale_worktrees.len()
-                            );
-                        }
-                        for wt in &stale_worktrees {
-                            println!("   • {}", wt.dimmed());
-                        }
-                        if dry_run {
-                            println!(
-                                "\n{} Run without --dry-run to actually remove these worktrees.",
-                                "Tip:".cyan().bold()
-                            );
-                        }
+                } else if !json_mode {
+                    if dry_run {
+                        println!(
+                            "\n{} Found {} stale worktree(s) that would be removed:",
+                            "⚠".yellow().bold(),
+                            stale_worktrees.len()
+                        );
                     } else {
-                        View::render_json(&serde_json::json!({
-                            "status": "success",
-                            "dry_run": dry_run,
-                            "stale_count": stale_worktrees.len(),
-                            "stale_worktrees": stale_worktrees
-                        }))
-                        .map_err(|e| miette::miette!("{e:?}"))?;
+                        println!(
+                            "\n{} Removed {} stale worktree(s):",
+                            "✔".green().bold(),
+                            stale_worktrees.len()
+                        );
                     }
+                    for wt in &stale_worktrees {
+                        println!("   • {}", wt.dimmed());
+                    }
+                    if dry_run {
+                        println!(
+                            "\n{} Run without --dry-run to actually remove these worktrees.",
+                            "Tip:".cyan().bold()
+                        );
+                    }
+                } else {
+                    View::render_json(&serde_json::json!({
+                        "status": "success",
+                        "dry_run": dry_run,
+                        "stale_count": stale_worktrees.len(),
+                        "stale_worktrees": stale_worktrees
+                    }))
+                    .map_err(|e| miette::miette!("{e:?}"))?;
                 }
             }
             Intent::SwitchWorktree { name } => {

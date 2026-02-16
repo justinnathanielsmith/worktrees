@@ -13,7 +13,7 @@ pub fn render_status(
     f: &mut Frame,
     branch: &str,
     status: &crate::app::model::StatusViewState,
-    prev_state: &Box<AppState>,
+    prev_state: &AppState,
     area: Rect,
 ) {
     let theme = CyberTheme::default();
@@ -29,7 +29,7 @@ pub fn render_status(
         worktrees,
         table_state,
         ..
-    } = &**prev_state
+    } = prev_state
     {
         let mut ts = table_state.clone();
         f.render_stateful_widget(WorktreeListWidget::new(worktrees), body_chunks[0], &mut ts);

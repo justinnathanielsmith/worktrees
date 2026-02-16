@@ -65,8 +65,14 @@ The agent must embody a "Senior Git Infrastructure Engineer" persona—direct, c
 - Use **Directive** mode for implementation.
 
 ### Validation Mechanisms
-- **Post-Action Check**: Every file modification must be followed by `cargo check` (or `PATH=$PATH:$HOME/.cargo/bin cargo check` if environment is restricted).
+- **Post-Action Check**: Every file modification must be followed by `cargo clippy --all-targets --all-features -- -D warnings` and `cargo fmt`.
 - **Test Integrity**: Every logic change requires running `cargo test`.
+- **Clippy Standards**:
+  - **Collapsible If**: Prefer `&&` (let-chains) to collapse nested `if let` blocks.
+  - **Pattern Matching**: Use `.is_some()`/.`is_none()` instead of `if let Some(_)` where possible.
+  - **Boxing**: Avoid `&Box<T>`, use `&T` instead.
+  - **Suppression**: Occasional `#[allow(clippy::too_many_arguments)]` is acceptable for large UI/Event functions if refactoring exceeds task scope.
+- **Format Consistency**: Always run `cargo fmt --all` before declaring a task complete.
 
 ## Configuration Structure
 - **Rules Path**: `.gemini/GEMINI.md`

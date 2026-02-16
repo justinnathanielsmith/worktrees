@@ -476,10 +476,10 @@ impl ProjectRepository for GitProjectRepository {
 
     fn get_api_key(&self) -> Result<Option<String>> {
         // 1. Check Environment
-        if let Ok(key) = std::env::var("GEMINI_API_KEY") {
-            if !key.trim().is_empty() {
-                return Ok(Some(key.trim().to_string()));
-            }
+        if let Ok(key) = std::env::var("GEMINI_API_KEY")
+            && !key.trim().is_empty()
+        {
+            return Ok(Some(key.trim().to_string()));
         }
 
         // 2. Check Keyring

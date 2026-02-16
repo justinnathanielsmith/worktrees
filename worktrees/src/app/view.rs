@@ -77,28 +77,27 @@ impl View {
                 table_state,
                 ..
             } = state
+                && let Ok(worktrees) = repo.list_worktrees()
             {
-                if let Ok(worktrees) = repo.list_worktrees() {
-                    let mut ts = table_state.clone();
-                    if ts.selected().is_none() && !worktrees.is_empty() {
-                        ts.select(Some(0));
-                    }
-
-                    let (status, history) =
-                        Self::fetch_dashboard_data(repo, &worktrees, ts.selected(), &dashboard);
-
-                    *state = AppState::ListingWorktrees {
-                        worktrees,
-                        table_state: ts,
-                        refresh_needed: false,
-                        selection_mode: *selection_mode,
-                        dashboard: crate::app::model::DashboardState {
-                            active_tab: dashboard.active_tab,
-                            cached_status: status,
-                            cached_history: history,
-                        },
-                    };
+                let mut ts = table_state.clone();
+                if ts.selected().is_none() && !worktrees.is_empty() {
+                    ts.select(Some(0));
                 }
+
+                let (status, history) =
+                    Self::fetch_dashboard_data(repo, &worktrees, ts.selected(), dashboard);
+
+                *state = AppState::ListingWorktrees {
+                    worktrees,
+                    table_state: ts,
+                    refresh_needed: false,
+                    selection_mode: *selection_mode,
+                    dashboard: crate::app::model::DashboardState {
+                        active_tab: dashboard.active_tab,
+                        cached_status: status,
+                        cached_history: history,
+                    },
+                };
             }
 
             terminal.draw(|f| Self::draw(f, repo, state, *spinner_tick))?;
@@ -243,31 +242,29 @@ impl View {
                         *state = ns;
                         state.request_refresh();
                     }
-                } else if let Event::Mouse(mouse) = event::read()? {
-                    if let MouseEventKind::Down(MouseButton::Left) = mouse.kind {
-                        if let AppState::ListingWorktrees {
-                            worktrees,
-                            table_state,
-                            ..
-                        } = state
-                        {
-                            // Hardcoded layout assumption:
-                            // Margin: 1
-                            // Header: 3
-                            // Table starts at y = 1 + 3 = 4
-                            // Table header is 1 row
-                            // Data starts at y = 5
-                            let header_height = 4; // Margin + Header widget
-                            let table_header = 1;
-                            let data_start_y = header_height + table_header;
+                } else if let Event::Mouse(mouse) = event::read()?
+                    && let MouseEventKind::Down(MouseButton::Left) = mouse.kind
+                    && let AppState::ListingWorktrees {
+                        worktrees,
+                        table_state,
+                        ..
+                    } = state
+                {
+                    // Hardcoded layout assumption:
+                    // Margin: 1
+                    // Header: 3
+                    // Table starts at y = 1 + 3 = 4
+                    // Table header is 1 row
+                    // Data starts at y = 5
+                    let header_height = 4; // Margin + Header widget
+                    let table_header = 1;
+                    let data_start_y = header_height + table_header;
 
-                            let row_index = mouse.row as i16 - data_start_y as i16;
+                    let row_index = mouse.row as i16 - data_start_y as i16;
 
-                            if row_index >= 0 && (row_index as usize) < worktrees.len() {
-                                table_state.select(Some(row_index as usize));
-                                state.request_refresh();
-                            }
-                        }
+                    if row_index >= 0 && (row_index as usize) < worktrees.len() {
+                        table_state.select(Some(row_index as usize));
+                        state.request_refresh();
                     }
                 }
             }
@@ -286,17 +283,17 @@ impl View {
         let mut status = None;
         let mut history = None;
 
-        if let Some(i) = selected_index {
-            if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                match dashboard.active_tab {
-                    crate::app::model::DashboardTab::Status => {
-                        status = repo.get_status(&wt.path).ok();
-                    }
-                    crate::app::model::DashboardTab::Log => {
-                        history = repo.get_history(&wt.path, 10).ok();
-                    }
-                    _ => {}
+        if let Some(i) = selected_index
+            && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
+        {
+            match dashboard.active_tab {
+                crate::app::model::DashboardTab::Status => {
+                    status = repo.get_status(&wt.path).ok();
                 }
+                crate::app::model::DashboardTab::Log => {
+                    history = repo.get_history(&wt.path, 10).ok();
+                }
+                _ => {}
             }
         }
 

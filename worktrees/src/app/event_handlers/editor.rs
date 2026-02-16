@@ -7,6 +7,7 @@ use std::io;
 use std::process::Command;
 use std::time::Duration;
 
+#[allow(clippy::too_many_arguments)]
 pub fn handle_editor_events<R: ProjectRepository>(
     key_code: KeyCode,
     repo: &R,

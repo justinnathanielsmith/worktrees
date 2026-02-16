@@ -71,145 +71,137 @@ pub fn handle_listing_events<R: ProjectRepository>(
             }));
         }
         KeyCode::Char('d') | KeyCode::Char('x') => {
-            if let Some(i) = table_state.selected() {
-                if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                    return Ok(Some(AppState::Confirming {
-                        title: " REMOVE WORKTREE ".into(),
-                        message: format!(
-                            "Are you sure you want to remove worktree '{}'?",
-                            wt.branch
-                        ),
-                        action: Box::new(Intent::RemoveWorktree {
-                            intent: wt.branch.clone(),
-                        }),
-                        prev_state: Box::new(current_state.clone()),
-                    }));
-                }
+            if let Some(i) = table_state.selected()
+                && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
+            {
+                return Ok(Some(AppState::Confirming {
+                    title: " REMOVE WORKTREE ".into(),
+                    message: format!("Are you sure you want to remove worktree '{}'?", wt.branch),
+                    action: Box::new(Intent::RemoveWorktree {
+                        intent: wt.branch.clone(),
+                    }),
+                    prev_state: Box::new(current_state.clone()),
+                }));
             }
         }
         KeyCode::Char('s') => {
-            if let Some(i) = table_state.selected() {
-                if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                    let branch = wt.branch.clone();
-                    let path = wt.path.clone();
-                    let prev = Box::new(current_state.clone());
-                    let mut syncing_state = AppState::Syncing {
-                        branch: branch.clone(),
-                        prev_state: prev.clone(),
-                    };
-                    terminal.draw(|f| {
-                        super::super::view::View::draw(f, repo, &mut syncing_state, *spinner_tick)
-                    })?;
-                    let _ = repo.sync_configs(&path);
-                    let mut complete_state = AppState::SyncComplete {
-                        branch,
-                        prev_state: prev,
-                    };
-                    terminal.draw(|f| {
-                        super::super::view::View::draw(f, repo, &mut complete_state, *spinner_tick)
-                    })?;
-                    std::thread::sleep(Duration::from_millis(800));
-                    return Ok(Some(complete_state.prev_state_boxed().clone()));
-                }
+            if let Some(i) = table_state.selected()
+                && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
+            {
+                let branch = wt.branch.clone();
+                let path = wt.path.clone();
+                let prev = Box::new(current_state.clone());
+                let mut syncing_state = AppState::Syncing {
+                    branch: branch.clone(),
+                    prev_state: prev.clone(),
+                };
+                terminal.draw(|f| {
+                    super::super::view::View::draw(f, repo, &mut syncing_state, *spinner_tick)
+                })?;
+                let _ = repo.sync_configs(&path);
+                let mut complete_state = AppState::SyncComplete {
+                    branch,
+                    prev_state: prev,
+                };
+                terminal.draw(|f| {
+                    super::super::view::View::draw(f, repo, &mut complete_state, *spinner_tick)
+                })?;
+                std::thread::sleep(Duration::from_millis(800));
+                return Ok(Some(complete_state.prev_state_boxed().clone()));
             }
         }
         KeyCode::Char('p') => {
-            if let Some(i) = table_state.selected() {
-                if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                    let branch = wt.branch.clone();
-                    let path = wt.path.clone();
-                    let prev = Box::new(current_state.clone());
-                    let mut pushing_state = AppState::Pushing {
-                        branch: branch.clone(),
-                        prev_state: prev.clone(),
-                    };
-                    terminal.draw(|f| {
-                        super::super::view::View::draw(f, repo, &mut pushing_state, *spinner_tick)
-                    })?;
-                    if let Err(e) = repo.push(&path) {
-                        return Ok(Some(AppState::Error(
-                            format!("Failed to push: {}", e),
-                            prev,
-                        )));
-                    }
-                    let mut complete_state = AppState::PushComplete {
-                        branch,
-                        prev_state: prev,
-                    };
-                    terminal.draw(|f| {
-                        super::super::view::View::draw(f, repo, &mut complete_state, *spinner_tick)
-                    })?;
-                    std::thread::sleep(Duration::from_millis(800));
-                    return Ok(Some(complete_state.prev_state_boxed().clone()));
+            if let Some(i) = table_state.selected()
+                && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
+            {
+                let branch = wt.branch.clone();
+                let path = wt.path.clone();
+                let prev = Box::new(current_state.clone());
+                let mut pushing_state = AppState::Pushing {
+                    branch: branch.clone(),
+                    prev_state: prev.clone(),
+                };
+                terminal.draw(|f| {
+                    super::super::view::View::draw(f, repo, &mut pushing_state, *spinner_tick)
+                })?;
+                if let Err(e) = repo.push(&path) {
+                    return Ok(Some(AppState::Error(
+                        format!("Failed to push: {}", e),
+                        prev,
+                    )));
                 }
+                let mut complete_state = AppState::PushComplete {
+                    branch,
+                    prev_state: prev,
+                };
+                terminal.draw(|f| {
+                    super::super::view::View::draw(f, repo, &mut complete_state, *spinner_tick)
+                })?;
+                std::thread::sleep(Duration::from_millis(800));
+                return Ok(Some(complete_state.prev_state_boxed().clone()));
             }
         }
         KeyCode::Char('o') => {
-            if let Some(i) = table_state.selected() {
-                if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                    let branch = wt.branch.clone();
-                    let path = wt.path.clone();
-                    let prev = Box::new(current_state.clone());
+            if let Some(i) = table_state.selected()
+                && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
+            {
+                let branch = wt.branch.clone();
+                let path = wt.path.clone();
+                let prev = Box::new(current_state.clone());
 
-                    if let Ok(Some(editor)) = repo.get_preferred_editor() {
-                        let mut opening_state = AppState::OpeningEditor {
-                            branch,
-                            editor: editor.clone(),
-                            prev_state: prev.clone(),
-                        };
-                        terminal.draw(|f| {
-                            super::super::view::View::draw(
-                                f,
-                                repo,
-                                &mut opening_state,
-                                *spinner_tick,
-                            )
-                        })?;
-                        let _ = Command::new(&editor).arg(&path).spawn();
-                        std::thread::sleep(Duration::from_millis(800));
-                        return Ok(Some(*prev));
-                    } else {
-                        let options = vec![
-                            EditorConfig {
-                                name: "VS Code".into(),
-                                command: "code".into(),
-                            },
-                            EditorConfig {
-                                name: "Cursor".into(),
-                                command: "cursor".into(),
-                            },
-                            EditorConfig {
-                                name: "Zed".into(),
-                                command: "zed".into(),
-                            },
-                            EditorConfig {
-                                name: "Android Studio".into(),
-                                command: "studio".into(),
-                            },
-                            EditorConfig {
-                                name: "IntelliJ IDEA".into(),
-                                command: "idea".into(),
-                            },
-                            EditorConfig {
-                                name: "Vim".into(),
-                                command: "vim".into(),
-                            },
-                            EditorConfig {
-                                name: "Neovim".into(),
-                                command: "nvim".into(),
-                            },
-                            EditorConfig {
-                                name: "Antigravity".into(),
-                                command: "antigravity".into(),
-                            },
-                        ];
-                        return Ok(Some(AppState::SelectingEditor {
-                            branch,
-                            options,
-                            selected: 0,
-                            prev_state: prev,
-                        }));
-                    }
+                if let Ok(Some(editor)) = repo.get_preferred_editor() {
+                    let mut opening_state = AppState::OpeningEditor {
+                        branch,
+                        editor: editor.clone(),
+                        prev_state: prev.clone(),
+                    };
+                    terminal.draw(|f| {
+                        super::super::view::View::draw(f, repo, &mut opening_state, *spinner_tick)
+                    })?;
+                    let _ = Command::new(&editor).arg(&path).spawn();
+                    std::thread::sleep(Duration::from_millis(800));
+                    return Ok(Some(*prev));
+                } else {
+                    let options = vec![
+                        EditorConfig {
+                            name: "VS Code".into(),
+                            command: "code".into(),
+                        },
+                        EditorConfig {
+                            name: "Cursor".into(),
+                            command: "cursor".into(),
+                        },
+                        EditorConfig {
+                            name: "Zed".into(),
+                            command: "zed".into(),
+                        },
+                        EditorConfig {
+                            name: "Android Studio".into(),
+                            command: "studio".into(),
+                        },
+                        EditorConfig {
+                            name: "IntelliJ IDEA".into(),
+                            command: "idea".into(),
+                        },
+                        EditorConfig {
+                            name: "Vim".into(),
+                            command: "vim".into(),
+                        },
+                        EditorConfig {
+                            name: "Neovim".into(),
+                            command: "nvim".into(),
+                        },
+                        EditorConfig {
+                            name: "Antigravity".into(),
+                            command: "antigravity".into(),
+                        },
+                    ];
+                    return Ok(Some(AppState::SelectingEditor {
+                        branch,
+                        options,
+                        selected: 0,
+                        prev_state: prev,
+                    }));
                 }
             }
         }
@@ -231,68 +223,65 @@ pub fn handle_listing_events<R: ProjectRepository>(
             return Ok(Some(current_state.clone()));
         }
         KeyCode::Char('g') => {
-            if let Some(i) = table_state.selected() {
-                if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                    if let Ok(status) = repo.get_status(&wt.path) {
-                        return Ok(Some(AppState::ViewingStatus {
-                            path: wt.path.clone(),
-                            branch: wt.branch.clone(),
-                            status: crate::app::model::StatusViewState {
-                                staged: status.staged,
-                                unstaged: status.unstaged,
-                                untracked: status.untracked,
-                                selected_index: 0,
-                            },
-                            prev_state: Box::new(current_state.clone()),
-                        }));
-                    }
-                }
+            if let Some(i) = table_state.selected()
+                && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
+                && let Ok(status) = repo.get_status(&wt.path)
+            {
+                return Ok(Some(AppState::ViewingStatus {
+                    path: wt.path.clone(),
+                    branch: wt.branch.clone(),
+                    status: crate::app::model::StatusViewState {
+                        staged: status.staged,
+                        unstaged: status.unstaged,
+                        untracked: status.untracked,
+                        selected_index: 0,
+                    },
+                    prev_state: Box::new(current_state.clone()),
+                }));
             }
         }
         KeyCode::Char('l') => {
-            if let Some(i) = table_state.selected() {
-                if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                    if let Ok(commits) = repo.get_history(&wt.path, 50) {
-                        return Ok(Some(AppState::ViewingHistory {
-                            branch: wt.branch.clone(),
-                            commits,
-                            selected_index: 0,
-                            prev_state: Box::new(current_state.clone()),
-                        }));
-                    }
-                }
+            if let Some(i) = table_state.selected()
+                && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
+                && let Ok(commits) = repo.get_history(&wt.path, 50)
+            {
+                return Ok(Some(AppState::ViewingHistory {
+                    branch: wt.branch.clone(),
+                    commits,
+                    selected_index: 0,
+                    prev_state: Box::new(current_state.clone()),
+                }));
             }
         }
         KeyCode::Char('b') => {
-            if let Some(i) = table_state.selected() {
-                if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                    if let Ok(branches) = repo.list_branches() {
-                        return Ok(Some(AppState::SwitchingBranch {
-                            path: wt.path.clone(),
-                            branches,
-                            selected_index: 0,
-                            prev_state: Box::new(current_state.clone()),
-                        }));
-                    }
-                }
+            if let Some(i) = table_state.selected()
+                && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
+                && let Ok(branches) = repo.list_branches()
+            {
+                return Ok(Some(AppState::SwitchingBranch {
+                    path: wt.path.clone(),
+                    branches,
+                    selected_index: 0,
+                    prev_state: Box::new(current_state.clone()),
+                }));
             }
         }
         KeyCode::Char('f') => {
-            if let Some(i) = table_state.selected() {
-                if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                    let branch = wt.branch.clone();
-                    let path = wt.path.clone();
-                    let prev = Box::new(current_state.clone());
-                    let mut fetching_state = AppState::Fetching {
-                        branch,
-                        prev_state: prev.clone(),
-                    };
-                    terminal.draw(|f| {
-                        super::super::view::View::draw(f, repo, &mut fetching_state, *spinner_tick)
-                    })?;
-                    let _ = repo.fetch(&path);
-                    return Ok(Some(*prev));
-                }
+            if let Some(i) = table_state.selected()
+                && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
+            {
+                let branch = wt.branch.clone();
+                let path = wt.path.clone();
+                let prev = Box::new(current_state.clone());
+                let mut fetching_state = AppState::Fetching {
+                    branch,
+                    prev_state: prev.clone(),
+                };
+                terminal.draw(|f| {
+                    super::super::view::View::draw(f, repo, &mut fetching_state, *spinner_tick)
+                })?;
+                let _ = repo.fetch(&path);
+                return Ok(Some(*prev));
             }
         }
         KeyCode::Enter => {
@@ -302,12 +291,10 @@ pub fn handle_listing_events<R: ProjectRepository>(
                 selection_mode: true,
                 ..
             } = current_state
+                && let Some(i) = table_state.selected()
+                && let Some(wt) = worktrees.get(i)
             {
-                if let Some(i) = table_state.selected() {
-                    if let Some(wt) = worktrees.get(i) {
-                        return Ok(Some(AppState::Exiting(Some(wt.path.clone()))));
-                    }
-                }
+                return Ok(Some(AppState::Exiting(Some(wt.path.clone()))));
             }
         }
         KeyCode::Char('?') | KeyCode::Char('h') => {

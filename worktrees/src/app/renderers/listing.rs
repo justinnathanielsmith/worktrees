@@ -8,6 +8,7 @@ use ratatui::{
     widgets::TableState,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub fn render_listing(
     f: &mut Frame,
     worktrees: &[Worktree],
