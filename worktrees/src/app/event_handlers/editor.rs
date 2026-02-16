@@ -55,17 +55,19 @@ pub fn handle_editor_events<R: ProjectRepository>(
                 None
             };
             if let Some(p) = path {
-                let mut opening_state = AppState::OpeningEditor {
+                let prev_clone = prev_state.clone();
+                let opening_state = AppState::OpeningEditor {
                     branch: branch.to_string(),
                     editor,
                     prev_state: Box::new(prev_state.clone()),
                 };
-                terminal.draw(|f| {
-                    super::super::view::View::draw(f, repo, &mut opening_state, *spinner_tick)
-                })?;
                 let _ = Command::new(&options[*selected].command).arg(&p).spawn();
-                std::thread::sleep(Duration::from_millis(800));
-                return Ok(Some(prev_state.clone()));
+                return Ok(Some(AppState::Timed {
+                    inner_state: Box::new(opening_state),
+                    target_state: Box::new(prev_clone),
+                    start_time: std::time::Instant::now(),
+                    duration: std::time::Duration::from_millis(800),
+                }));
             }
         }
         KeyCode::Esc => {

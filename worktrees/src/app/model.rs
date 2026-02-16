@@ -1,6 +1,7 @@
 use crate::app::intent::Intent;
 use crate::domain::repository::Worktree;
 use ratatui::widgets::TableState;
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone)]
 pub enum PromptType {
@@ -153,6 +154,13 @@ pub enum AppState {
     SettingUpDefaults,
     /// Canonical setup completed.
     SetupComplete,
+    /// Temporary state that transitions after a duration.
+    Timed {
+        inner_state: Box<AppState>,
+        target_state: Box<AppState>,
+        start_time: Instant,
+        duration: Duration,
+    },
     /// An error state with a message.
     Error(String, Box<AppState>),
     /// Signal to exit the application.
@@ -184,6 +192,7 @@ impl AppState {
             AppState::SwitchingBranch { prev_state, .. } => prev_state,
             AppState::Committing { prev_state, .. } => prev_state,
             AppState::Prompting { prev_state, .. } => prev_state,
+            AppState::Timed { target_state, .. } => target_state,
             AppState::Error(_, prev_state) => prev_state,
             _ => panic!("State does not have a previous state"),
         }

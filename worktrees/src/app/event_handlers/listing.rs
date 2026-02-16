@@ -99,15 +99,17 @@ pub fn handle_listing_events<R: ProjectRepository>(
                     super::super::view::View::draw(f, repo, &mut syncing_state, *spinner_tick)
                 })?;
                 let _ = repo.sync_configs(&path);
-                let mut complete_state = AppState::SyncComplete {
+                let prev_clone = prev.clone();
+                let complete_state = AppState::SyncComplete {
                     branch,
                     prev_state: prev,
                 };
-                terminal.draw(|f| {
-                    super::super::view::View::draw(f, repo, &mut complete_state, *spinner_tick)
-                })?;
-                std::thread::sleep(Duration::from_millis(800));
-                return Ok(Some(complete_state.prev_state_boxed().clone()));
+                return Ok(Some(AppState::Timed {
+                    inner_state: Box::new(complete_state),
+                    target_state: prev_clone,
+                    start_time: std::time::Instant::now(),
+                    duration: std::time::Duration::from_millis(800),
+                }));
             }
         }
         KeyCode::Char('p') => {
@@ -130,15 +132,17 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         prev,
                     )));
                 }
-                let mut complete_state = AppState::PushComplete {
+                let prev_clone = prev.clone();
+                let complete_state = AppState::PushComplete {
                     branch,
                     prev_state: prev,
                 };
-                terminal.draw(|f| {
-                    super::super::view::View::draw(f, repo, &mut complete_state, *spinner_tick)
-                })?;
-                std::thread::sleep(Duration::from_millis(800));
-                return Ok(Some(complete_state.prev_state_boxed().clone()));
+                return Ok(Some(AppState::Timed {
+                    inner_state: Box::new(complete_state),
+                    target_state: prev_clone,
+                    start_time: std::time::Instant::now(),
+                    duration: std::time::Duration::from_millis(800),
+                }));
             }
         }
         KeyCode::Char('o') => {
@@ -150,17 +154,19 @@ pub fn handle_listing_events<R: ProjectRepository>(
                 let prev = Box::new(current_state.clone());
 
                 if let Ok(Some(editor)) = repo.get_preferred_editor() {
-                    let mut opening_state = AppState::OpeningEditor {
+                    let prev_clone = prev.clone();
+                    let opening_state = AppState::OpeningEditor {
                         branch,
                         editor: editor.clone(),
-                        prev_state: prev.clone(),
+                        prev_state: prev,
                     };
-                    terminal.draw(|f| {
-                        super::super::view::View::draw(f, repo, &mut opening_state, *spinner_tick)
-                    })?;
                     let _ = Command::new(&editor).arg(&path).spawn();
-                    std::thread::sleep(Duration::from_millis(800));
-                    return Ok(Some(*prev));
+                    return Ok(Some(AppState::Timed {
+                        inner_state: Box::new(opening_state),
+                        target_state: prev_clone,
+                        start_time: std::time::Instant::now(),
+                        duration: std::time::Duration::from_millis(800),
+                    }));
                 } else {
                     let options = vec![
                         EditorConfig {
@@ -215,12 +221,12 @@ pub fn handle_listing_events<R: ProjectRepository>(
             let _ = repo.add_worktree("main", "main");
             let _ = repo.add_new_worktree("dev", "dev", "main");
 
-            let mut complete_state = AppState::SetupComplete;
-            terminal.draw(|f| {
-                super::super::view::View::draw(f, repo, &mut complete_state, *spinner_tick)
-            })?;
-            std::thread::sleep(Duration::from_millis(1200));
-            return Ok(Some(current_state.clone()));
+            return Ok(Some(AppState::Timed {
+                inner_state: Box::new(AppState::SetupComplete),
+                target_state: Box::new(current_state.clone()),
+                start_time: std::time::Instant::now(),
+                duration: std::time::Duration::from_millis(1200),
+            }));
         }
         KeyCode::Char('g') => {
             if let Some(i) = table_state.selected()

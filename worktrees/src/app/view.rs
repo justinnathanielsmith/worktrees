@@ -70,6 +70,19 @@ impl View {
         spinner_tick: &mut usize,
     ) -> Result<Option<String>> {
         loop {
+            if let AppState::Timed {
+                target_state,
+                start_time,
+                duration,
+                ..
+            } = state
+            {
+                if start_time.elapsed() >= *duration {
+                    *state = *target_state.clone();
+                    state.request_refresh();
+                }
+            }
+
             if let AppState::ListingWorktrees {
                 refresh_needed: true,
                 selection_mode,
@@ -306,6 +319,12 @@ impl View {
         state: &mut AppState,
         spinner_tick: usize,
     ) {
+        let display_state = if let AppState::Timed { inner_state, .. } = state {
+            &mut **inner_state
+        } else {
+            state
+        };
+
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .margin(1)
@@ -322,7 +341,7 @@ impl View {
         let context = repo.detect_context();
         f.render_widget(HeaderWidget { context }, chunks[0]);
 
-        match state {
+        match display_state {
             AppState::ListingWorktrees {
                 worktrees,
                 table_state,
@@ -486,7 +505,7 @@ impl View {
             }
             _ => {
                 // Handle modals and everything else
-                render_modals(f, repo, state, spinner_tick);
+                render_modals(f, repo, display_state, spinner_tick);
             }
         }
 
@@ -734,6 +753,45 @@ mod tests {
         assert!(
             content_str.contains("ERROR") || content_str.contains("Test error"),
             "Error state should render error message"
+        );
+    }
+
+    #[test]
+    fn test_draw_timed_state() {
+        let backend = TestBackend::new(120, 30);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let repo = MockRepository;
+
+        let prev_state = Box::new(AppState::Welcome);
+        let inner_state = Box::new(AppState::SyncComplete {
+            branch: "test-branch".to_string(),
+            prev_state: prev_state.clone(),
+        });
+
+        let mut state = AppState::Timed {
+            inner_state,
+            target_state: prev_state,
+            start_time: std::time::Instant::now(),
+            duration: std::time::Duration::from_millis(800),
+        };
+
+        terminal
+            .draw(|f| {
+                View::draw(f, &repo, &mut state, 0);
+            })
+            .unwrap();
+
+        let buffer = terminal.backend().buffer();
+        let content_str = buffer
+            .content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
+
+        // Check that SyncComplete text appears (rendered via Timed inner_state)
+        assert!(
+            content_str.contains("SYNC COMPLETE") || content_str.contains("test-branch"),
+            "Timed state should render its inner state (SyncComplete)"
         );
     }
 }
