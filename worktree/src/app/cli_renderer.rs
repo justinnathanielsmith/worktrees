@@ -78,6 +78,7 @@ impl CliRenderer {
     pub fn render(state: AppState) {
         match state {
             AppState::Initializing { project_name } => {
+                println!();
                 println!(
                     "{} {} [{} {}]",
                     "🚀".blue(),
@@ -106,6 +107,7 @@ impl CliRenderer {
                         .blue()
                         .bold()
                 );
+                println!();
             }
             AppState::AddingWorktree { intent, branch } => {
                 println!(
@@ -125,6 +127,7 @@ impl CliRenderer {
                     "SUCCESS:".green().bold(),
                     format!("Worktree active at ./{}", intent).white()
                 );
+                println!();
             }
             AppState::RemovingWorktree { intent } => {
                 println!(
@@ -171,6 +174,7 @@ impl CliRenderer {
                     "SUCCESS:".green().bold(),
                     format!("Pushed {} to remote", branch).white()
                 );
+                println!();
             }
             AppState::SelectingEditor { branch, .. } => {
                 println!(
@@ -212,12 +216,14 @@ impl CliRenderer {
                 println!("   {}", "All default worktrees have been created.".dimmed());
             }
             AppState::Error(msg, _) => {
-                eprintln!("\n{} {} {}", "❌".red(), "ERROR:".red().bold(), msg.red());
+                println!();
+                eprintln!("{} {} {}", "❌".red(), "ERROR:".red().bold(), msg.red());
                 eprintln!(
                     "   {} {}",
                     "└─".dimmed(),
                     "Check git state and permissions.".dimmed()
                 );
+                println!();
             }
             AppState::Welcome
             | AppState::Confirming { .. }

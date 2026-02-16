@@ -3,6 +3,7 @@ pub enum Intent {
     Initialize {
         url: Option<String>,
         name: Option<String>,
+        warp: bool,
     },
     AddWorktree {
         intent: String,
