@@ -1,6 +1,6 @@
 use crate::domain::repository::{ProjectContext, Worktree};
 use crate::ui::widgets::{details::DetailsWidget, worktree_list::WorktreeListWidget};
-use ratatui::{layout::Rect, widgets::TableState, Frame};
+use ratatui::{Frame, layout::Rect, widgets::TableState};
 
 pub fn render_listing(
     f: &mut Frame,

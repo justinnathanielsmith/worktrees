@@ -3,7 +3,7 @@ use crate::app::model::{AppState, EditorConfig, PromptType};
 use crate::domain::repository::{ProjectRepository, Worktree};
 use anyhow::Result;
 use crossterm::event::KeyCode;
-use ratatui::{backend::CrosstermBackend, widgets::TableState, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend, widgets::TableState};
 use std::io;
 use std::process::Command;
 use std::time::Duration;
@@ -45,7 +45,10 @@ pub fn handle_listing_events<R: ProjectRepository>(
                 if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
                     return Ok(Some(AppState::Confirming {
                         title: " REMOVE WORKTREE ".into(),
-                        message: format!("Are you sure you want to remove worktree '{}'?", wt.branch),
+                        message: format!(
+                            "Are you sure you want to remove worktree '{}'?",
+                            wt.branch
+                        ),
                         action: Box::new(Intent::RemoveWorktree {
                             intent: wt.branch.clone(),
                         }),
@@ -64,13 +67,17 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         branch: branch.clone(),
                         prev_state: prev.clone(),
                     };
-                    terminal.draw(|f| super::super::view::View::draw(f, repo, &mut syncing_state, *spinner_tick))?;
+                    terminal.draw(|f| {
+                        super::super::view::View::draw(f, repo, &mut syncing_state, *spinner_tick)
+                    })?;
                     let _ = repo.sync_configs(&path);
                     let mut complete_state = AppState::SyncComplete {
                         branch,
                         prev_state: prev,
                     };
-                    terminal.draw(|f| super::super::view::View::draw(f, repo, &mut complete_state, *spinner_tick))?;
+                    terminal.draw(|f| {
+                        super::super::view::View::draw(f, repo, &mut complete_state, *spinner_tick)
+                    })?;
                     std::thread::sleep(Duration::from_millis(800));
                     return Ok(Some(complete_state.prev_state_boxed().clone()));
                 }
@@ -86,15 +93,22 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         branch: branch.clone(),
                         prev_state: prev.clone(),
                     };
-                    terminal.draw(|f| super::super::view::View::draw(f, repo, &mut pushing_state, *spinner_tick))?;
+                    terminal.draw(|f| {
+                        super::super::view::View::draw(f, repo, &mut pushing_state, *spinner_tick)
+                    })?;
                     if let Err(e) = repo.push(&path) {
-                        return Ok(Some(AppState::Error(format!("Failed to push: {}", e), prev)));
+                        return Ok(Some(AppState::Error(
+                            format!("Failed to push: {}", e),
+                            prev,
+                        )));
                     }
                     let mut complete_state = AppState::PushComplete {
                         branch,
                         prev_state: prev,
                     };
-                    terminal.draw(|f| super::super::view::View::draw(f, repo, &mut complete_state, *spinner_tick))?;
+                    terminal.draw(|f| {
+                        super::super::view::View::draw(f, repo, &mut complete_state, *spinner_tick)
+                    })?;
                     std::thread::sleep(Duration::from_millis(800));
                     return Ok(Some(complete_state.prev_state_boxed().clone()));
                 }
@@ -113,7 +127,14 @@ pub fn handle_listing_events<R: ProjectRepository>(
                             editor: editor.clone(),
                             prev_state: prev.clone(),
                         };
-                        terminal.draw(|f| super::super::view::View::draw(f, repo, &mut opening_state, *spinner_tick))?;
+                        terminal.draw(|f| {
+                            super::super::view::View::draw(
+                                f,
+                                repo,
+                                &mut opening_state,
+                                *spinner_tick,
+                            )
+                        })?;
                         let _ = Command::new(&editor).arg(&path).spawn();
                         std::thread::sleep(Duration::from_millis(800));
                         return Ok(Some(*prev));
@@ -164,14 +185,18 @@ pub fn handle_listing_events<R: ProjectRepository>(
         }
         KeyCode::Char('u') => {
             let mut setup_state = AppState::SettingUpDefaults;
-            terminal.draw(|f| super::super::view::View::draw(f, repo, &mut setup_state, *spinner_tick))?;
+            terminal.draw(|f| {
+                super::super::view::View::draw(f, repo, &mut setup_state, *spinner_tick)
+            })?;
 
             // Silent setup for TUI
             let _ = repo.add_worktree("main", "main");
             let _ = repo.add_new_worktree("dev", "dev", "main");
 
             let mut complete_state = AppState::SetupComplete;
-            terminal.draw(|f| super::super::view::View::draw(f, repo, &mut complete_state, *spinner_tick))?;
+            terminal.draw(|f| {
+                super::super::view::View::draw(f, repo, &mut complete_state, *spinner_tick)
+            })?;
             std::thread::sleep(Duration::from_millis(1200));
             return Ok(Some(current_state.clone()));
         }
@@ -232,7 +257,9 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         branch,
                         prev_state: prev.clone(),
                     };
-                    terminal.draw(|f| super::super::view::View::draw(f, repo, &mut fetching_state, *spinner_tick))?;
+                    terminal.draw(|f| {
+                        super::super::view::View::draw(f, repo, &mut fetching_state, *spinner_tick)
+                    })?;
                     let _ = repo.fetch(&path);
                     return Ok(Some(*prev));
                 }

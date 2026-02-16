@@ -6,15 +6,17 @@ use crate::domain::repository::{ProjectRepository, Worktree};
 use crate::ui::widgets::{footer::FooterWidget, header::HeaderWidget};
 use anyhow::Result;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseButton, MouseEventKind},
+    event::{
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseButton, MouseEventKind,
+    },
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
+    Frame, Terminal,
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     widgets::TableState,
-    Frame, Terminal,
 };
 use std::io;
 use std::time::Duration;
@@ -38,7 +40,10 @@ impl View {
         CliRenderer::render_feedback_prompt();
     }
 
-    pub fn render_tui<R: ProjectRepository>(repo: &R, mut state: AppState) -> Result<Option<String>> {
+    pub fn render_tui<R: ProjectRepository>(
+        repo: &R,
+        mut state: AppState,
+    ) -> Result<Option<String>> {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -49,7 +54,11 @@ impl View {
         let res = Self::run_loop(&mut terminal, repo, &mut state, &mut spinner_tick);
 
         disable_raw_mode()?;
-        execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
+        execute!(
+            terminal.backend_mut(),
+            LeaveAlternateScreen,
+            DisableMouseCapture
+        )?;
         terminal.show_cursor()?;
 
         res
@@ -87,10 +96,10 @@ impl View {
 
             if event::poll(Duration::from_millis(100))? {
                 if let Event::Key(key) = event::read()? {
-                     let mut new_state = None;
-                     let current_state_clone = state.clone();
-                     // ... key handling ...
-                     match state {
+                    let mut new_state = None;
+                    let current_state_clone = state.clone();
+                    // ... key handling ...
+                    match state {
                         // ... existing key matching ...
                         AppState::ListingWorktrees {
                             worktrees,
@@ -131,8 +140,12 @@ impl View {
                             prev_state,
                             ..
                         } => {
-                            new_state =
-                                handle_history_events(key.code, commits, selected_index, prev_state)?;
+                            new_state = handle_history_events(
+                                key.code,
+                                commits,
+                                selected_index,
+                                prev_state,
+                            )?;
                         }
                         AppState::SwitchingBranch {
                             path,
@@ -208,21 +221,26 @@ impl View {
                         }
                         // ... other states ...
                         _ => {
-                             if let KeyCode::Char('q') | KeyCode::Esc = key.code {
+                            if let KeyCode::Char('q') | KeyCode::Esc = key.code {
                                 return Ok(None);
                             }
                         }
-                     }
-                     if let Some(ns) = new_state {
-                         if let AppState::Exiting(res) = ns {
-                             return Ok(res);
-                         }
-                         *state = ns;
-                         state.request_refresh();
-                     }
+                    }
+                    if let Some(ns) = new_state {
+                        if let AppState::Exiting(res) = ns {
+                            return Ok(res);
+                        }
+                        *state = ns;
+                        state.request_refresh();
+                    }
                 } else if let Event::Mouse(mouse) = event::read()? {
                     if let MouseEventKind::Down(MouseButton::Left) = mouse.kind {
-                         if let AppState::ListingWorktrees { worktrees, table_state, .. } = state {
+                        if let AppState::ListingWorktrees {
+                            worktrees,
+                            table_state,
+                            ..
+                        } = state
+                        {
                             // Hardcoded layout assumption:
                             // Margin: 1
                             // Header: 3
@@ -230,24 +248,28 @@ impl View {
                             // Table header is 1 row
                             // Data starts at y = 5
                             let header_height = 4; // Margin + Header widget
-                            let table_header = 1; 
+                            let table_header = 1;
                             let data_start_y = header_height + table_header;
-                            
+
                             let row_index = mouse.row as i16 - data_start_y as i16;
-                            
+
                             if row_index >= 0 && (row_index as usize) < worktrees.len() {
                                 table_state.select(Some(row_index as usize));
                                 state.request_refresh();
                             }
-                         }
+                        }
                     }
                 }
             }
         }
     }
 
-
-    pub fn draw<R: ProjectRepository>(f: &mut Frame, repo: &R, state: &mut AppState, spinner_tick: usize) {
+    pub fn draw<R: ProjectRepository>(
+        f: &mut Frame,
+        repo: &R,
+        state: &mut AppState,
+        spinner_tick: usize,
+    ) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .margin(1)
@@ -274,7 +296,13 @@ impl View {
                 table_state,
                 ..
             } => {
-                render_listing(f, worktrees.as_slice(), table_state, context, shared_chunks.clone());
+                render_listing(
+                    f,
+                    worktrees.as_slice(),
+                    table_state,
+                    context,
+                    shared_chunks.clone(),
+                );
             }
             AppState::ViewingStatus {
                 branch,
@@ -298,7 +326,13 @@ impl View {
                     ..
                 } = &**prev_state
                 {
-                    render_listing(f, worktrees.as_slice(), &mut table_state.clone(), context, shared_chunks.clone());
+                    render_listing(
+                        f,
+                        worktrees.as_slice(),
+                        &mut table_state.clone(),
+                        context,
+                        shared_chunks.clone(),
+                    );
                 }
                 render_history(f, branch, commits, *selected_index);
             }
@@ -315,7 +349,13 @@ impl View {
                     ..
                 } = &**prev_state
                 {
-                     render_listing(f, worktrees.as_slice(), &mut table_state.clone(), context, shared_chunks.clone());
+                    render_listing(
+                        f,
+                        worktrees.as_slice(),
+                        &mut table_state.clone(),
+                        context,
+                        shared_chunks.clone(),
+                    );
                 } else if let AppState::ViewingStatus {
                     branch,
                     status,
@@ -323,7 +363,7 @@ impl View {
                     ..
                 } = &**prev_state
                 {
-                     render_status(f, branch, status, p_prev, shared_chunks.clone());
+                    render_status(f, branch, status, p_prev, shared_chunks.clone());
                 }
                 render_branch_selection(f, branches, *selected_index);
             }
@@ -334,14 +374,20 @@ impl View {
                 prev_state,
                 ..
             } => {
-               // Background
+                // Background
                 if let AppState::ListingWorktrees {
                     worktrees,
                     table_state,
                     ..
                 } = &**prev_state
                 {
-                     render_listing(f, worktrees.as_slice(), &mut table_state.clone(), context, shared_chunks.clone());
+                    render_listing(
+                        f,
+                        worktrees.as_slice(),
+                        &mut table_state.clone(),
+                        context,
+                        shared_chunks.clone(),
+                    );
                 }
                 render_editor_selection(f, branch, options, *selected);
             }
@@ -351,14 +397,20 @@ impl View {
                 prev_state,
                 ..
             } => {
-               // Background
+                // Background
                 if let AppState::ListingWorktrees {
                     worktrees,
                     table_state,
                     ..
                 } = &**prev_state
                 {
-                     render_listing(f, worktrees.as_slice(), &mut table_state.clone(), context, shared_chunks.clone());
+                    render_listing(
+                        f,
+                        worktrees.as_slice(),
+                        &mut table_state.clone(),
+                        context,
+                        shared_chunks.clone(),
+                    );
                 }
                 render_prompt(f, prompt_type, input);
             }
@@ -369,14 +421,14 @@ impl View {
                 ..
             } => {
                 // Background
-                 if let AppState::ViewingStatus {
+                if let AppState::ViewingStatus {
                     branch: b,
                     status,
                     prev_state: p_prev,
                     ..
                 } = &**prev_state
                 {
-                     render_status(f, b, status, p_prev, shared_chunks.clone());
+                    render_status(f, b, status, p_prev, shared_chunks.clone());
                 }
                 render_commit_menu(f, branch, *selected_index);
             }
@@ -389,22 +441,17 @@ impl View {
         f.render_widget(FooterWidget, chunks[3]);
     }
 
-
-
     pub fn render(state: AppState) {
         CliRenderer::render(state);
     }
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::domain::repository::{GitCommit, GitStatus, ProjectContext};
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
 
     /// Minimal mock repository for testing view rendering
     struct MockRepository;
@@ -531,14 +578,14 @@ mod tests {
         // Verify the terminal buffer contains expected text
         let buffer = terminal.backend().buffer();
         let content = buffer.content();
-        
+
         // Check for key welcome screen text
         let content_str = content.iter().map(|c| c.symbol()).collect::<String>();
-        
+
         // Check for key welcome screen text
-        let has_welcome_text = content_str.contains("NO REPOSITORY DETECTED") || 
-            content_str.contains("ONBOARDING");
-        
+        let has_welcome_text =
+            content_str.contains("NO REPOSITORY DETECTED") || content_str.contains("ONBOARDING");
+
         assert!(
             has_welcome_text,
             "Welcome state should render welcome screen text"
@@ -550,7 +597,7 @@ mod tests {
         let backend = TestBackend::new(120, 30);
         let mut terminal = Terminal::new(backend).unwrap();
         let repo = MockRepository;
-        
+
         let worktrees = vec![
             Worktree {
                 path: "/test/main".to_string(),
@@ -589,13 +636,14 @@ mod tests {
         // Verify no panic and the buffer is populated
         let buffer = terminal.backend().buffer();
         assert!(!buffer.content().is_empty());
-        
+
         // Check that worktree information appears
-        let content_str = buffer.content()
+        let content_str = buffer
+            .content()
             .iter()
             .map(|c| c.symbol())
             .collect::<String>();
-        
+
         assert!(
             content_str.contains("main") || content_str.contains("dev"),
             "Listing state should render worktree names"
@@ -607,12 +655,9 @@ mod tests {
         let backend = TestBackend::new(120, 30);
         let mut terminal = Terminal::new(backend).unwrap();
         let repo = MockRepository;
-        
+
         let prev_state = Box::new(AppState::Welcome);
-        let mut state = AppState::Error(
-            "Test error message".to_string(),
-            prev_state,
-        );
+        let mut state = AppState::Error("Test error message".to_string(), prev_state);
 
         terminal
             .draw(|f| {
@@ -622,11 +667,12 @@ mod tests {
 
         // Verify the terminal buffer contains error-related text
         let buffer = terminal.backend().buffer();
-        let content_str = buffer.content()
+        let content_str = buffer
+            .content()
             .iter()
             .map(|c| c.symbol())
             .collect::<String>();
-        
+
         assert!(
             content_str.contains("ERROR") || content_str.contains("Test error"),
             "Error state should render error message"

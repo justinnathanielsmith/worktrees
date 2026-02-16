@@ -127,7 +127,9 @@ impl<'a> Widget for DetailsWidget<'a> {
                     } else {
                         "Press 'G' to manage staged files and commit."
                     },
-                    Style::default().fg(theme.subtle).add_modifier(Modifier::ITALIC),
+                    Style::default()
+                        .fg(theme.subtle)
+                        .add_modifier(Modifier::ITALIC),
                 ),
             ]));
 
@@ -135,19 +137,38 @@ impl<'a> Widget for DetailsWidget<'a> {
         } else {
             vec![
                 Line::from(vec![
-                    Span::styled(" 💡 PRO-TIP ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        " 💡 PRO-TIP ",
+                        Style::default()
+                            .fg(theme.accent)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::styled(" | ", Style::default().fg(theme.subtle)),
-                    Span::styled("Use 'S' to sync your IDE configurations across all worktrees.", Style::default().fg(theme.text)),
+                    Span::styled(
+                        "Use 'S' to sync your IDE configurations across all worktrees.",
+                        Style::default().fg(theme.text),
+                    ),
                 ]),
                 Line::from(vec![
-                    Span::styled(" 💡 PRO-TIP ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        " 💡 PRO-TIP ",
+                        Style::default()
+                            .fg(theme.accent)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::styled(" | ", Style::default().fg(theme.subtle)),
-                    Span::styled("Press 'O' to quickly open any worktree in your favorite editor.", Style::default().fg(theme.text)),
+                    Span::styled(
+                        "Press 'O' to quickly open any worktree in your favorite editor.",
+                        Style::default().fg(theme.text),
+                    ),
                 ]),
                 Line::from(""),
-                Line::from(vec![
-                    Span::styled(" Select a worktree from the list above to see its detailed status. ", Style::default().fg(theme.subtle).add_modifier(Modifier::ITALIC)),
-                ]),
+                Line::from(vec![Span::styled(
+                    " Select a worktree from the list above to see its detailed status. ",
+                    Style::default()
+                        .fg(theme.subtle)
+                        .add_modifier(Modifier::ITALIC),
+                )]),
             ]
         };
 

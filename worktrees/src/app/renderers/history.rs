@@ -1,21 +1,16 @@
 use crate::domain::repository::GitCommit;
 use crate::ui::theme::CyberTheme;
 use ratatui::{
+    Frame,
     layout::{Alignment, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Clear, Paragraph},
-    Frame,
 };
 
 use super::helpers::centered_rect;
 
-pub fn render_history(
-    f: &mut Frame,
-    branch: &str,
-    commits: &[GitCommit],
-    selected_index: usize,
-) {
+pub fn render_history(f: &mut Frame, branch: &str, commits: &[GitCommit], selected_index: usize) {
     let theme = CyberTheme::default();
     let area = centered_rect(85, 80, f.area());
     f.render_widget(Clear, area);
@@ -26,7 +21,9 @@ pub fn render_history(
         .border_style(Style::default().fg(theme.secondary))
         .title(Span::styled(
             format!(" 󰊚 COMMIT LOG: {} ", branch),
-            Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.secondary)
+                .add_modifier(Modifier::BOLD),
         ));
 
     let inner_area = outer_block.inner(area);
@@ -67,12 +64,16 @@ pub fn render_history(
     let help_text = Paragraph::new(Line::from(vec![
         Span::styled(
             " [UP/DOWN]",
-            Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" NAVIGATE  "),
         Span::styled(
             " [ESC/Q]",
-            Style::default().fg(theme.subtle).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.subtle)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" BACK "),
     ]))

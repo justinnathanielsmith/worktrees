@@ -1,10 +1,10 @@
 use crate::app::model::EditorConfig;
 use crate::ui::theme::CyberTheme;
 use ratatui::{
+    Frame,
     style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Clear, Paragraph},
-    Frame,
 };
 
 use super::helpers::centered_rect;
@@ -25,7 +25,9 @@ pub fn render_editor_selection(
         .border_style(Style::default().fg(theme.accent))
         .title(Span::styled(
             format!(" 📝 SELECT EDITOR: {} ", branch),
-            Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
         ));
 
     let inner_area = block.inner(area);

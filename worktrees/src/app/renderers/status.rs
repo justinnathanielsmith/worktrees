@@ -2,11 +2,11 @@ use crate::app::model::AppState;
 use crate::ui::theme::CyberTheme;
 use crate::ui::widgets::worktree_list::WorktreeListWidget;
 use ratatui::{
+    Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph},
-    Frame,
 };
 
 pub fn render_status(
@@ -43,7 +43,9 @@ pub fn render_status(
         .border_style(Style::default().fg(theme.primary))
         .title(Span::styled(
             format!("  GIT STATUS: {} ", branch),
-            Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.primary)
+                .add_modifier(Modifier::BOLD),
         ));
 
     let inner_area = outer_block.inner(area);
@@ -80,7 +82,9 @@ pub fn render_status(
             .border_style(Style::default().fg(theme.border))
             .title(Span::styled(
                 " 󰄬 STAGED CHANGES ",
-                Style::default().fg(theme.success).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme.success)
+                    .add_modifier(Modifier::BOLD),
             )),
     );
     f.render_widget(staged_list, status_chunks[0]);
@@ -130,7 +134,9 @@ pub fn render_status(
     let unstaged_list = Paragraph::new(unstaged_items).block(
         Block::default().title(Span::styled(
             " 󱇨 UNSTAGED / UNTRACKED ",
-            Style::default().fg(theme.warning).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.warning)
+                .add_modifier(Modifier::BOLD),
         )),
     );
     f.render_widget(unstaged_list, status_chunks[1]);
@@ -140,29 +146,42 @@ pub fn render_status(
     let help_text = Line::from(vec![
         Span::styled(
             " [SPACE]",
-            Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" TOGGLE  "),
         Span::styled(
             " [A]",
-            Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.primary)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" STAGE ALL  "),
         Span::styled(
             " [U]",
-            Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.primary)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" UNSTAGE ALL  "),
         Span::styled(
             " [C]",
-            Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" COMMIT MENU  "),
         Span::styled(
             " [ESC/Q]",
-            Style::default().fg(theme.subtle).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.subtle)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" BACK "),
     ]);
-    f.render_widget(Paragraph::new(help_text).alignment(Alignment::Center), footer_area);
+    f.render_widget(
+        Paragraph::new(help_text).alignment(Alignment::Center),
+        footer_area,
+    );
 }

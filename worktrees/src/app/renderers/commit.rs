@@ -1,18 +1,14 @@
 use crate::ui::theme::CyberTheme;
 use ratatui::{
+    Frame,
     style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Clear, Paragraph},
-    Frame,
 };
 
 use super::helpers::centered_rect;
 
-pub fn render_commit_menu(
-    f: &mut Frame,
-    branch: &str,
-    selected_index: usize,
-) {
+pub fn render_commit_menu(f: &mut Frame, branch: &str, selected_index: usize) {
     let theme = CyberTheme::default();
     let area = centered_rect(50, 40, f.area());
     f.render_widget(Clear, area);
@@ -23,7 +19,9 @@ pub fn render_commit_menu(
         .border_style(Style::default().fg(theme.accent))
         .title(Span::styled(
             format!(" 󰊚 COMMIT: {} ", branch),
-            Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
         ));
 
     let inner_area = block.inner(area);

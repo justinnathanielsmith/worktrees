@@ -1,5 +1,5 @@
-use crate::domain::repository::Worktree;
 use crate::app::intent::Intent;
+use crate::domain::repository::Worktree;
 use ratatui::widgets::TableState;
 
 #[derive(Debug, Clone)]

@@ -2,7 +2,7 @@ use crate::app::model::{AppState, PromptType};
 use crate::domain::repository::ProjectRepository;
 use anyhow::Result;
 use crossterm::event::KeyCode;
-use ratatui::{backend::CrosstermBackend, widgets::TableState, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend, widgets::TableState};
 use std::io;
 
 pub fn handle_prompt_events<R: ProjectRepository>(
@@ -24,7 +24,14 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                             intent: val.clone(),
                             branch: val.clone(),
                         };
-                        terminal.draw(|f| super::super::view::View::draw(f, repo, &mut adding_state, *spinner_tick))?;
+                        terminal.draw(|f| {
+                            super::super::view::View::draw(
+                                f,
+                                repo,
+                                &mut adding_state,
+                                *spinner_tick,
+                            )
+                        })?;
                         let _ = repo.add_worktree(&val, &val);
                         return Ok(Some(AppState::ListingWorktrees {
                             worktrees: Vec::new(),

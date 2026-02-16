@@ -136,14 +136,15 @@ impl ProjectRepository for GitProjectRepository {
         if let Some(url_str) = url {
             Self::run_git(&["clone", "--bare", "--", url_str, ".bare"]).context("Failed to clone bare repository. HELP: Verify the repository URL and your SSH/HTTP credentials.")?;
         } else {
-            Self::run_git(&["init", "--bare", ".bare"]).context("Failed to initialize bare repository.")?;
+            Self::run_git(&["init", "--bare", ".bare"])
+                .context("Failed to initialize bare repository.")?;
             // Ensure default branch is main
             Self::run_git(&["-C", ".bare", "symbolic-ref", "HEAD", "refs/heads/main"])?;
         }
 
         std::fs::write(".git", "gitdir: ./.bare\n")
             .context("Failed to write .git redirection file.")?;
-        
+
         if url.is_some() {
             Self::run_git(&[
                 "config",
@@ -167,7 +168,7 @@ impl ProjectRepository for GitProjectRepository {
 
     fn add_new_worktree(&self, path: &str, branch: &str, base: &str) -> Result<()> {
         let res = Self::run_git(&["worktree", "add", "-b", branch, "--", path, base]);
-        
+
         if res.is_err() && base == "HEAD" {
             debug!("Normal worktree add failed on HEAD, trying --orphan for fresh repository...");
             Self::run_git(&["worktree", "add", "--orphan", "-b", branch, path])
@@ -557,10 +558,8 @@ impl ProjectRepository for GitProjectRepository {
 
         // Get list of valid worktrees from git
         let valid_worktrees = self.list_worktrees().unwrap_or_default();
-        let valid_paths: std::collections::HashSet<String> = valid_worktrees
-            .iter()
-            .map(|wt| wt.path.clone())
-            .collect();
+        let valid_paths: std::collections::HashSet<String> =
+            valid_worktrees.iter().map(|wt| wt.path.clone()).collect();
 
         // Scan the .bare/worktrees/ directory for stale entries
         let entries = fs::read_dir(&worktrees_admin_path)

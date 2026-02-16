@@ -2,7 +2,7 @@ use crate::app::model::{AppState, EditorConfig};
 use crate::domain::repository::ProjectRepository;
 use anyhow::Result;
 use crossterm::event::KeyCode;
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
 use std::process::Command;
 use std::time::Duration;
@@ -59,7 +59,9 @@ pub fn handle_editor_events<R: ProjectRepository>(
                     editor,
                     prev_state: Box::new(prev_state.clone()),
                 };
-                terminal.draw(|f| super::super::view::View::draw(f, repo, &mut opening_state, *spinner_tick))?;
+                terminal.draw(|f| {
+                    super::super::view::View::draw(f, repo, &mut opening_state, *spinner_tick)
+                })?;
                 let _ = Command::new(&options[*selected].command).arg(&p).spawn();
                 std::thread::sleep(Duration::from_millis(800));
                 return Ok(Some(prev_state.clone()));

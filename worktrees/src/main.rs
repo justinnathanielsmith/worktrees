@@ -32,8 +32,6 @@ fn setup_logging(json_mode: bool) {
     }
 }
 
-
-
 async fn wait_for_shutdown() {
     #[cfg(unix)]
     {
@@ -58,8 +56,6 @@ async fn wait_for_shutdown() {
         }
     }
 }
-
-
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -116,7 +112,7 @@ async fn main() -> Result<()> {
                 };
                 let result = View::render_tui(&GitProjectRepository, initial_state)
                     .map_err(|e| miette::miette!("{e:?}"))?;
-                
+
                 if let Some(path) = result {
                     println!("{}", path);
                 }
@@ -164,5 +160,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-
-

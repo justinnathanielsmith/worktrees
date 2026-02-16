@@ -89,7 +89,11 @@ impl CliRenderer {
                 );
             }
             AppState::Initialized { project_name } => {
-                println!("\n{} {}", "✅".green(), "BARE REPOSITORY ESTABLISHED".green().bold());
+                println!(
+                    "\n{} {}",
+                    "✅".green(),
+                    "BARE REPOSITORY ESTABLISHED".green().bold()
+                );
                 println!(
                     "   {} {}",
                     "├─ Location:".dimmed(),
@@ -207,7 +211,11 @@ impl CliRenderer {
             }
             AppState::Error(msg, _) => {
                 eprintln!("\n{} {} {}", "❌".red(), "ERROR:".red().bold(), msg.red());
-                eprintln!("   {} {}", "└─".dimmed(), "Check git state and permissions.".dimmed());
+                eprintln!(
+                    "   {} {}",
+                    "└─".dimmed(),
+                    "Check git state and permissions.".dimmed()
+                );
             }
             AppState::Welcome
             | AppState::Confirming { .. }
