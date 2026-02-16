@@ -134,6 +134,10 @@ pub enum Commands {
         #[arg(value_enum)]
         shell: Shell,
     },
+    /// Open the current project in Warp with a grid of standard worktrees
+    ///
+    /// Example: worktree open
+    Open,
 }
 
 #[derive(Subcommand)]

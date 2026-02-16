@@ -51,4 +51,5 @@ pub enum Intent {
     Completions {
         shell: clap_complete::Shell,
     },
+    Open,
 }
