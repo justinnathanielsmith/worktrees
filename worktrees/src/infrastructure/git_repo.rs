@@ -1268,6 +1268,12 @@ mod tests {
             .output()
             .unwrap();
 
+        // Ensure the branch is named 'main'
+        Command::new(&git_cmd)
+            .args(["-C", &repo_dir.to_string_lossy(), "branch", "-m", "main"])
+            .output()
+            .unwrap();
+
         // 2. Perform conversion
         let repo = GitProjectRepository;
         let original_cwd = std::env::current_dir().unwrap();
