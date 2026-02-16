@@ -171,7 +171,7 @@ impl GitProjectRepository {
     }
 
     fn get_metadata_path() -> PathBuf {
-        Path::new(".worktree_info").to_path_buf()
+        Path::new(".worktree.json").to_path_buf()
     }
 
     fn load_metadata() -> std::collections::HashMap<String, WorktreeMetadata> {
@@ -1089,12 +1089,13 @@ mod tests {
         }
         std::fs::create_dir(&temp_dir).unwrap();
 
-        let metadata_path = temp_dir.join(".worktree_info");
+        let metadata_path = temp_dir.join(".worktree.json");
         let mut metadata_map = std::collections::HashMap::new();
         metadata_map.insert(
             "dev".to_string(),
             WorktreeMetadata {
                 created_at: Some("2023-10-27".to_string()),
+                purpose: Some("Feature: Login UI".to_string()),
                 description: Some("Development branch".to_string()),
                 color: Some("#FF0000".to_string()),
                 icon: Some("🚀".to_string()),

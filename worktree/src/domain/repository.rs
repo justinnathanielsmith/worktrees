@@ -6,6 +6,7 @@ use std::path::Path;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct WorktreeMetadata {
     pub created_at: Option<String>,
+    pub purpose: Option<String>,
     pub description: Option<String>,
     pub color: Option<String>,
     pub icon: Option<String>,
@@ -162,4 +163,24 @@ pub enum RepoStatus {
     StandardGit,
     /// Not a known Git repository format.
     NoRepo,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_worktree_metadata_serialization() {
+        let meta = WorktreeMetadata {
+            purpose: Some("Feature: Login UI".to_string()),
+            created_at: Some("2023-10-27".to_string()),
+            ..WorktreeMetadata::default()
+        };
+
+        let json = serde_json::to_string(&meta).unwrap();
+        let decoded: WorktreeMetadata = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(decoded.purpose, Some("Feature: Login UI".to_string()));
+        assert_eq!(decoded.created_at, Some("2023-10-27".to_string()));
+    }
 }
