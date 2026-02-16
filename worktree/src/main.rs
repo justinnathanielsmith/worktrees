@@ -122,11 +122,17 @@ fn check_and_handle_repo_state(repo: &GitProjectRepository) -> Result<bool> {
     }
 }
 
-fn render_tui_mode(repo: &GitProjectRepository, selection_mode: bool) -> Result<Option<String>> {
+fn render_tui_mode(
+    repo: &GitProjectRepository,
+    selection_mode: bool,
+    quiet: bool,
+) -> Result<Option<String>> {
     if !check_and_handle_repo_state(repo)? {
         return Ok(None);
     }
-    View::render_banner();
+    if !quiet {
+        View::render_banner();
+    }
     let worktrees = repo
         .list_worktrees()
         .map_err(|e| miette::miette!("{e:?}"))?;
@@ -156,7 +162,7 @@ async fn main() -> Result<()> {
     setup_logging(cli.json);
 
     let repo = GitProjectRepository;
-    let reducer = Reducer::new(repo, cli.json);
+    let reducer = Reducer::new(repo, cli.json, cli.quiet);
 
     let intent = match cli.command {
         Some(Commands::Init { url, name }) => Intent::Initialize { url, name },
@@ -192,10 +198,10 @@ async fn main() -> Result<()> {
             dry_run,
             artifacts,
         },
-        Some(Commands::Switch { name }) => match name {
-            Some(n) => Intent::SwitchWorktree { name: n },
+        Some(Commands::Switch { name, copy }) => match name {
+            Some(n) => Intent::SwitchWorktree { name: n, copy },
             None => {
-                let result = render_tui_mode(&GitProjectRepository, true)?;
+                let result = render_tui_mode(&GitProjectRepository, true, cli.quiet)?;
                 if let Some(path) = result {
                     println!("{}", path);
                 }
@@ -214,7 +220,7 @@ async fn main() -> Result<()> {
                 return View::render_json(&worktrees).map_err(|e| miette::miette!("{e:?}"));
             }
             // TUI Mode
-            render_tui_mode(&GitProjectRepository, false)?;
+            render_tui_mode(&GitProjectRepository, false, cli.quiet)?;
             return Ok(());
         }
     };
@@ -226,7 +232,7 @@ async fn main() -> Result<()> {
         _ = wait_for_shutdown() => {}
     }
 
-    if !cli.json {
+    if !cli.json && !cli.quiet {
         View::render_feedback_prompt();
     }
 

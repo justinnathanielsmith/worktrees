@@ -15,6 +15,10 @@ pub struct Cli {
     /// Output in JSON format for machine readability
     #[arg(long, global = true)]
     pub json: bool,
+
+    /// Suppress all informational output (Silent Mode)
+    #[arg(short, long, global = true)]
+    pub quiet: bool,
 }
 
 #[derive(Subcommand)]
@@ -103,6 +107,9 @@ pub enum Commands {
     Switch {
         /// The name or branch of the worktree to switch to
         name: Option<String>,
+        /// Copy the worktree path to the clipboard (Warp-optimized)
+        #[arg(short, long)]
+        copy: bool,
     },
     /// Convert an existing standard repository into a bare hub structure
     ///
@@ -259,8 +266,22 @@ mod tests {
             .command
             .ok_or_else(|| anyhow::anyhow!("Missing command"))?
         {
-            Commands::Switch { name } => {
+            Commands::Switch { name, copy } => {
                 assert_eq!(name, Some("dev".to_string()));
+                assert!(!copy);
+            }
+            _ => anyhow::bail!("Expected Switch"),
+        }
+
+        let cli = Cli::try_parse_from(["worktree", "switch", "dev", "--copy"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match cli
+            .command
+            .ok_or_else(|| anyhow::anyhow!("Missing command"))?
+        {
+            Commands::Switch { name, copy } => {
+                assert_eq!(name, Some("dev".to_string()));
+                assert!(copy);
             }
             _ => anyhow::bail!("Expected Switch"),
         }

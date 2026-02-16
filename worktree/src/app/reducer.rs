@@ -5,6 +5,7 @@ use crate::domain::repository::{ProjectRepository, Worktree};
 use indicatif::{ProgressBar, ProgressStyle};
 use miette::{IntoDiagnostic, Result};
 use owo_colors::{OwoColorize, Stream::Stdout};
+use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
@@ -26,11 +27,16 @@ fn get_project_name(url: &Option<String>, name: Option<String>) -> String {
 pub struct Reducer<R: ProjectRepository> {
     repo: R,
     json_mode: bool,
+    quiet_mode: bool,
 }
 
 impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
-    pub fn new(repo: R, json_mode: bool) -> Self {
-        Self { repo, json_mode }
+    pub fn new(repo: R, json_mode: bool, quiet_mode: bool) -> Self {
+        Self {
+            repo,
+            json_mode,
+            quiet_mode,
+        }
     }
 
     #[instrument(skip(self))]
@@ -38,6 +44,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
         info!(?intent, "Handling intent");
         let repo = self.repo.clone();
         let json_mode = self.json_mode;
+        let quiet_mode = self.quiet_mode;
 
         // Clone intent for moving into closures/async blocks if needed
         // For now, we will keep the structure similar to main.rs but mark handle as async
@@ -46,13 +53,13 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
         match intent {
             Intent::Initialize { url, name } => {
                 let project_name = get_project_name(&url, name);
-                if !json_mode {
+                if !json_mode && !quiet_mode {
                     View::render(AppState::Initializing {
                         project_name: project_name.clone(),
                     });
                 }
 
-                let pb = if !json_mode {
+                let pb = if !json_mode && !quiet_mode {
                     let pb = ProgressBar::new_spinner();
                     pb.set_style(
                         ProgressStyle::default_spinner()
@@ -96,7 +103,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                                 "path": format!("{}/.bare", project_name)
                             }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
-                        } else {
+                        } else if !quiet_mode {
                             View::render(AppState::Initialized { project_name });
                         }
                     }
@@ -129,7 +136,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                     });
                 }
 
-                let pb = if !json_mode {
+                let pb = if !json_mode && !quiet_mode {
                     let pb = ProgressBar::new_spinner();
                     pb.set_style(
                         ProgressStyle::default_spinner()
@@ -167,7 +174,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                                 "branch": branch_name
                             }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
-                        } else {
+                        } else if !quiet_mode {
                             View::render(AppState::WorktreeAdded { intent });
                         }
                     }
@@ -192,7 +199,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 }
             }
             Intent::RemoveWorktree { intent, force } => {
-                if !json_mode {
+                if !json_mode && !quiet_mode {
                     View::render(AppState::RemovingWorktree {
                         intent: intent.clone(),
                     });
@@ -214,7 +221,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                                 &serde_json::json!({ "status": "success", "intent": intent }),
                             )
                             .map_err(|e| miette::miette!("{e:?}"))?;
-                        } else {
+                        } else if !quiet_mode {
                             View::render(AppState::WorktreeRemoved);
                         }
                     }
@@ -249,15 +256,17 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                         View::render(AppState::Welcome);
                     }
                     View::render_listing_table(&worktrees);
-                    println!(
-                        "\n{}",
-                        "Tip: Run with 'worktrees list' (no args) for interactive TUI"
-                            .if_supports_color(Stdout, |t| t.dimmed())
-                    );
+                        let tip = "Tip: Run with 'worktrees list' (no args) for interactive TUI";
+                        if !quiet_mode {
+                            println!(
+                                "\n{}",
+                                tip.if_supports_color(Stdout, |t| t.dimmed())
+                            );
+                        }
                 }
             }
             Intent::SetupDefaults => {
-                if !json_mode {
+                if !json_mode && !quiet_mode {
                     View::render(AppState::SettingUpDefaults);
                 }
 
@@ -312,7 +321,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
 
                 if json_mode {
                     View::render_json(&results).map_err(|e| miette::miette!("{e:?}"))?;
-                } else {
+                } else if !quiet_mode {
                     View::render(AppState::SetupComplete);
                 }
             }
@@ -323,7 +332,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
             } => {
                 let branch_name = branch.unwrap_or_else(|| intent.clone());
 
-                if !json_mode {
+                if !json_mode && !quiet_mode {
                     println!(
                         "{} Creating temporary worktree '{}' tracking '{}'...",
                         "➜".cyan().bold(),
@@ -343,7 +352,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 .into_diagnostic()?
                 .map_err(|e| miette::miette!("Failed to create temporary worktree: {}", e))?;
 
-                if !json_mode {
+                if !json_mode && !quiet_mode {
                     println!(
                         "{} Executing command: {}",
                         "➜".cyan().bold(),
@@ -366,7 +375,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 .await
                 .into_diagnostic()??;
 
-                if !json_mode {
+                if !json_mode && !quiet_mode {
                     println!("{} Cleaning up...", "➜".cyan().bold());
                 }
 
@@ -383,9 +392,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                     return Err(miette::miette!("Command failed with status: {}", status));
                 }
 
-                if !json_mode {
+                if !json_mode && !quiet_mode {
                     println!("{} Done.", "✔".green().bold());
-                } else {
+                } else if json_mode {
                     View::render_json(
                         &serde_json::json!({ "status": "success", "exit_code": status.code() }),
                     )
@@ -414,7 +423,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 }
 
                 for wt in targets {
-                    if !json_mode {
+                    if !json_mode && !quiet_mode {
                         println!(
                             "{} Synchronizing configuration for: {}",
                             "➜".cyan().bold(),
@@ -432,7 +441,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                         if !json_mode {
                             println!("   {} Error: {}", "❌".red(), e);
                         }
-                    } else if !json_mode {
+                    } else if !json_mode && !quiet_mode {
                         println!("   {} Synchronization complete.", "✔".green());
                     }
                 }
@@ -460,7 +469,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 };
 
                 if let Some(wt) = target {
-                    if !json_mode {
+                    if !json_mode && !quiet_mode {
                         println!(
                             "{} Pushing worktree: {}",
                             "➜".cyan().bold(),
@@ -476,7 +485,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
 
                     match res {
                         Ok(_) => {
-                            if !json_mode {
+                            if !json_mode && !quiet_mode {
                                 println!("   {} Push complete.", "✔".green());
                             }
                             if json_mode {
@@ -515,7 +524,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 };
 
                 if let Some(wt) = target {
-                    if !json_mode {
+                    if !json_mode && !quiet_mode {
                         println!(
                             "{} Pulling worktree: {}",
                             "➜".cyan().bold(),
@@ -531,7 +540,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
 
                     match res {
                         Ok(_) => {
-                            if !json_mode {
+                            if !json_mode && !quiet_mode {
                                 println!("   {} Pull complete.", "✔".green());
                             }
                             if json_mode {
@@ -560,9 +569,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                         .into_diagnostic()?
                         .map_err(|e| miette::miette!("Failed to set API key: {}", e))?;
 
-                    if !json_mode {
+                    if !json_mode && !quiet_mode {
                         println!("{} Gemini API key set successfully.", "✔".green().bold());
-                    } else {
+                    } else if json_mode {
                         View::render_json(
                             &serde_json::json!({ "status": "success", "action": "set_key" }),
                         )
@@ -605,7 +614,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                             "{} Scanning for stale worktrees (dry-run)...",
                             "➜".cyan().bold()
                         );
-                    } else {
+                    } else if !quiet_mode {
                         println!("{} Cleaning stale worktrees...", "➜".cyan().bold());
                     }
                 }
@@ -619,9 +628,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                         .map_err(|e| miette::miette!("Failed to clean worktrees: {}", e))?;
 
                 if stale_worktrees.is_empty() {
-                    if !json_mode {
+                    if !json_mode && !quiet_mode {
                         println!("{} No stale worktrees found.", "✔".green().bold());
-                    } else {
+                    } else if json_mode {
                         View::render_json(&serde_json::json!({
                             "status": "success",
                             "stale_count": 0,
@@ -662,7 +671,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                     .map_err(|e| miette::miette!("{e:?}"))?;
                 }
             }
-            Intent::SwitchWorktree { name } => {
+            Intent::SwitchWorktree { name, copy } => {
                 let repo_clone = repo.clone();
                 let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
                     .await
@@ -699,11 +708,29 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
 
                 match matched {
                     Some(wt) => {
+                        if copy {
+                            // Copy path to clipboard using pbcopy on macOS
+                            #[cfg(target_os = "macos")]
+                                {
+                                    use std::process::Stdio;
+                                    let mut child = Command::new("pbcopy")
+                                        .stdin(Stdio::piped())
+                                        .spawn()
+                                        .map_err(|e| miette::miette!("Failed to spawn pbcopy: {}", e))?;
+
+                                    if let Some(mut stdin) = child.stdin.take() {
+                                        stdin.write_all(wt.path.as_bytes()).map_err(|e| miette::miette!("Failed to write to pbcopy: {}", e))?;
+                                    }
+                                    child.wait().map_err(|e| miette::miette!("Failed to wait for pbcopy: {}", e))?;
+                                }
+                        }
+
                         if json_mode {
                             View::render_json(&serde_json::json!({
                                 "status": "success",
                                 "path": wt.path,
-                                "branch": wt.branch
+                                "branch": wt.branch,
+                                "copied": copy
                             }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
@@ -720,14 +747,14 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 }
             }
             Intent::Convert { name, branch } => {
-                if !json_mode {
+                if !json_mode && !quiet_mode {
                     println!(
                         "{} Converting standard repository to Bare Hub structure...",
                         "➜".cyan().bold()
                     );
                 }
 
-                let pb = if !json_mode {
+                let pb = if !json_mode && !quiet_mode {
                     let pb = ProgressBar::new_spinner();
                     pb.set_style(
                         ProgressStyle::default_spinner()
@@ -1151,7 +1178,7 @@ mod tests {
     async fn test_reducer_handle_init_fresh() -> Result<()> {
         let tracker = Arc::new(Mutex::new(CallTracker::default()));
         let repo = MockRepo::new(tracker.clone());
-        let reducer = Reducer::new(repo, false);
+        let reducer = Reducer::new(repo, false, false);
 
         reducer
             .handle(Intent::Initialize {
@@ -1171,7 +1198,7 @@ mod tests {
     async fn test_reducer_handle_init() -> Result<()> {
         let tracker = Arc::new(Mutex::new(CallTracker::default()));
         let repo = MockRepo::new(tracker.clone());
-        let reducer = Reducer::new(repo, false);
+        let reducer = Reducer::new(repo, false, false);
 
         reducer
             .handle(Intent::Initialize {
@@ -1192,7 +1219,7 @@ mod tests {
     async fn test_reducer_handle_add() -> Result<()> {
         let tracker = Arc::new(Mutex::new(CallTracker::default()));
         let repo = MockRepo::new(tracker.clone());
-        let reducer = Reducer::new(repo, false);
+        let reducer = Reducer::new(repo, false, false);
 
         reducer
             .handle(Intent::AddWorktree {
@@ -1210,7 +1237,7 @@ mod tests {
     async fn test_reducer_handle_setup() -> Result<()> {
         let tracker = Arc::new(Mutex::new(CallTracker::default()));
         let repo = MockRepo::new(tracker.clone());
-        let reducer = Reducer::new(repo, false);
+        let reducer = Reducer::new(repo, false, false);
 
         reducer
             .handle(Intent::SetupDefaults)
@@ -1226,7 +1253,7 @@ mod tests {
     async fn test_reducer_handle_run() -> Result<()> {
         let tracker = Arc::new(Mutex::new(CallTracker::default()));
         let repo = MockRepo::new(tracker.clone());
-        let reducer = Reducer::new(repo, false);
+        let reducer = Reducer::new(repo, false, false);
 
         // Create a dummy directory to satisfy .current_dir(&intent)
         let temp_dir = "temp-run-test";
@@ -1255,7 +1282,7 @@ mod tests {
     async fn test_reducer_handle_sync() -> Result<()> {
         let tracker = Arc::new(Mutex::new(CallTracker::default()));
         let repo = MockRepo::new(tracker.clone());
-        let reducer = Reducer::new(repo, false);
+        let reducer = Reducer::new(repo, false, false);
 
         reducer
             .handle(Intent::SyncConfigurations {
@@ -1274,7 +1301,7 @@ mod tests {
     async fn test_reducer_handle_push() -> Result<()> {
         let tracker = Arc::new(Mutex::new(CallTracker::default()));
         let repo = MockRepo::new(tracker.clone());
-        let reducer = Reducer::new(repo, false);
+        let reducer = Reducer::new(repo, false, false);
 
         reducer
             .handle(Intent::Push {
@@ -1293,7 +1320,7 @@ mod tests {
     async fn test_reducer_handle_clean() -> Result<()> {
         let tracker = Arc::new(Mutex::new(CallTracker::default()));
         let repo = MockRepo::new(tracker.clone());
-        let reducer = Reducer::new(repo, false);
+        let reducer = Reducer::new(repo, false, false);
 
         reducer
             .handle(Intent::CleanWorktrees {
@@ -1310,11 +1337,12 @@ mod tests {
     async fn test_reducer_handle_switch() -> Result<()> {
         let tracker = Arc::new(Mutex::new(CallTracker::default()));
         let repo = MockRepo::new(tracker.clone());
-        let reducer = Reducer::new(repo, false);
+        let reducer = Reducer::new(repo, false, false);
 
         reducer
             .handle(Intent::SwitchWorktree {
                 name: "dev".to_string(),
+                copy: false,
             })
             .await
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
@@ -1328,11 +1356,12 @@ mod tests {
     async fn test_reducer_handle_switch_not_found() {
         let tracker = Arc::new(Mutex::new(CallTracker::default()));
         let repo = MockRepo::new(tracker.clone());
-        let reducer = Reducer::new(repo, false);
+        let reducer = Reducer::new(repo, false, false);
 
         let result = reducer
             .handle(Intent::SwitchWorktree {
                 name: "nonexistent".to_string(),
+                copy: false,
             })
             .await;
 
@@ -1343,7 +1372,7 @@ mod tests {
     async fn test_reducer_handle_checkout() -> Result<()> {
         let tracker = Arc::new(Mutex::new(CallTracker::default()));
         let repo = MockRepo::new(tracker.clone());
-        let reducer = Reducer::new(repo, false);
+        let reducer = Reducer::new(repo, false, false);
 
         reducer
             .handle(Intent::CheckoutWorktree {

@@ -39,6 +39,7 @@ pub enum Intent {
     },
     SwitchWorktree {
         name: String,
+        copy: bool,
     },
     Convert {
         name: Option<String>,
