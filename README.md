@@ -108,6 +108,7 @@ worktree
 - `worktree remove <name> [--force]`: Remove a worktree and its directory.
 - `worktree switch <name>`: Quick jump to a worktree (prints path for shell integration).
 - `worktree checkout <name> <branch>`: Switch an existing worktree to a different branch.
+- `worktree open`: Generate and display a Warp Launch Configuration for the project.
 - `worktree list`: Launch the interactive Terminal User Interface.
 - `worktree run <name> <command>`: Execute a command in a temporary sandbox.
 - `worktree sync [name]`: Synchronize configuration files to worktrees.

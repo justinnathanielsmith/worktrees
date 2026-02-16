@@ -869,7 +869,42 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 let bin_name = cmd.get_name().to_string();
                 clap_complete::generate(shell, &mut cmd, bin_name, &mut std::io::stdout());
             }
+            Intent::Open => {
+                let repo_clone = repo.clone();
+                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
+                    .await
+                    .into_diagnostic()?
+                    .map_err(|e| miette::miette!("{e:?}"))?;
+
+                let root = repo
+                    .get_project_root()
+                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let project_name = root
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("project");
+
+                let yaml = crate::app::warp::generate_config(project_name, &worktrees);
+
+                if json_mode {
+                    View::render_json(&serde_json::json!({
+                        "status": "success",
+                        "config": yaml
+                    }))
+                    .map_err(|e| miette::miette!("{e:?}"))?;
+                } else {
+                    println!("\n{}", "Generated Warp Launch Configuration:".cyan().bold());
+                    println!("---");
+                    println!("{}", yaml);
+                    println!("---");
+                    println!("\n{}", "To use this configuration:".yellow().bold());
+                    println!("1. Save the above content to a file, e.g., `warp-launch.yaml`.");
+                    println!("2. Use `warp-cli launch-config warp-launch.yaml` if you have Warp CLI installed.");
+                    println!("3. Or copy/paste into Warp's Launch Configuration editor.");
+                }
+            }
         }
+
         Ok(())
     }
 }
