@@ -88,6 +88,10 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
 
                 let intent_str = if wt.is_bare {
                     "MAIN".to_string()
+                } else if let Some(meta) = &wt.metadata
+                    && let Some(purpose) = &meta.purpose
+                {
+                    purpose.clone()
                 } else {
                     std::path::Path::new(&wt.path)
                         .file_name()

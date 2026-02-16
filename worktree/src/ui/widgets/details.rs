@@ -165,6 +165,14 @@ impl<'a> Widget for DetailsWidget<'a> {
                         Style::default().fg(theme.text).add_modifier(Modifier::BOLD),
                     ),
                 ]));
+                if let Some(meta) = &wt.metadata
+                    && let Some(purpose) = &meta.purpose
+                {
+                    lines.push(Line::from(vec![
+                        Span::styled(" PURPOSE: ", Style::default().fg(theme.secondary)),
+                        Span::styled(purpose, Style::default().fg(theme.primary)),
+                    ]));
+                }
                 lines.push(Line::from(vec![
                     Span::styled(" BRANCH : ", Style::default().fg(theme.secondary)),
                     Span::styled(&wt.branch, Style::default().fg(theme.text)),
