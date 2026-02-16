@@ -29,11 +29,26 @@ pub struct StatusViewState {
     pub unstaged: Vec<String>,
     pub untracked: Vec<String>,
     pub selected_index: usize,
+    pub diff_preview: Option<String>,
+    pub show_diff: bool,
 }
 
 impl StatusViewState {
     pub fn total(&self) -> usize {
         self.staged.len() + self.unstaged.len() + self.untracked.len()
+    }
+
+    pub fn selected_file(&self) -> Option<&str> {
+        let idx = self.selected_index;
+        if idx < self.staged.len() {
+            Some(&self.staged[idx])
+        } else if idx < self.staged.len() + self.unstaged.len() {
+            Some(&self.unstaged[idx - self.staged.len()])
+        } else if idx < self.total() {
+            Some(&self.untracked[idx - self.staged.len() - self.unstaged.len()])
+        } else {
+            None
+        }
     }
 }
 
@@ -71,28 +86,36 @@ pub enum AppState {
     /// Synchronizing configuration files.
     Syncing {
         branch: String,
+        #[allow(dead_code)]
         prev_state: Box<AppState>,
     },
     /// Synchronization completed.
     SyncComplete {
         branch: String,
+        #[allow(dead_code)]
         prev_state: Box<AppState>,
     },
     /// Help modal showing shortcuts.
-    Help { prev_state: Box<AppState> },
+    Help {
+        #[allow(dead_code)]
+        prev_state: Box<AppState>,
+    },
     /// Fetching from remote.
     Fetching {
         branch: String,
+        #[allow(dead_code)]
         prev_state: Box<AppState>,
     },
     /// Pushing changes to remote.
     Pushing {
         branch: String,
+        #[allow(dead_code)]
         prev_state: Box<AppState>,
     },
     /// Push completed.
     PushComplete {
         branch: String,
+        #[allow(dead_code)]
         prev_state: Box<AppState>,
     },
     /// Selecting an editor to open a worktree.
@@ -106,6 +129,7 @@ pub enum AppState {
     OpeningEditor {
         branch: String,
         editor: String,
+        #[allow(dead_code)]
         prev_state: Box<AppState>,
     },
     /// The primary state showing all active worktrees.
@@ -162,7 +186,7 @@ pub enum AppState {
         duration: Duration,
     },
     /// An error state with a message.
-    Error(String, Box<AppState>),
+    Error(String, #[allow(dead_code)] Box<AppState>),
     /// Signal to exit the application.
     Exiting(Option<String>),
 }
@@ -176,6 +200,7 @@ impl AppState {
     }
 
     /// Helper to extract the previous state from states that track it.
+    #[allow(dead_code)]
     pub fn prev_state_boxed(&self) -> &AppState {
         match self {
             AppState::Confirming { prev_state, .. } => prev_state,

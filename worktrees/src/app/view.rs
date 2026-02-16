@@ -76,11 +76,10 @@ impl View {
                 duration,
                 ..
             } = state
+                && start_time.elapsed() >= *duration
             {
-                if start_time.elapsed() >= *duration {
-                    *state = *target_state.clone();
-                    state.request_refresh();
-                }
+                *state = *target_state.clone();
+                state.request_refresh();
             }
 
             if let AppState::ListingWorktrees {

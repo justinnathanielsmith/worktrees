@@ -226,6 +226,7 @@ impl CliRenderer {
             | AppState::ViewingHistory { .. }
             | AppState::SwitchingBranch { .. }
             | AppState::Committing { .. }
+            | AppState::Timed { .. }
             | AppState::Exiting(_) => {
                 // These are handled by render_tui, no-op for CLI log view
             }

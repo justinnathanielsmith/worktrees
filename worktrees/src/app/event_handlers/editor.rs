@@ -5,18 +5,17 @@ use crossterm::event::KeyCode;
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
 use std::process::Command;
-use std::time::Duration;
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle_editor_events<R: ProjectRepository>(
     key_code: KeyCode,
     repo: &R,
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    _terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     branch: &str,
     options: &[EditorConfig],
     selected: &mut usize,
     prev_state: &AppState,
-    spinner_tick: &mut usize,
+    _spinner_tick: &mut usize,
 ) -> Result<Option<AppState>> {
     let normalized_code = match key_code {
         KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),

@@ -87,7 +87,39 @@ pub fn handle_status_events<R: ProjectRepository>(
                 }
             }
         }
+        KeyCode::Char('d') => {
+            // Toggle diff preview
+            status.show_diff = !status.show_diff;
+
+            // Load diff if showing and we have a selected file
+            if status.show_diff && status.selected_file().is_some() {
+                status.diff_preview = repo.get_diff(path).ok();
+            }
+        }
+        KeyCode::Char('r') => {
+            // Refresh status
+            if let Ok(new_status) = repo.get_status(path) {
+                status.staged = new_status.staged;
+                status.unstaged = new_status.unstaged;
+                status.untracked = new_status.untracked;
+                let new_total = status.total();
+                if new_total > 0 && status.selected_index >= new_total {
+                    status.selected_index = new_total - 1;
+                }
+
+                // Refresh diff if showing
+                if status.show_diff && status.selected_file().is_some() {
+                    status.diff_preview = repo.get_diff(path).ok();
+                }
+            }
+        }
         _ => {}
     }
+
+    // Update diff preview when selection changes
+    if status.show_diff && status.selected_file().is_some() {
+        status.diff_preview = repo.get_diff(path).ok();
+    }
+
     Ok(None)
 }

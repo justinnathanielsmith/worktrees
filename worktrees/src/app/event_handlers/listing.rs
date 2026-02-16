@@ -6,7 +6,6 @@ use crossterm::event::KeyCode;
 use ratatui::{Terminal, backend::CrosstermBackend, widgets::TableState};
 use std::io;
 use std::process::Command;
-use std::time::Duration;
 
 use super::helpers::move_selection;
 
@@ -241,6 +240,8 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         unstaged: status.unstaged,
                         untracked: status.untracked,
                         selected_index: 0,
+                        diff_preview: None,
+                        show_diff: false,
                     },
                     prev_state: Box::new(current_state.clone()),
                 }));

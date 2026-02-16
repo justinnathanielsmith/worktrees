@@ -351,19 +351,21 @@ impl ProjectRepository for GitProjectRepository {
     }
 
     fn get_preferred_editor(&self) -> Result<Option<String>> {
-        if let Some(path) = self.get_global_config_path(".worktrees.editor") {
-            if path.exists() {
-                let content = std::fs::read_to_string(path)?;
-                return Ok(Some(content.trim().to_string()));
-            }
+        if let Some(path) = self.get_global_config_path(".worktrees.editor")
+            && path.exists()
+        {
+            let content = std::fs::read_to_string(path)?;
+            return Ok(Some(content.trim().to_string()));
         }
         Ok(None)
     }
 
     fn set_preferred_editor(&self, editor: &str) -> Result<()> {
-        let path = self.get_global_config_path(".worktrees.editor").ok_or_else(|| {
-            anyhow::anyhow!("Could not determine home directory for configuration")
-        })?;
+        let path = self
+            .get_global_config_path(".worktrees.editor")
+            .ok_or_else(|| {
+                anyhow::anyhow!("Could not determine home directory for configuration")
+            })?;
         std::fs::write(path, editor)?;
         Ok(())
     }
@@ -515,13 +517,13 @@ impl ProjectRepository for GitProjectRepository {
         }
 
         // 3. Check Legacy File
-        if let Some(path) = self.get_global_config_path(".worktrees.gemini_key") {
-            if path.exists() {
-                let content = std::fs::read_to_string(path)?;
-                let key = content.trim().to_string();
-                if !key.is_empty() {
-                    return Ok(Some(key));
-                }
+        if let Some(path) = self.get_global_config_path(".worktrees.gemini_key")
+            && path.exists()
+        {
+            let content = std::fs::read_to_string(path)?;
+            let key = content.trim().to_string();
+            if !key.is_empty() {
+                return Ok(Some(key));
             }
         }
 
@@ -651,7 +653,8 @@ mod tests {
 
     #[test]
     fn test_parse_git_history_normal() {
-        let output = "abc1234|John Doe|2023-01-01|Fix bug\ndef4567|Jane Smith|2023-01-02|Add feature";
+        let output =
+            "abc1234|John Doe|2023-01-01|Fix bug\ndef4567|Jane Smith|2023-01-02|Add feature";
         let commits = GitProjectRepository::parse_git_history(output);
         assert_eq!(commits.len(), 2);
         assert_eq!(commits[0].hash, "abc1234");
