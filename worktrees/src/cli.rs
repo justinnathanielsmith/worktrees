@@ -81,6 +81,21 @@ pub enum Commands {
     ///
     /// This is the recommended first step after 'init'.
     Setup,
+    /// Clean up stale worktrees (directories with missing metadata or deleted branches)
+    ///
+    /// Example: worktrees clean --dry-run
+    Clean {
+        /// Show what would be deleted without actually removing anything
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Switch to a worktree by name (prints path to stdout for shell integration)
+    ///
+    /// Example: cd $(worktrees switch dev)
+    Switch {
+        /// The name or branch of the worktree to switch to
+        name: String,
+    },
 }
 
 #[derive(Subcommand)]

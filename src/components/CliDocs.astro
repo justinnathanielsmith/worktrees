@@ -73,6 +73,31 @@ cp target/release/worktrees /usr/local/bin/wt`} label="Shell" />
                             <td class="px-6 py-4">Launch the interactive TUI to manage worktrees.</td>
                         </tr>
                         <tr>
+                            <td class="px-6 py-4 text-blue-400">run</td>
+                            <td class="px-6 py-4">&lt;intent&gt; &lt;command&gt;</td>
+                            <td class="px-6 py-4">Run a command in a temporary worktree and remove it afterward.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 text-blue-400">sync</td>
+                            <td class="px-6 py-4">[intent]</td>
+                            <td class="px-6 py-4">Synchronize configuration files to a specific worktree or all worktrees.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 text-blue-400">push</td>
+                            <td class="px-6 py-4">[intent]</td>
+                            <td class="px-6 py-4">Push changes to the remote repository.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 text-blue-400">clean</td>
+                            <td class="px-6 py-4">[--dry-run]</td>
+                            <td class="px-6 py-4">Remove stale worktrees (directories with missing metadata or deleted branches).</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 text-blue-400">switch</td>
+                            <td class="px-6 py-4">&lt;name&gt;</td>
+                            <td class="px-6 py-4">Print worktree path to stdout for shell integration (e.g., <code>cd $(worktrees switch dev)</code>).</td>
+                        </tr>
+                        <tr>
                             <td class="px-6 py-4 text-blue-400">setup</td>
                             <td class="px-6 py-4">-</td>
                             <td class="px-6 py-4">Opinionated setup: creates 'main' and 'dev' worktrees automatically.</td>

@@ -100,4 +100,7 @@ pub trait ProjectRepository {
     fn get_api_key(&self) -> Result<Option<String>>;
     /// Persists the Gemini API key.
     fn set_api_key(&self, key: &str) -> Result<()>;
+    /// Cleans up stale worktrees (missing metadata or deleted branches).
+    /// Returns a list of paths that were (or would be) removed.
+    fn clean_worktrees(&self, dry_run: bool) -> Result<Vec<String>>;
 }

@@ -21,10 +21,10 @@ jobs:
           components: rustfmt, clippy
       - name: Check Formatting
         run: cargo fmt --all -- --check
-        working-directory: chad-cli
+        working-directory: worktrees
       - name: Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
-        working-directory: chad-cli
+        working-directory: worktrees
 
   test:
     name: Test
@@ -35,7 +35,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Run Tests
         run: cargo test
-        working-directory: chad-cli
+        working-directory: worktrees
 
   # Coverage job (optional, can be slow)
   coverage:
@@ -49,7 +49,7 @@ jobs:
         run: cargo install cargo-tarpaulin
       - name: Run Tarpaulin
         run: cargo tarpaulin --out xml
-        working-directory: chad-cli
+        working-directory: worktrees
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v4
         with:

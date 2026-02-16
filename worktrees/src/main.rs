@@ -494,6 +494,119 @@ impl<R: ProjectRepository> Reducer<R> {
                     }
                 }
             }
+            Intent::CleanWorktrees { dry_run } => {
+                if !self.json_mode {
+                    if dry_run {
+                        println!("{} Scanning for stale worktrees (dry-run)...", "➜".cyan().bold());
+                    } else {
+                        println!("{} Cleaning stale worktrees...", "➜".cyan().bold());
+                    }
+                }
+
+                let stale_worktrees = self
+                    .repo
+                    .clean_worktrees(dry_run)
+                    .map_err(|e| miette::miette!("Failed to clean worktrees: {}", e))?;
+
+                if stale_worktrees.is_empty() {
+                    if !self.json_mode {
+                        println!("{} No stale worktrees found.", "✔".green().bold());
+                    } else {
+                        View::render_json(&serde_json::json!({
+                            "status": "success",
+                            "stale_count": 0,
+                            "stale_worktrees": []
+                        }))
+                        .map_err(|e| miette::miette!("{e:?}"))?;
+                    }
+                } else {
+                    if !self.json_mode {
+                        if dry_run {
+                            println!("\n{} Found {} stale worktree(s) that would be removed:", 
+                                "⚠".yellow().bold(), 
+                                stale_worktrees.len()
+                            );
+                        } else {
+                            println!("\n{} Removed {} stale worktree(s):", 
+                                "✔".green().bold(), 
+                                stale_worktrees.len()
+                            );
+                        }
+                        for wt in &stale_worktrees {
+                            println!("   • {}", wt.dimmed());
+                        }
+                        if dry_run {
+                            println!("\n{} Run without --dry-run to actually remove these worktrees.", 
+                                "Tip:".cyan().bold()
+                            );
+                        }
+                    } else {
+                        View::render_json(&serde_json::json!({
+                            "status": "success",
+                            "dry_run": dry_run,
+                            "stale_count": stale_worktrees.len(),
+                            "stale_worktrees": stale_worktrees
+                        }))
+                        .map_err(|e| miette::miette!("{e:?}"))?;
+                    }
+                }
+            }
+            Intent::SwitchWorktree { name } => {
+                let worktrees = self
+                    .repo
+                    .list_worktrees()
+                    .map_err(|e| miette::miette!("{e:?}"))?;
+
+                let candidates: Vec<&Worktree> =
+                    worktrees.iter().filter(|wt| !wt.is_bare).collect();
+
+                let needle = name.to_lowercase();
+
+                // Priority: exact branch → exact dir name → substring branch → substring path
+                let matched = candidates
+                    .iter()
+                    .find(|wt| wt.branch.to_lowercase() == needle)
+                    .or_else(|| {
+                        candidates.iter().find(|wt| {
+                            Path::new(&wt.path)
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .is_some_and(|n| n.to_lowercase() == needle)
+                        })
+                    })
+                    .or_else(|| {
+                        candidates
+                            .iter()
+                            .find(|wt| wt.branch.to_lowercase().contains(&needle))
+                    })
+                    .or_else(|| {
+                        candidates
+                            .iter()
+                            .find(|wt| wt.path.to_lowercase().contains(&needle))
+                    });
+
+                match matched {
+                    Some(wt) => {
+                        if self.json_mode {
+                            View::render_json(&serde_json::json!({
+                                "status": "success",
+                                "path": wt.path,
+                                "branch": wt.branch
+                            }))
+                            .map_err(|e| miette::miette!("{e:?}"))?;
+                        } else {
+                            // Print ONLY the path to stdout for shell integration
+                            println!("{}", wt.path);
+                        }
+                    }
+                    None => {
+                        return Err(miette::miette!(
+                            "No worktree found matching '{}'. Run 'worktrees list' to see available worktrees.",
+                            name
+                        ));
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -534,6 +647,8 @@ async fn main() -> Result<()> {
                 show: true,
             },
         },
+        Some(Commands::Clean { dry_run }) => Intent::CleanWorktrees { dry_run },
+        Some(Commands::Switch { name }) => Intent::SwitchWorktree { name },
         None => {
             if cli.json {
                 let worktrees = GitProjectRepository
@@ -725,6 +840,9 @@ mod tests {
         fn set_api_key(&self, _key: &str) -> anyhow::Result<()> {
             Ok(())
         }
+        fn clean_worktrees(&self, _dry_run: bool) -> anyhow::Result<Vec<String>> {
+            Ok(vec![])
+        }
     }
 
     #[test]
@@ -902,6 +1020,96 @@ mod tests {
                 .ok_or_else(|| anyhow::anyhow!("Missing command"))?,
             Commands::List
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn test_reducer_handle_clean() -> Result<()> {
+        let tracker = Arc::new(Mutex::new(CallTracker::default()));
+        let repo = MockRepo::new(tracker.clone());
+        let reducer = Reducer::new(repo, false);
+
+        reducer
+            .handle(Intent::CleanWorktrees { dry_run: true })
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_cli_parsing_clean() -> Result<()> {
+        // Test clean with dry-run
+        let cli = Cli::try_parse_from(["worktrees", "clean", "--dry-run"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match cli
+            .command
+            .ok_or_else(|| anyhow::anyhow!("Missing command"))?
+        {
+            Commands::Clean { dry_run } => {
+                assert!(dry_run);
+            }
+            _ => anyhow::bail!("Expected Clean"),
+        }
+
+        // Test clean without dry-run
+        let cli = Cli::try_parse_from(["worktrees", "clean"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match cli
+            .command
+            .ok_or_else(|| anyhow::anyhow!("Missing command"))?
+        {
+            Commands::Clean { dry_run } => {
+                assert!(!dry_run);
+            }
+            _ => anyhow::bail!("Expected Clean"),
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_reducer_handle_switch() -> Result<()> {
+        let tracker = Arc::new(Mutex::new(CallTracker::default()));
+        let repo = MockRepo::new(tracker.clone());
+        let reducer = Reducer::new(repo, false);
+
+        reducer
+            .handle(Intent::SwitchWorktree {
+                name: "dev".to_string(),
+            })
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let calls = tracker.lock().unwrap().calls.clone();
+        assert!(calls.contains(&"list".to_string()));
+        Ok(())
+    }
+
+    #[test]
+    fn test_reducer_handle_switch_not_found() {
+        let tracker = Arc::new(Mutex::new(CallTracker::default()));
+        let repo = MockRepo::new(tracker.clone());
+        let reducer = Reducer::new(repo, false);
+
+        let result = reducer.handle(Intent::SwitchWorktree {
+            name: "nonexistent".to_string(),
+        });
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_cli_parsing_switch() -> Result<()> {
+        let cli = Cli::try_parse_from(["worktrees", "switch", "dev"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match cli
+            .command
+            .ok_or_else(|| anyhow::anyhow!("Missing command"))?
+        {
+            Commands::Switch { name } => {
+                assert_eq!(name, "dev");
+            }
+            _ => anyhow::bail!("Expected Switch"),
+        }
         Ok(())
     }
 }

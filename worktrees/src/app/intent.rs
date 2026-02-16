@@ -28,4 +28,10 @@ pub enum Intent {
         key: Option<String>,
         show: bool,
     },
+    CleanWorktrees {
+        dry_run: bool,
+    },
+    SwitchWorktree {
+        name: String,
+    },
 }

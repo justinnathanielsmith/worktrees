@@ -1,100 +1,41 @@
-use crate::app::intent::Intent;
-use crate::app::model::{AppState, EditorConfig, PromptType};
+use crate::app::cli_renderer::CliRenderer;
+use crate::app::event_handlers::*;
+use crate::app::model::{AppState, PromptType};
+use crate::app::renderers::*;
 use crate::domain::repository::{ProjectRepository, Worktree};
-use crate::ui::theme::CyberTheme;
-use crate::ui::widgets::{
-    details::DetailsWidget, footer::FooterWidget, header::HeaderWidget,
-    worktree_list::WorktreeListWidget,
-};
+use crate::ui::widgets::{footer::FooterWidget, header::HeaderWidget};
 use anyhow::Result;
-use comfy_table::Table;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use owo_colors::OwoColorize;
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color as RatatuiColor, Modifier, Style},
-    text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Clear, Paragraph, TableState},
+    layout::{Constraint, Direction, Layout},
+    widgets::TableState,
     Frame, Terminal,
 };
 use std::io;
-use std::process::Command;
 use std::time::Duration;
 
 pub struct View;
 
 impl View {
     pub fn render_banner() {
-        let lines = [
-            r#"██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗████████╗██████╗ ███████╗███████╗███████╗"#,
-            r#"██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝╚══██╔══╝██╔══██╗██╔════╝██╔════╝██╔════╝"#,
-            r#"██║ █╗ ██║██║   ██║██████╔╝█████╔╝    ██║   ██████╔╝█████╗  █████╗  ███████╗"#,
-            r#"██║███╗██║██║   ██║██╔══██╗██╔═██╗    ██║   ██╔══██╗██╔══╝  ██╔══╝  ╚════██║"#,
-            r#"╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗   ██║   ██║  ██║███████╗███████╗███████║"#,
-            r#" ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝"#,
-        ];
-
-        let colors = [
-            (6, 182, 212),  // Cyan
-            (34, 158, 234), // Sky-Blue
-            (59, 130, 246), // Blue
-            (99, 102, 241), // Indigo
-            (139, 92, 246), // Violet
-            (168, 85, 247), // Purple
-        ];
-
-        for (i, line) in lines.iter().enumerate() {
-            let (r, g, b) = colors.get(i).unwrap_or(&(168, 85, 247));
-            println!("{}", line.truecolor(*r, *g, *b).bold());
-        }
-
-        println!(
-            "                    {}",
-            "HI-RES WORKTREE INFRASTRUCTURE"
-                .truecolor(6, 182, 212)
-                .italic()
-        );
-        println!("{}\n", "━".repeat(76).truecolor(59, 130, 246).dimmed());
+        CliRenderer::render_banner();
     }
 
     pub fn render_json<T: serde::Serialize>(data: &T) -> Result<()> {
-        let json = serde_json::to_string_pretty(data)?;
-        println!("{}", json);
-        Ok(())
+        CliRenderer::render_json(data)
     }
 
     pub fn render_listing_table(worktrees: &[Worktree]) {
-        let mut table = Table::new();
-        table.set_header(vec!["Branch", "Commit", "Path", "Status"]);
-
-        for wt in worktrees {
-            let status = if wt.is_bare {
-                "Bare"
-            } else if wt.is_detached {
-                "Detached"
-            } else {
-                "Active"
-            };
-            table.add_row(vec![&wt.branch, &wt.commit, &wt.path, status]);
-        }
-
-        println!("{}", table);
+        CliRenderer::render_listing_table(worktrees);
     }
 
     pub fn render_feedback_prompt() {
-        println!("\n{}", "━".repeat(60).cyan().dimmed());
-        println!("{}", "Thank you for using the Worktree Manager.".bold());
-        println!(
-            "{}",
-            "Feedback: https://github.com/justin-smith/worktrees/issues"
-                .blue()
-                .underline()
-        );
+        CliRenderer::render_feedback_prompt();
     }
 
     pub fn render_tui<R: ProjectRepository>(repo: &R, mut state: AppState) -> Result<()> {
@@ -152,7 +93,7 @@ impl View {
                             table_state,
                             ..
                         } => {
-                            new_state = Self::handle_listing_events(
+                            new_state = handle_listing_events(
                                 key.code,
                                 repo,
                                 terminal,
@@ -169,7 +110,7 @@ impl View {
                             prev_state,
                             ..
                         } => {
-                            new_state = Self::handle_status_events(
+                            new_state = handle_status_events(
                                 key.code,
                                 repo,
                                 path,
@@ -186,7 +127,7 @@ impl View {
                             ..
                         } => {
                             new_state =
-                                Self::handle_history_events(key.code, commits, selected_index, prev_state)?;
+                                handle_history_events(key.code, commits, selected_index, prev_state)?;
                         }
                         AppState::SwitchingBranch {
                             path,
@@ -194,7 +135,7 @@ impl View {
                             selected_index,
                             prev_state,
                         } => {
-                            new_state = Self::handle_branch_events(
+                            new_state = handle_branch_events(
                                 key.code,
                                 repo,
                                 path,
@@ -209,7 +150,7 @@ impl View {
                             ..
                         } => {
                             new_state =
-                                Self::handle_confirm_events(key.code, repo, action, prev_state)?;
+                                handle_confirm_events(key.code, repo, action, prev_state)?;
                         }
                         AppState::Committing {
                             path,
@@ -217,7 +158,7 @@ impl View {
                             selected_index,
                             prev_state,
                         } => {
-                            new_state = Self::handle_committing_events(
+                            new_state = handle_committing_events(
                                 key.code,
                                 repo,
                                 path,
@@ -233,7 +174,7 @@ impl View {
                             selected,
                             prev_state,
                         } => {
-                            new_state = Self::handle_editor_events(
+                            new_state = handle_editor_events(
                                 key.code,
                                 repo,
                                 terminal,
@@ -261,7 +202,7 @@ impl View {
                             input,
                             prev_state,
                         } => {
-                            new_state = Self::handle_prompt_events(
+                            new_state = handle_prompt_events(
                                 key.code,
                                 repo,
                                 terminal,
@@ -301,681 +242,8 @@ impl View {
         }
     }
 
-    fn move_selection(state: &mut TableState, len: usize, delta: isize) {
-        if len == 0 {
-            return;
-        }
-        let i = match state.selected() {
-            Some(i) => {
-                let next = i as isize + delta;
-                if next < 0 {
-                    len - 1
-                } else if next >= len as isize {
-                    0
-                } else {
-                    next as usize
-                }
-            }
-            None => 0,
-        };
-        state.select(Some(i));
-    }
 
-    fn handle_listing_events<R: ProjectRepository>(
-        key_code: KeyCode,
-        repo: &R,
-        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-        worktrees: &[Worktree],
-        table_state: &mut TableState,
-        current_state: &AppState,
-        spinner_tick: &mut usize,
-    ) -> Result<Option<AppState>> {
-        let normalized_code = match key_code {
-            KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
-            _ => key_code,
-        };
-
-        match normalized_code {
-            KeyCode::Char('q') | KeyCode::Esc => return Ok(Some(AppState::Exiting)),
-            KeyCode::Down | KeyCode::Char('j') => {
-                Self::move_selection(table_state, worktrees.len(), 1);
-            }
-            KeyCode::Up | KeyCode::Char('k') => {
-                Self::move_selection(table_state, worktrees.len(), -1);
-            }
-            KeyCode::Char('a') => {
-                return Ok(Some(AppState::Prompting {
-                    prompt_type: PromptType::AddIntent,
-                    input: String::new(),
-                    prev_state: Box::new(current_state.clone()),
-                }));
-            }
-            KeyCode::Char('d') | KeyCode::Char('x') => {
-                if let Some(i) = table_state.selected() {
-                    if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                        return Ok(Some(AppState::Confirming {
-                            title: " REMOVE WORKTREE ".into(),
-                            message: format!("Are you sure you want to remove worktree '{}'?", wt.branch),
-                            action: Box::new(Intent::RemoveWorktree {
-                                intent: wt.branch.clone(),
-                            }),
-                            prev_state: Box::new(current_state.clone()),
-                        }));
-                    }
-                }
-            }
-            KeyCode::Char('s') => {
-                if let Some(i) = table_state.selected() {
-                    if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                        let branch = wt.branch.clone();
-                        let path = wt.path.clone();
-                        let prev = Box::new(current_state.clone());
-                        let mut syncing_state = AppState::Syncing {
-                            branch: branch.clone(),
-                            prev_state: prev.clone(),
-                        };
-                        terminal.draw(|f| Self::draw(f, repo, &mut syncing_state, *spinner_tick))?;
-                        let _ = repo.sync_configs(&path);
-                        let mut complete_state = AppState::SyncComplete {
-                            branch,
-                            prev_state: prev,
-                        };
-                        terminal.draw(|f| Self::draw(f, repo, &mut complete_state, *spinner_tick))?;
-                        std::thread::sleep(Duration::from_millis(800));
-                        return Ok(Some(complete_state.prev_state_boxed().clone()));
-                    }
-                }
-            }
-            KeyCode::Char('p') => {
-                if let Some(i) = table_state.selected() {
-                    if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                        let branch = wt.branch.clone();
-                        let path = wt.path.clone();
-                        let prev = Box::new(current_state.clone());
-                        let mut pushing_state = AppState::Pushing {
-                            branch: branch.clone(),
-                            prev_state: prev.clone(),
-                        };
-                        terminal.draw(|f| Self::draw(f, repo, &mut pushing_state, *spinner_tick))?;
-                        if let Err(e) = repo.push(&path) {
-                            return Ok(Some(AppState::Error(format!("Failed to push: {}", e), prev)));
-                        }
-                        let mut complete_state = AppState::PushComplete {
-                            branch,
-                            prev_state: prev,
-                        };
-                        terminal.draw(|f| Self::draw(f, repo, &mut complete_state, *spinner_tick))?;
-                        std::thread::sleep(Duration::from_millis(800));
-                        return Ok(Some(complete_state.prev_state_boxed().clone()));
-                    }
-                }
-            }
-            KeyCode::Char('o') => {
-                if let Some(i) = table_state.selected() {
-                    if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                        let branch = wt.branch.clone();
-                        let path = wt.path.clone();
-                        let prev = Box::new(current_state.clone());
-
-                        if let Ok(Some(editor)) = repo.get_preferred_editor() {
-                            let mut opening_state = AppState::OpeningEditor {
-                                branch,
-                                editor: editor.clone(),
-                                prev_state: prev.clone(),
-                            };
-                            terminal.draw(|f| Self::draw(f, repo, &mut opening_state, *spinner_tick))?;
-                            let _ = Command::new(&editor).arg(&path).spawn();
-                            std::thread::sleep(Duration::from_millis(800));
-                            return Ok(Some(*prev));
-                        } else {
-                            let options = vec![
-                                EditorConfig {
-                                    name: "VS Code".into(),
-                                    command: "code".into(),
-                                },
-                                EditorConfig {
-                                    name: "Cursor".into(),
-                                    command: "cursor".into(),
-                                },
-                                EditorConfig {
-                                    name: "Zed".into(),
-                                    command: "zed".into(),
-                                },
-                                EditorConfig {
-                                    name: "Android Studio".into(),
-                                    command: "studio".into(),
-                                },
-                                EditorConfig {
-                                    name: "IntelliJ IDEA".into(),
-                                    command: "idea".into(),
-                                },
-                                EditorConfig {
-                                    name: "Vim".into(),
-                                    command: "vim".into(),
-                                },
-                                EditorConfig {
-                                    name: "Neovim".into(),
-                                    command: "nvim".into(),
-                                },
-                                EditorConfig {
-                                    name: "Antigravity".into(),
-                                    command: "antigravity".into(),
-                                },
-                            ];
-                            return Ok(Some(AppState::SelectingEditor {
-                                branch,
-                                options,
-                                selected: 0,
-                                prev_state: prev,
-                            }));
-                        }
-                    }
-                }
-            }
-            KeyCode::Char('u') => {
-                let mut setup_state = AppState::SettingUpDefaults;
-                terminal.draw(|f| Self::draw(f, repo, &mut setup_state, *spinner_tick))?;
-
-                // Silent setup for TUI
-                let _ = repo.add_worktree("main", "main");
-                let _ = repo.add_new_worktree("dev", "dev", "main");
-
-                let mut complete_state = AppState::SetupComplete;
-                terminal.draw(|f| Self::draw(f, repo, &mut complete_state, *spinner_tick))?;
-                std::thread::sleep(Duration::from_millis(1200));
-                return Ok(Some(current_state.clone()));
-            }
-            KeyCode::Char('g') => {
-                if let Some(i) = table_state.selected() {
-                    if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                        if let Ok(status) = repo.get_status(&wt.path) {
-                            return Ok(Some(AppState::ViewingStatus {
-                                path: wt.path.clone(),
-                                branch: wt.branch.clone(),
-                                status: crate::app::model::StatusViewState {
-                                    staged: status.staged,
-                                    unstaged: status.unstaged,
-                                    untracked: status.untracked,
-                                    selected_index: 0,
-                                },
-                                prev_state: Box::new(current_state.clone()),
-                            }));
-                        }
-                    }
-                }
-            }
-            KeyCode::Char('l') => {
-                if let Some(i) = table_state.selected() {
-                    if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                        if let Ok(commits) = repo.get_history(&wt.path, 50) {
-                            return Ok(Some(AppState::ViewingHistory {
-                                branch: wt.branch.clone(),
-                                commits,
-                                selected_index: 0,
-                                prev_state: Box::new(current_state.clone()),
-                            }));
-                        }
-                    }
-                }
-            }
-            KeyCode::Char('b') => {
-                if let Some(i) = table_state.selected() {
-                    if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                        if let Ok(branches) = repo.list_branches() {
-                            return Ok(Some(AppState::SwitchingBranch {
-                                path: wt.path.clone(),
-                                branches,
-                                selected_index: 0,
-                                prev_state: Box::new(current_state.clone()),
-                            }));
-                        }
-                    }
-                }
-            }
-            KeyCode::Char('f') => {
-                if let Some(i) = table_state.selected() {
-                    if let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare) {
-                        let branch = wt.branch.clone();
-                        let path = wt.path.clone();
-                        let prev = Box::new(current_state.clone());
-                        let mut fetching_state = AppState::Fetching {
-                            branch,
-                            prev_state: prev.clone(),
-                        };
-                        terminal.draw(|f| Self::draw(f, repo, &mut fetching_state, *spinner_tick))?;
-                        let _ = repo.fetch(&path);
-                        return Ok(Some(*prev));
-                    }
-                }
-            }
-            KeyCode::Char('?') | KeyCode::Char('h') => {
-                return Ok(Some(AppState::Help {
-                    prev_state: Box::new(current_state.clone()),
-                }));
-            }
-            _ => {}
-        }
-        Ok(None)
-    }
-
-    fn handle_status_events<R: ProjectRepository>(
-        key_code: KeyCode,
-        repo: &R,
-        path: &str,
-        branch: &str,
-        status: &mut crate::app::model::StatusViewState,
-        prev_state: &AppState,
-        current_state: &AppState,
-    ) -> Result<Option<AppState>> {
-        let normalized_code = match key_code {
-            KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
-            _ => key_code,
-        };
-
-        match normalized_code {
-            KeyCode::Esc | KeyCode::Char('q') => {
-                return Ok(Some(prev_state.clone()));
-            }
-            KeyCode::Down | KeyCode::Char('j') => {
-                let total = status.total();
-                if total > 0 {
-                    status.selected_index = (status.selected_index + 1) % total;
-                }
-            }
-            KeyCode::Up | KeyCode::Char('k') => {
-                let total = status.total();
-                if total > 0 {
-                    status.selected_index = (status.selected_index + total - 1) % total;
-                }
-            }
-            KeyCode::Char(' ') => {
-                let idx = status.selected_index;
-                if idx < status.staged.len() {
-                    let _ = repo.unstage_file(path, &status.staged[idx]);
-                } else if idx < status.staged.len() + status.unstaged.len() {
-                    let _ = repo.stage_file(path, &status.unstaged[idx - status.staged.len()]);
-                } else if idx < status.total() {
-                    let _ = repo.stage_file(
-                        path,
-                        &status.untracked[idx - status.staged.len() - status.unstaged.len()],
-                    );
-                }
-                if let Ok(new_status) = repo.get_status(path) {
-                    status.staged = new_status.staged;
-                    status.unstaged = new_status.unstaged;
-                    status.untracked = new_status.untracked;
-                    let new_total = status.total();
-                    if new_total > 0 && status.selected_index >= new_total {
-                        status.selected_index = new_total - 1;
-                    }
-                }
-            }
-            KeyCode::Char('c') => {
-                return Ok(Some(AppState::Committing {
-                    path: path.to_string(),
-                    branch: branch.to_string(),
-                    selected_index: 0,
-                    prev_state: Box::new(current_state.clone()),
-                }));
-            }
-            KeyCode::Char('a') => {
-                let _ = repo.stage_all(path);
-                if let Ok(new_status) = repo.get_status(path) {
-                    status.staged = new_status.staged;
-                    status.unstaged = new_status.unstaged;
-                    status.untracked = new_status.untracked;
-                    let new_total = status.total();
-                    if new_total > 0 && status.selected_index >= new_total {
-                        status.selected_index = new_total - 1;
-                    }
-                }
-            }
-            KeyCode::Char('u') => {
-                let _ = repo.unstage_all(path);
-                if let Ok(new_status) = repo.get_status(path) {
-                    status.staged = new_status.staged;
-                    status.unstaged = new_status.unstaged;
-                    status.untracked = new_status.untracked;
-                    let new_total = status.total();
-                    if new_total > 0 && status.selected_index >= new_total {
-                        status.selected_index = new_total - 1;
-                    }
-                }
-            }
-            _ => {}
-        }
-        Ok(None)
-    }
-
-    fn handle_committing_events<R: ProjectRepository>(
-        key_code: KeyCode,
-        repo: &R,
-        path: &str,
-        branch: &str,
-        selected_index: &mut usize,
-        prev_state: &AppState,
-        current_state: &AppState,
-    ) -> Result<Option<AppState>> {
-        let options = ["Manual Commit", "AI Commit", "Set API Key"];
-        let normalized_code = match key_code {
-            KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
-            _ => key_code,
-        };
-
-        match normalized_code {
-            KeyCode::Esc | KeyCode::Char('q') => {
-                return Ok(Some(prev_state.clone()));
-            }
-            KeyCode::Down | KeyCode::Char('j') => {
-                *selected_index = (*selected_index + 1) % options.len();
-            }
-            KeyCode::Up | KeyCode::Char('k') => {
-                *selected_index = (*selected_index + options.len() - 1) % options.len();
-            }
-            KeyCode::Enter => match *selected_index {
-                0 => {
-                    // Manual
-                    return Ok(Some(AppState::Prompting {
-                        prompt_type: PromptType::CommitMessage,
-                        input: String::new(),
-                        prev_state: Box::new(current_state.clone()),
-                    }));
-                }
-                1 => {
-                    // AI
-                    match repo.get_diff(path) {
-                        Ok(diff) => {
-                            if diff.trim().is_empty() {
-                                return Ok(Some(AppState::Error(
-                                    "No changes detected to generate a message for.".into(),
-                                    Box::new(current_state.clone()),
-                                )));
-                            }
-                            match repo.generate_commit_message(&diff, branch) {
-                                Ok(msg) => {
-                                    return Ok(Some(AppState::Prompting {
-                                        prompt_type: PromptType::CommitMessage,
-                                        input: msg,
-                                        prev_state: Box::new(current_state.clone()),
-                                    }));
-                                }
-                                Err(e) => {
-                                    return Ok(Some(AppState::Error(
-                                        format!("AI Generation failed: {}", e),
-                                        Box::new(current_state.clone()),
-                                    )));
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            return Ok(Some(AppState::Error(
-                                format!("Failed to get diff: {}", e),
-                                Box::new(current_state.clone()),
-                            )));
-                        }
-                    }
-                }
-                2 => {
-                    // Set API Key
-                    return Ok(Some(AppState::Prompting {
-                        prompt_type: PromptType::ApiKey,
-                        input: String::new(),
-                        prev_state: Box::new(current_state.clone()),
-                    }));
-                }
-                _ => {}
-            },
-            _ => {}
-        }
-        Ok(None)
-    }
-
-    fn handle_history_events(
-        key_code: KeyCode,
-        commits: &[crate::domain::repository::GitCommit],
-        selected_index: &mut usize,
-        prev_state: &AppState,
-    ) -> Result<Option<AppState>> {
-        let normalized_code = match key_code {
-            KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
-            _ => key_code,
-        };
-
-        match normalized_code {
-            KeyCode::Esc | KeyCode::Char('q') => {
-                return Ok(Some(prev_state.clone()));
-            }
-            KeyCode::Down | KeyCode::Char('j') => {
-                if !commits.is_empty() {
-                    *selected_index = (*selected_index + 1) % commits.len();
-                }
-            }
-            KeyCode::Up | KeyCode::Char('k') => {
-                if !commits.is_empty() {
-                    *selected_index = (*selected_index + commits.len() - 1) % commits.len();
-                }
-            }
-            _ => {}
-        }
-        Ok(None)
-    }
-
-    fn handle_branch_events<R: ProjectRepository>(
-        key_code: KeyCode,
-        repo: &R,
-        path: &str,
-        branches: &[String],
-        selected_index: &mut usize,
-        prev_state: &AppState,
-    ) -> Result<Option<AppState>> {
-        let normalized_code = match key_code {
-            KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
-            _ => key_code,
-        };
-
-        match normalized_code {
-            KeyCode::Esc | KeyCode::Char('q') => {
-                return Ok(Some(prev_state.clone()));
-            }
-            KeyCode::Down | KeyCode::Char('j') => {
-                if !branches.is_empty() {
-                    *selected_index = (*selected_index + 1) % branches.len();
-                }
-            }
-            KeyCode::Up | KeyCode::Char('k') => {
-                if !branches.is_empty() {
-                    *selected_index = (*selected_index + branches.len() - 1) % branches.len();
-                }
-            }
-            KeyCode::Enter => {
-                if let Some(branch) = branches.get(*selected_index) {
-                    let _ = repo.switch_branch(path, branch);
-                }
-                return Ok(Some(prev_state.clone()));
-            }
-            _ => {}
-        }
-        Ok(None)
-    }
-
-    fn handle_confirm_events<R: ProjectRepository>(
-        key_code: KeyCode,
-        repo: &R,
-        action: &Intent,
-        prev_state: &AppState,
-    ) -> Result<Option<AppState>> {
-        let normalized_code = match key_code {
-            KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
-            _ => key_code,
-        };
-
-        match normalized_code {
-            KeyCode::Enter | KeyCode::Char('y') => {
-                // Execute action
-                if let Intent::RemoveWorktree { intent } = action {
-                    let _ = repo.remove_worktree(intent, false);
-                }
-                Ok(Some(prev_state.clone()))
-            }
-            KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('q') => Ok(Some(prev_state.clone())),
-            _ => Ok(None),
-        }
-    }
-
-    fn handle_editor_events<R: ProjectRepository>(
-        key_code: KeyCode,
-        repo: &R,
-        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-        branch: &str,
-        options: &[EditorConfig],
-        selected: &mut usize,
-        prev_state: &AppState,
-        spinner_tick: &mut usize,
-    ) -> Result<Option<AppState>> {
-        let normalized_code = match key_code {
-            KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
-            _ => key_code,
-        };
-
-        match normalized_code {
-            KeyCode::Up | KeyCode::Char('k') => {
-                *selected = if *selected > 0 {
-                    *selected - 1
-                } else {
-                    options.len() - 1
-                };
-            }
-            KeyCode::Down | KeyCode::Char('j') => {
-                *selected = if *selected < options.len() - 1 {
-                    *selected + 1
-                } else {
-                    0
-                };
-            }
-            KeyCode::Enter => {
-                let editor = options[*selected].command.clone();
-                let _ = repo.set_preferred_editor(&editor);
-                let path = if let AppState::ListingWorktrees {
-                    worktrees,
-                    table_state,
-                    ..
-                } = prev_state
-                {
-                    table_state
-                        .selected()
-                        .and_then(|i| worktrees.get(i))
-                        .map(|wt| wt.path.clone())
-                } else {
-                    None
-                };
-                if let Some(p) = path {
-                    let mut opening_state = AppState::OpeningEditor {
-                        branch: branch.to_string(),
-                        editor,
-                        prev_state: Box::new(prev_state.clone()),
-                    };
-                    terminal.draw(|f| Self::draw(f, repo, &mut opening_state, *spinner_tick))?;
-                    let _ = Command::new(&options[*selected].command).arg(&p).spawn();
-                    std::thread::sleep(Duration::from_millis(800));
-                    return Ok(Some(prev_state.clone()));
-                }
-            }
-            KeyCode::Esc => {
-                return Ok(Some(prev_state.clone()));
-            }
-            _ => {}
-        }
-        Ok(None)
-    }
-
-    fn handle_prompt_events<R: ProjectRepository>(
-        key_code: KeyCode,
-        repo: &R,
-        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-        prompt_type: &PromptType,
-        input: &mut String,
-        prev_state: &AppState,
-        spinner_tick: &mut usize,
-    ) -> Result<Option<AppState>> {
-        match key_code {
-            KeyCode::Enter => {
-                let val = input.trim().to_string();
-                if !val.is_empty() {
-                    match prompt_type {
-                        PromptType::AddIntent => {
-                            let mut adding_state = AppState::AddingWorktree {
-                                intent: val.clone(),
-                                branch: val.clone(),
-                            };
-                            terminal.draw(|f| Self::draw(f, repo, &mut adding_state, *spinner_tick))?;
-                            let _ = repo.add_worktree(&val, &val);
-                            return Ok(Some(AppState::ListingWorktrees {
-                                worktrees: Vec::new(),
-                                table_state: TableState::default(),
-                                refresh_needed: true,
-                            }));
-                        }
-                        PromptType::InitUrl => {
-                            let mut init_state = AppState::Initializing {
-                                project_name: "project".into(),
-                            };
-                            terminal.draw(|f| Self::draw(f, repo, &mut init_state, *spinner_tick))?;
-                            let _ = repo.init_bare_repo(&val, "project");
-                            return Ok(Some(AppState::ListingWorktrees {
-                                worktrees: Vec::new(),
-                                table_state: TableState::default(),
-                                refresh_needed: true,
-                            }));
-                        }
-                        PromptType::CommitMessage => {
-                            let (path, target_state) =
-                                if let AppState::ViewingStatus { path, .. } = prev_state {
-                                    (Some(path.clone()), prev_state.clone())
-                                } else if let AppState::Committing {
-                                    path, prev_state, ..
-                                } = prev_state
-                                {
-                                    (Some(path.clone()), (**prev_state).clone())
-                                } else {
-                                    (None, prev_state.clone())
-                                };
-
-                            if let Some(p) = path {
-                                let _ = repo.commit(&p, &val);
-                                if let Ok(status) = repo.get_status(&p) {
-                                    let mut new_state = target_state;
-                                    if let AppState::ViewingStatus { status: s, .. } = &mut new_state {
-                                        s.staged = status.staged;
-                                        s.unstaged = status.unstaged;
-                                        s.untracked = status.untracked;
-                                    }
-                                    return Ok(Some(new_state));
-                                }
-                            }
-                            return Ok(Some(prev_state.clone()));
-                        }
-                        PromptType::ApiKey => {
-                            let _ = repo.set_api_key(&val);
-                            return Ok(Some(prev_state.clone()));
-                        }
-                    }
-                } else {
-                    return Ok(Some(prev_state.clone()));
-                }
-            }
-            KeyCode::Esc => {
-                return Ok(Some(prev_state.clone()));
-            }
-            KeyCode::Char(c) => input.push(c),
-            KeyCode::Backspace => {
-                input.pop();
-            }
-            _ => {}
-        }
-        Ok(None)
-    }
-
-    fn draw<R: ProjectRepository>(f: &mut Frame, repo: &R, state: &mut AppState, spinner_tick: usize) {
+    pub fn draw<R: ProjectRepository>(f: &mut Frame, repo: &R, state: &mut AppState, spinner_tick: usize) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .margin(1)
@@ -993,8 +261,8 @@ impl View {
         let context = repo.detect_context();
         f.render_widget(HeaderWidget { context }, chunks[0]);
 
-        let spinner_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-        let spinner = spinner_chars[spinner_tick % spinner_chars.len()];
+        // Wrap chunks in Rc for sharing with renderers
+        let shared_chunks = chunks.clone();
 
         match state {
             AppState::ListingWorktrees {
@@ -1002,12 +270,7 @@ impl View {
                 table_state,
                 ..
             } => {
-                let table = WorktreeListWidget::new(worktrees);
-                f.render_stateful_widget(table, chunks[1], table_state);
-
-                let selected_worktree = table_state.selected().and_then(|i| worktrees.get(i));
-
-                f.render_widget(DetailsWidget::new(selected_worktree, context), chunks[2]);
+                render_listing(f, worktrees.as_slice(), table_state, context, shared_chunks.clone());
             }
             AppState::ViewingStatus {
                 branch,
@@ -1015,1035 +278,353 @@ impl View {
                 prev_state,
                 ..
             } => {
-                let theme = CyberTheme::default();
-
-                // Create a side-panel layout by combining main and details areas
-                let body_area = chunks[1].union(chunks[2]);
-                let body_chunks = Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints([Constraint::Percentage(25), Constraint::Percentage(75)])
-                    .split(body_area);
-
-                // Render background list from prev_state for context
+                render_status(f, branch, status, prev_state, shared_chunks.clone());
+            }
+            AppState::ViewingHistory {
+                branch,
+                commits,
+                selected_index,
+                prev_state,
+                ..
+            } => {
+                // Background
                 if let AppState::ListingWorktrees {
                     worktrees,
                     table_state,
                     ..
                 } = &**prev_state
                 {
-                    let mut ts = table_state.clone();
-                    f.render_stateful_widget(WorktreeListWidget::new(worktrees), body_chunks[0], &mut ts);
+                    render_listing(f, worktrees.as_slice(), &mut table_state.clone(), context, shared_chunks.clone());
                 }
-
-                let area = body_chunks[1];
-                let outer_block = Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Thick)
-                    .border_style(Style::default().fg(theme.primary))
-                    .title(Span::styled(
-                        format!("  GIT STATUS: {} ", branch),
-                        Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
-                    ));
-
-                let inner_area = outer_block.inner(area);
-                f.render_widget(outer_block, area);
-
-                let status_chunks = Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-                    .split(inner_area);
-
-                // --- STAGED COLUMN ---
-                let mut staged_items = Vec::new();
-                for (i, file) in status.staged.iter().enumerate() {
-                    let is_selected = i == status.selected_index;
-                    let style = if is_selected {
-                        Style::default()
-                            .bg(theme.selection_bg)
-                            .fg(theme.primary)
-                            .add_modifier(Modifier::BOLD)
-                    } else {
-                        Style::default().fg(theme.success)
-                    };
-
-                    let prefix = if is_selected { " ▶ " } else { "   " };
-                    staged_items.push(Line::from(vec![
-                        Span::styled(prefix, style),
-                        Span::styled("󰄬 ", style),
-                        Span::styled(file, style),
-                    ]));
-                }
-                let staged_list = Paragraph::new(staged_items).block(
-                    Block::default()
-                        .borders(Borders::RIGHT)
-                        .border_style(Style::default().fg(theme.border))
-                        .title(Span::styled(
-                            " 󰄬 STAGED CHANGES ",
-                            Style::default().fg(theme.success).add_modifier(Modifier::BOLD),
-                        )),
-                );
-                f.render_widget(staged_list, status_chunks[0]);
-
-                // --- UNSTAGED COLUMN ---
-                let mut unstaged_items = Vec::new();
-                let unstaged_start = status.staged.len();
-                for (i, file) in status.unstaged.iter().enumerate() {
-                    let is_selected = (i + unstaged_start) == status.selected_index;
-                    let style = if is_selected {
-                        Style::default()
-                            .bg(theme.selection_bg)
-                            .fg(theme.primary)
-                            .add_modifier(Modifier::BOLD)
-                    } else {
-                        Style::default().fg(theme.warning)
-                    };
-
-                    let prefix = if is_selected { " ▶ " } else { "   " };
-                    unstaged_items.push(Line::from(vec![
-                        Span::styled(prefix, style),
-                        Span::styled("󱇨 ", style),
-                        Span::styled(file, style),
-                    ]));
-                }
-
-                let untracked_start = status.staged.len() + status.unstaged.len();
-                for (i, file) in status.untracked.iter().enumerate() {
-                    let is_selected = (i + untracked_start) == status.selected_index;
-                    let style = if is_selected {
-                        Style::default()
-                            .bg(theme.selection_bg)
-                            .fg(theme.primary)
-                            .add_modifier(Modifier::BOLD)
-                    } else {
-                        Style::default().fg(theme.error)
-                    };
-
-                    let prefix = if is_selected { " ▶ " } else { "   " };
-                    unstaged_items.push(Line::from(vec![
-                        Span::styled(prefix, style),
-                        Span::styled("󰡯 ", style),
-                        Span::styled(file, style),
-                    ]));
-                }
-
-                let unstaged_list = Paragraph::new(unstaged_items).block(
-                    Block::default().title(Span::styled(
-                        " 󱇨 UNSTAGED / UNTRACKED ",
-                        Style::default().fg(theme.warning).add_modifier(Modifier::BOLD),
-                    )),
-                );
-                f.render_widget(unstaged_list, status_chunks[1]);
-
-                // --- HELPER FOOTER ---
-                let footer_area = Rect::new(area.x + 2, area.y + area.height - 1, area.width - 4, 1);
-                let help_text = Line::from(vec![
-                    Span::styled(
-                        " [SPACE]",
-                        Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw(" TOGGLE  "),
-                    Span::styled(
-                        " [A]",
-                        Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw(" STAGE ALL  "),
-                    Span::styled(
-                        " [U]",
-                        Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw(" UNSTAGE ALL  "),
-                    Span::styled(
-                        " [C]",
-                        Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw(" COMMIT MENU  "),
-                    Span::styled(
-                        " [ESC/Q]",
-                        Style::default().fg(theme.subtle).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw(" BACK "),
-                ]);
-                f.render_widget(Paragraph::new(help_text).alignment(Alignment::Center), footer_area);
-            }
-            AppState::ViewingHistory {
-                branch,
-                commits,
-                selected_index,
-                ..
-            } => {
-                let theme = CyberTheme::default();
-                let area = centered_rect(85, 80, f.area());
-                f.render_widget(Clear, area);
-
-                let outer_block = Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .border_style(Style::default().fg(theme.secondary))
-                    .title(Span::styled(
-                        format!(" 󰊚 COMMIT LOG: {} ", branch),
-                        Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD),
-                    ));
-
-                let inner_area = outer_block.inner(area);
-                f.render_widget(outer_block, area);
-
-                let mut items = Vec::new();
-                for (i, commit) in commits.iter().enumerate() {
-                    let is_selected = i == *selected_index;
-                    let row_style = if is_selected {
-                        Style::default()
-                            .bg(theme.selection_bg)
-                            .fg(theme.text)
-                            .add_modifier(Modifier::BOLD)
-                    } else {
-                        Style::default().fg(theme.text)
-                    };
-
-                    let prefix = if is_selected { " ▶ " } else { "   " };
-
-                    items.push(Line::from(vec![
-                        Span::styled(prefix, row_style.fg(theme.primary)),
-                        Span::styled(&commit.hash, row_style.fg(theme.warning)),
-                        Span::raw(" "),
-                        Span::styled(format!(" {:<10} ", commit.date), row_style.fg(theme.subtle)),
-                        Span::styled(
-                            format!(" {:<15} ", commit.author),
-                            row_style.fg(theme.accent),
-                        ),
-                        Span::styled(&commit.message, row_style),
-                    ]));
-                }
-
-                let p = Paragraph::new(items).alignment(Alignment::Left);
-                f.render_widget(p, inner_area);
-
-                // Footer
-                let footer_area = Rect::new(area.x + 2, area.y + area.height - 1, area.width - 4, 1);
-                let help_text = Paragraph::new(Line::from(vec![
-                    Span::styled(
-                        " [UP/DOWN]",
-                        Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw(" NAVIGATE  "),
-                    Span::styled(
-                        " [ESC/Q]",
-                        Style::default().fg(theme.subtle).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw(" BACK "),
-                ]))
-                .alignment(Alignment::Center);
-                f.render_widget(help_text, footer_area);
+                render_history(f, branch, commits, *selected_index);
             }
             AppState::SwitchingBranch {
                 branches,
                 selected_index,
+                prev_state,
                 ..
             } => {
-                let theme = CyberTheme::default();
-                let area = centered_rect(50, 60, f.area());
-                f.render_widget(Clear, area);
-
-                let block = Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .border_style(Style::default().fg(theme.primary))
-                    .title(Span::styled(
-                        "  SWITCH BRANCH ",
-                        Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
-                    ));
-
-                let inner_area = block.inner(area);
-                f.render_widget(block, area);
-
-                let mut items = Vec::new();
-                for (i, branch) in branches.iter().enumerate() {
-                    let is_selected = i == *selected_index;
-                    let style = if is_selected {
-                        Style::default()
-                            .bg(theme.selection_bg)
-                            .fg(theme.primary)
-                            .add_modifier(Modifier::BOLD)
-                    } else {
-                        Style::default().fg(theme.text)
-                    };
-
-                    let prefix = if is_selected { " ▶ " } else { "   " };
-                    items.push(Line::from(vec![
-                        Span::styled(prefix, style.fg(theme.primary)),
-                        Span::styled(branch, style),
-                    ]));
+                // Background
+                if let AppState::ListingWorktrees {
+                    worktrees,
+                    table_state,
+                    ..
+                } = &**prev_state
+                {
+                     render_listing(f, worktrees.as_slice(), &mut table_state.clone(), context, shared_chunks.clone());
+                } else if let AppState::ViewingStatus {
+                    branch,
+                    status,
+                    prev_state: p_prev,
+                    ..
+                } = &**prev_state
+                {
+                     render_status(f, branch, status, p_prev, shared_chunks.clone());
                 }
-
-                f.render_widget(Paragraph::new(items), inner_area);
-            }
-            AppState::Committing { selected_index, .. } => {
-                let theme = CyberTheme::default();
-                let area = centered_rect(40, 35, f.area());
-                f.render_widget(Clear, area);
-
-                let block = Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .border_style(Style::default().fg(theme.primary))
-                    .title(Span::styled(
-                        " 󰊚 COMMIT MENU ",
-                        Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
-                    ));
-
-                let inner_area = block.inner(area);
-                f.render_widget(block, area);
-
-                let options = ["󰊚  MANUAL COMMIT", "󰚚  AI COMMIT (GEMINI)", "󰌆  SET GEMINI API KEY"];
-                let mut items = Vec::new();
-                for (i, opt) in options.iter().enumerate() {
-                    let is_selected = i == *selected_index;
-                    let style = if is_selected {
-                        Style::default()
-                            .bg(theme.selection_bg)
-                            .fg(theme.primary)
-                            .add_modifier(Modifier::BOLD)
-                    } else {
-                        Style::default().fg(theme.text)
-                    };
-
-                    let prefix = if is_selected { " ▶ " } else { "   " };
-                    items.push(Line::from(vec![
-                        Span::styled(prefix, style.fg(theme.primary)),
-                        Span::styled(*opt, style),
-                    ]));
-                }
-
-                f.render_widget(Paragraph::new(items), inner_area);
-            }
-            AppState::Prompting {
-                prompt_type, input, ..
-            } => {
-                let theme = CyberTheme::default();
-                let table = WorktreeListWidget::new(&[]);
-                f.render_stateful_widget(table, chunks[1], &mut TableState::default());
-                f.render_widget(DetailsWidget::new(None, context), chunks[2]);
-
-                let area = centered_rect(60, 20, f.area());
-                f.render_widget(Clear, area);
-
-                let (title, icon) = match prompt_type {
-                    PromptType::AddIntent => (" ADD NEW WORKTREE ", "󰙅 "),
-                    PromptType::InitUrl => (" INITIALIZE REPOSITORY ", "󰚚 "),
-                    PromptType::CommitMessage => (" COMMIT MESSAGE ", "󰊚 "),
-                    PromptType::ApiKey => (" SET GEMINI API KEY ", "󰌆 "),
-                };
-
-                let input_widget = Paragraph::new(Line::from(vec![
-                    Span::styled(
-                        format!(" {} > ", icon),
-                        Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::styled(input.as_str(), Style::default().fg(theme.text)),
-                    Span::styled("_", Style::default().fg(theme.primary).add_modifier(Modifier::SLOW_BLINK)),
-                ]))
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_type(BorderType::Rounded)
-                        .border_style(Style::default().fg(theme.accent))
-                        .title(Span::styled(
-                            title,
-                            Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
-                        )),
-                );
-
-                f.render_widget(input_widget, area);
+                render_branch_selection(f, branches, *selected_index);
             }
             AppState::SelectingEditor {
-                options, selected, ..
+                branch,
+                options,
+                selected,
+                prev_state,
+                ..
             } => {
-                let table = WorktreeListWidget::new(&[]);
-                f.render_stateful_widget(table, chunks[1], &mut TableState::default());
-                f.render_widget(DetailsWidget::new(None, context), chunks[2]);
-
-                let area = centered_rect(60, 40, f.area());
-                f.render_widget(Clear, area);
-
-                let items: Vec<Line> = options
-                    .iter()
-                    .enumerate()
-                    .map(|(i, opt)| {
-                        if i == *selected {
-                            Line::from(vec![
-                                Span::styled(
-                                    " > ",
-                                    Style::default().fg(RatatuiColor::Cyan).add_modifier(Modifier::BOLD),
-                                ),
-                                Span::styled(
-                                    &opt.name,
-                                    Style::default().fg(RatatuiColor::Cyan).add_modifier(Modifier::BOLD),
-                                ),
-                                Span::styled(
-                                    format!(" ({})", opt.command),
-                                    Style::default().fg(RatatuiColor::DarkGray),
-                                ),
-                            ])
-                        } else {
-                            Line::from(vec![
-                                Span::raw("   "),
-                                Span::raw(&opt.name),
-                                Span::styled(
-                                    format!(" ({})", opt.command),
-                                    Style::default().fg(RatatuiColor::DarkGray),
-                                ),
-                            ])
-                        }
-                    })
-                    .collect();
-
-                let p = Paragraph::new(items)
-                    .block(
-                        Block::default()
-                            .borders(Borders::ALL)
-                            .border_type(BorderType::Rounded)
-                            .title(Span::styled(
-                                " SELECT PREFERRED EDITOR ",
-                                Style::default().add_modifier(Modifier::BOLD),
-                            )),
-                    )
-                    .alignment(Alignment::Left);
-
-                f.render_widget(p, area);
-            }
-            AppState::Syncing { branch, .. } => {
-                let theme = CyberTheme::default();
-                let area = centered_rect(60, 20, f.area());
-                f.render_widget(Clear, area);
-
-                let p = Paragraph::new(vec![
-                    Line::from(vec![Span::styled(
-                        format!(" {} SYNCING CONFIGURATIONS ", spinner),
-                        Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
-                    )]),
-                    Line::from(""),
-                    Line::from(vec![
-                        Span::raw("Target: "),
-                        Span::styled(
-                            branch.as_str(),
-                            Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD),
-                        ),
-                    ]),
-                ])
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_type(BorderType::Rounded)
-                        .border_style(Style::default().fg(theme.primary)),
-                )
-                .alignment(Alignment::Center);
-                f.render_widget(p, area);
-            }
-            AppState::SyncComplete { branch, .. } => {
-                let area = centered_rect(60, 20, f.area());
-                f.render_widget(Clear, area);
-
-                let p = Paragraph::new(vec![
-                    Line::from(vec![Span::styled(
-                        " ✅ SYNC COMPLETE ",
-                        Style::default().fg(RatatuiColor::Green).add_modifier(Modifier::BOLD),
-                    )]),
-                    Line::from(""),
-                    Line::from(vec![
-                        Span::raw("Successfully synced: "),
-                        Span::styled(
-                            branch.as_str(),
-                            Style::default().fg(RatatuiColor::Magenta).add_modifier(Modifier::BOLD),
-                        ),
-                    ]),
-                ])
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_type(BorderType::Rounded),
-                )
-                .alignment(Alignment::Center);
-                f.render_widget(p, area);
-            }
-            AppState::Pushing { branch, .. } => {
-                let theme = CyberTheme::default();
-                let area = centered_rect(60, 20, f.area());
-                f.render_widget(Clear, area);
-
-                let p = Paragraph::new(vec![
-                    Line::from(vec![Span::styled(
-                        format!(" {} PUSHING TO REMOTE ", spinner),
-                        Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
-                    )]),
-                    Line::from(""),
-                    Line::from(vec![
-                        Span::raw("Pushing branch: "),
-                        Span::styled(
-                            branch.as_str(),
-                            Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD),
-                        ),
-                    ]),
-                ])
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_type(BorderType::Rounded)
-                        .border_style(Style::default().fg(theme.primary)),
-                )
-                .alignment(Alignment::Center);
-                f.render_widget(p, area);
-            }
-            AppState::PushComplete { branch, .. } => {
-                let area = centered_rect(60, 20, f.area());
-                f.render_widget(Clear, area);
-
-                let p = Paragraph::new(vec![
-                    Line::from(vec![Span::styled(
-                        " ✅ PUSH COMPLETE ",
-                        Style::default().fg(RatatuiColor::Green).add_modifier(Modifier::BOLD),
-                    )]),
-                    Line::from(""),
-                    Line::from(vec![
-                        Span::raw("Successfully pushed: "),
-                        Span::styled(
-                            branch.as_str(),
-                            Style::default().fg(RatatuiColor::Magenta).add_modifier(Modifier::BOLD),
-                        ),
-                    ]),
-                ])
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_type(BorderType::Rounded),
-                )
-                .alignment(Alignment::Center);
-                f.render_widget(p, area);
-            }
-            AppState::Help { .. } => {
-                let theme = CyberTheme::default();
-                let area = centered_rect(80, 70, f.area());
-                f.render_widget(Clear, area);
-
-                let block = Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Thick)
-                    .border_style(Style::default().fg(theme.primary))
-                    .title(Span::styled(
-                        " 󰛵 COMMAND PROTOCOLS ",
-                        Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
-                    ));
-
-                let inner_area = block.inner(area);
-                f.render_widget(block, area);
-
-                let help_content = vec![
-                    Line::from(vec![
-                        Span::styled(" [A] ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
-                        Span::raw(" Add a new worktree for a specific feature or intent"),
-                    ]),
-                    Line::from(vec![
-                        Span::styled(" [D/X] ", Style::default().fg(theme.error).add_modifier(Modifier::BOLD)),
-                        Span::raw(" Remove the selected worktree (requires confirmation)"),
-                    ]),
-                    Line::from(vec![
-                        Span::styled(" [O] ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
-                        Span::raw(" Open the selected worktree in your preferred editor"),
-                    ]),
-                    Line::from(vec![
-                        Span::styled(" [G] ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
-                        Span::raw(" View detailed Git status and stage/commit changes"),
-                    ]),
-                    Line::from(vec![
-                        Span::styled(" [L] ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
-                        Span::raw(" View recent commit history for the worktree"),
-                    ]),
-                    Line::from(vec![
-                        Span::styled(" [B] ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
-                        Span::raw(" Switch the selected worktree to a different branch"),
-                    ]),
-                    Line::from(vec![
-                        Span::styled(" [F] ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
-                        Span::raw(" Fetch all updates from the remote repository"),
-                    ]),
-                    Line::from(vec![
-                        Span::styled(" [S] ", Style::default().fg(theme.primary).add_modifier(Modifier::BOLD)),
-                        Span::raw(" Sync IDE and project configurations to worktree"),
-                    ]),
-                    Line::from(vec![
-                        Span::styled(" [P] ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
-                        Span::raw(" Push committed changes to the remote repository"),
-                    ]),
-                    Line::from(vec![
-                        Span::styled(" [U] ", Style::default().fg(theme.primary).add_modifier(Modifier::BOLD)),
-                        Span::raw(" Run canonical setup (creates 'main' and 'dev')"),
-                    ]),
-                    Line::from(""),
-                    Line::from(vec![
-                        Span::styled(" [?/H] ", Style::default().fg(theme.primary).add_modifier(Modifier::BOLD)),
-                        Span::raw(" Toggle this help protocol view"),
-                    ]),
-                    Line::from(vec![
-                        Span::styled(" [Q/ESC] ", Style::default().fg(theme.subtle).add_modifier(Modifier::BOLD)),
-                        Span::raw(" Return to previous view or exit system"),
-                    ]),
-                ];
-
-                f.render_widget(Paragraph::new(help_content).alignment(Alignment::Left), inner_area);
-            }
-            AppState::Fetching { branch, .. } => {
-                let theme = CyberTheme::default();
-                let area = centered_rect(60, 20, f.area());
-                f.render_widget(Clear, area);
-
-                let p = Paragraph::new(vec![
-                    Line::from(vec![Span::styled(
-                        format!(" {} FETCHING FROM REMOTE ", spinner),
-                        Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
-                    )]),
-                    Line::from(""),
-                    Line::from(vec![
-                        Span::raw("Fetching for: "),
-                        Span::styled(
-                            branch.as_str(),
-                            Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD),
-                        ),
-                    ]),
-                ])
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_type(BorderType::Rounded)
-                        .border_style(Style::default().fg(theme.primary)),
-                )
-                .alignment(Alignment::Center);
-                f.render_widget(p, area);
-            }
-            AppState::Confirming { title, message, .. } => {
-                let theme = CyberTheme::default();
-                let area = centered_rect(60, 30, f.area());
-                f.render_widget(Clear, area);
-
-                let block = Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Thick)
-                    .border_style(Style::default().fg(theme.warning))
-                    .title(Span::styled(
-                        title.as_str(),
-                        Style::default().fg(theme.warning).add_modifier(Modifier::BOLD),
-                    ));
-
-                let inner_area = block.inner(area);
-                f.render_widget(block, area);
-
-                let items = vec![
-                    Line::from(""),
-                    Line::from(vec![Span::styled(
-                        format!("  {}  ", message),
-                        Style::default().fg(theme.text),
-                    )]),
-                    Line::from(""),
-                    Line::from(vec![
-                        Span::raw("  Confirm with "),
-                        Span::styled(
-                            "[ENTER/Y]",
-                            Style::default().fg(theme.success).add_modifier(Modifier::BOLD),
-                        ),
-                        Span::raw(" or Cancel with "),
-                        Span::styled(
-                            "[ESC/N]",
-                            Style::default().fg(theme.error).add_modifier(Modifier::BOLD),
-                        ),
-                    ]),
-                ];
-
-                f.render_widget(Paragraph::new(items).alignment(Alignment::Center), inner_area);
-            }
-            AppState::OpeningEditor { branch, editor, .. } => {
-                let theme = CyberTheme::default();
-                let area = centered_rect(60, 20, f.area());
-                f.render_widget(Clear, area);
-
-                let p = Paragraph::new(vec![
-                    Line::from(vec![Span::styled(
-                        format!(" {} OPENING IN EDITOR ", spinner),
-                        Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
-                    )]),
-                    Line::from(""),
-                    Line::from(vec![
-                        Span::raw("Branch: "),
-                        Span::styled(
-                            branch.as_str(),
-                            Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD),
-                        ),
-                    ]),
-                    Line::from(vec![
-                        Span::raw("Editor: "),
-                        Span::styled(
-                            editor.as_str(),
-                            Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
-                        ),
-                    ]),
-                ])
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_type(BorderType::Rounded)
-                        .border_style(Style::default().fg(theme.primary)),
-                )
-                .alignment(Alignment::Center);
-                f.render_widget(p, area);
-            }
-            AppState::Welcome => {
-                let theme = CyberTheme::default();
-                let welcome_text = vec![
-                    Line::from(""),
-                    Line::from(vec![Span::styled(
-                        " 󰚚 SYSTEM OFFLINE: NO REPOSITORY DETECTED ",
-                        Style::default().fg(RatatuiColor::Red).add_modifier(Modifier::BOLD),
-                    )]),
-                    Line::from(""),
-                    Line::from(vec![
-                        Span::raw(" This tool is designed to manage worktrees in a "),
-                        Span::styled(
-                            "Bare Hub Architecture",
-                            Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
-                        ),
-                        Span::raw("."),
-                    ]),
-                    Line::from(""),
-                    Line::from(vec![
-                        Span::raw(" Press "),
-                        Span::styled(
-                            " [I] ",
-                            Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
-                        ),
-                        Span::raw(" to INITIALIZE a new repository from a URL"),
-                    ]),
-                    Line::from(vec![
-                        Span::raw(" Press "),
-                        Span::styled(
-                            " [Q] ",
-                            Style::default().fg(theme.error).add_modifier(Modifier::BOLD),
-                        ),
-                        Span::raw(" to EXIT the manager"),
-                    ]),
-                    Line::from(""),
-                    Line::from(vec![
-                        Span::styled(" PRO-TIP: ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
-                        Span::raw("You can also run 'worktrees init <url>' from your shell."),
-                    ]),
-                ];
-                let p = Paragraph::new(welcome_text)
-                    .block(
-                        Block::default()
-                            .borders(Borders::ALL)
-                            .border_type(BorderType::Thick)
-                            .border_style(Style::default().fg(theme.border))
-                            .title(Span::styled(
-                                " 󰙅 ONBOARDING PROTOCOL ",
-                                Style::default().add_modifier(Modifier::BOLD),
-                            )),
-                    )
-                    .alignment(Alignment::Center);
-                f.render_widget(p, chunks[1]);
-                f.render_widget(DetailsWidget::new(None, context), chunks[2]);
-            }
-            AppState::Error(msg, _) => {
-                let table = WorktreeListWidget::new(&[]);
-                f.render_stateful_widget(table, chunks[1], &mut TableState::default());
-                f.render_widget(DetailsWidget::new(None, context), chunks[2]);
-
-                let area = centered_rect(70, 50, f.area());
-                f.render_widget(Clear, area);
-
-                let mut error_lines = vec![
-                    Line::from(vec![Span::styled(
-                        " 󰅚 SYSTEM ERROR ",
-                        Style::default().fg(RatatuiColor::Red).add_modifier(Modifier::BOLD),
-                    )]),
-                    Line::from(""),
-                ];
-
-                // Wrap error message
-                for line in msg.lines() {
-                    error_lines.push(Line::from(vec![
-                        Span::styled("  ! ", Style::default().fg(RatatuiColor::Red)),
-                        Span::raw(line),
-                    ]));
+               // Background
+                if let AppState::ListingWorktrees {
+                    worktrees,
+                    table_state,
+                    ..
+                } = &**prev_state
+                {
+                     render_listing(f, worktrees.as_slice(), &mut table_state.clone(), context, shared_chunks.clone());
                 }
-                error_lines.push(Line::from(""));
-
-                // Actionable Tips
-                error_lines.push(Line::from(vec![Span::styled(
-                    " 💡 ACTIONABLE TIPS: ",
-                    Style::default().fg(RatatuiColor::Yellow).add_modifier(Modifier::BOLD),
-                )]));
-
-                if msg.contains("API key not found") {
-                    error_lines.push(Line::from(
-                        "  • Press [C] then select 'SET API KEY' to configure Gemini.",
-                    ));
-                } else if msg.contains("network") || msg.contains("connection") {
-                    error_lines.push(Line::from(
-                        "  • Check your internet connection and SSH/HTTP credentials.",
-                    ));
-                } else if msg.contains("permission") || msg.contains("denied") {
-                    error_lines.push(Line::from(
-                        "  • Ensure you have write access to the directory and repo.",
-                    ));
-                } else if msg.contains("worktree") && msg.contains("exists") {
-                    error_lines.push(Line::from(
-                        "  • Use a different name or remove the existing worktree first.",
-                    ));
-                } else {
-                    error_lines.push(Line::from(
-                        "  • Check 'git status' manually in the worktree directory.",
-                    ));
-                    error_lines.push(Line::from("  • Ensure no other processes are locking the git index."));
+                render_editor_selection(f, branch, options, *selected);
+            }
+            AppState::Prompting {
+                prompt_type,
+                input,
+                prev_state,
+                ..
+            } => {
+               // Background
+                if let AppState::ListingWorktrees {
+                    worktrees,
+                    table_state,
+                    ..
+                } = &**prev_state
+                {
+                     render_listing(f, worktrees.as_slice(), &mut table_state.clone(), context, shared_chunks.clone());
                 }
-
-                error_lines.push(Line::from(""));
-                error_lines.push(Line::from(vec![
-                    Span::raw(" Press "),
-                    Span::styled(
-                        "[ENTER/ESC/Q]",
-                        Style::default().fg(RatatuiColor::Cyan).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw(" to dismiss "),
-                ]));
-
-                let p = Paragraph::new(error_lines)
-                    .block(
-                        Block::default()
-                            .borders(Borders::ALL)
-                            .border_type(BorderType::Thick)
-                            .border_style(Style::default().fg(RatatuiColor::Red))
-                            .title(Span::styled(
-                                " 󰅚 ERROR ",
-                                Style::default().fg(RatatuiColor::Red).add_modifier(Modifier::BOLD),
-                            )),
-                    )
-                    .alignment(Alignment::Left);
-                f.render_widget(p, area);
+                render_prompt(f, prompt_type, input);
             }
-            AppState::Initializing { .. }
-            | AppState::AddingWorktree { .. }
-            | AppState::SettingUpDefaults => {
-                let theme = CyberTheme::default();
-                let area = centered_rect(60, 20, f.area());
-                f.render_widget(Clear, area);
-                let title = if matches!(state, AppState::Initializing { .. }) {
-                    "INITIALIZING REPOSITORY"
-                } else if matches!(state, AppState::AddingWorktree { .. }) {
-                    "ADDING WORKTREE"
-                } else {
-                    "CONFIGURING DEFAULTS"
-                };
-
-                let p = Paragraph::new(vec![Line::from(vec![Span::styled(
-                    format!(" {} {} ", spinner, title),
-                    Style::default().fg(theme.primary).add_modifier(Modifier::BOLD),
-                )])])
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_type(BorderType::Rounded)
-                        .border_style(Style::default().fg(theme.primary)),
-                )
-                .alignment(Alignment::Center);
-                f.render_widget(p, area);
+            AppState::Committing {
+                branch,
+                selected_index,
+                prev_state,
+                ..
+            } => {
+                // Background
+                 if let AppState::ViewingStatus {
+                    branch: b,
+                    status,
+                    prev_state: p_prev,
+                    ..
+                } = &**prev_state
+                {
+                     render_status(f, b, status, p_prev, shared_chunks.clone());
+                }
+                render_commit_menu(f, branch, *selected_index);
             }
-            AppState::SetupComplete => {
-                 let area = centered_rect(60, 20, f.area());
-                f.render_widget(Clear, area);
-
-                let p = Paragraph::new(vec![
-                    Line::from(vec![Span::styled(
-                        " ✅ SETUP COMPLETE ",
-                        Style::default().fg(RatatuiColor::Green).add_modifier(Modifier::BOLD),
-                    )]),
-                    Line::from(""),
-                    Line::from("Default worktrees 'main' and 'dev' are ready."),
-                ])
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_type(BorderType::Rounded),
-                )
-                .alignment(Alignment::Center);
-                f.render_widget(p, area);
+            _ => {
+                // Handle modals and everything else
+                render_modals(f, repo, state, spinner_tick);
             }
-            _ => {}
         }
 
         f.render_widget(FooterWidget, chunks[3]);
     }
 
+
+
     pub fn render(state: AppState) {
-        match state {
-            AppState::Initializing { project_name } => {
-                println!(
-                    "{} {} [{} {}]",
-                    "🚀".blue(),
-                    format!("INITIALIZING BARE REPOSITORY: {}", project_name)
-                        .blue()
-                        .bold(),
-                    "STATUS:".dimmed(),
-                    "PREPARING".purple()
-                );
-            }
-            AppState::Initialized { project_name } => {
-                println!("\n{} {}", "✅".green(), "BARE REPOSITORY ESTABLISHED".green().bold());
-                println!(
-                    "   {} {}",
-                    "├─ Location:".dimmed(),
-                    format!("{}/.bare", project_name).white()
-                );
-                println!(
-                    "   {} {}",
-                    "└─ Action:  ".dimmed(),
-                    format!("cd {} && wt setup", project_name).blue().bold()
-                );
-            }
-            AppState::AddingWorktree { intent, branch } => {
-                println!(
-                    "{} {} [{} {}]",
-                    "📁".purple(),
-                    format!("ADDING WORKTREE: {} (branch: {})", intent, branch)
-                        .purple()
-                        .bold(),
-                    "STATUS:".dimmed(),
-                    "CREATING".blue()
-                );
-            }
-            AppState::WorktreeAdded { intent } => {
-                println!(
-                    "   {} {} {}",
-                    "┗━".dimmed(),
-                    "SUCCESS:".green().bold(),
-                    format!("Worktree active at ./{}", intent).white()
-                );
-            }
-            AppState::RemovingWorktree { intent } => {
-                println!(
-                    "{} {} [{} {}]",
-                    "🔥".red(),
-                    format!("REMOVING WORKTREE: {}", intent).red().bold(),
-                    "STATUS:".dimmed(),
-                    "DELETING".purple()
-                );
-            }
-            AppState::WorktreeRemoved => {
-                println!("   {} {}", "┗━".dimmed(), "WORKTREE REMOVED".green().bold());
-            }
-            AppState::Syncing { branch, .. } => {
-                println!(
-                    "{} {} [{} {}]",
-                    "🔄".cyan(),
-                    format!("SYNCING CONFIGURATIONS: {}", branch).cyan().bold(),
-                    "STATUS:".dimmed(),
-                    "SYNCHRONIZING".yellow()
-                );
-            }
-            AppState::SyncComplete { branch, .. } => {
-                println!(
-                    "   {} {} {}",
-                    "┗━".dimmed(),
-                    "SUCCESS:".green().bold(),
-                    format!("Synced configurations for {}", branch).white()
-                );
-            }
-            AppState::Pushing { branch, .. } => {
-                println!(
-                    "{} {} [{} {}]",
-                    "⬆".cyan(),
-                    format!("PUSHING: {}", branch).cyan().bold(),
-                    "STATUS:".dimmed(),
-                    "UPLOADING".yellow()
-                );
-            }
-            AppState::PushComplete { branch, .. } => {
-                println!(
-                    "   {} {} {}",
-                    "┗━".dimmed(),
-                    "SUCCESS:".green().bold(),
-                    format!("Pushed {} to remote", branch).white()
-                );
-            }
-            AppState::SelectingEditor { branch, .. } => {
-                println!(
-                    "{} {} [{} {}]",
-                    "🔍".cyan(),
-                    format!("SELECTING EDITOR FOR: {}", branch).cyan().bold(),
-                    "STATUS:".dimmed(),
-                    "PENDING SELECTION".yellow()
-                );
-            }
-            AppState::OpeningEditor { branch, editor, .. } => {
-                println!(
-                    "{} {} [{} {}]",
-                    "📝".yellow(),
-                    format!("OPENING WORKTREE: {}", branch).yellow().bold(),
-                    "EDITOR:".dimmed(),
-                    editor.purple().bold()
-                );
-            }
-            AppState::ListingWorktrees { worktrees, .. } => {
-                // Fallback / Log view
-                println!(
-                    "{} {} [{} {}]",
-                    "📋".blue(),
-                    "ACTIVE WORKTREES".blue().bold(),
-                    "TOTAL:".dimmed(),
-                    worktrees.len().to_string().purple().bold()
-                );
-            }
-            AppState::SettingUpDefaults => {
-                println!(
-                    "{} {}",
-                    "⚡".purple(),
-                    "SETTING UP DEFAULT WORKTREES".purple().bold()
-                );
-            }
-            AppState::SetupComplete => {
-                println!("\n{} {}", "🚀".blue(), "SETUP COMPLETE.".blue().bold());
-                println!("   {}", "All default worktrees have been created.".dimmed());
-            }
-            AppState::Error(msg, _) => {
-                eprintln!("\n{} {} {}", "❌".red(), "ERROR:".red().bold(), msg.red());
-                eprintln!("   {} {}", "└─".dimmed(), "Check git state and permissions.".dimmed());
-            }
-            AppState::Welcome
-            | AppState::Confirming { .. }
-            | AppState::Help { .. }
-            | AppState::Fetching { .. }
-            | AppState::Prompting { .. }
-            | AppState::ViewingStatus { .. }
-            | AppState::ViewingHistory { .. }
-            | AppState::SwitchingBranch { .. }
-            | AppState::Committing { .. }
-            | AppState::Exiting => {
-                // These are handled by render_tui, no-op for CLI log view
-            }
-        }
+        CliRenderer::render(state);
     }
 }
 
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
-        .split(r);
 
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(popup_layout[1])[1]
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::repository::{GitCommit, GitStatus, ProjectContext};
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+
+    /// Minimal mock repository for testing view rendering
+    struct MockRepository;
+
+    impl ProjectRepository for MockRepository {
+        fn init_bare_repo(&self, _url: &str, _project_name: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn add_worktree(&self, _path: &str, _branch: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn add_new_worktree(&self, _path: &str, _branch: &str, _base: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn remove_worktree(&self, _path: &str, _force: bool) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn list_worktrees(&self) -> anyhow::Result<Vec<Worktree>> {
+            Ok(vec![])
+        }
+
+        fn sync_configs(&self, _path: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn detect_context(&self) -> ProjectContext {
+            ProjectContext::Standard
+        }
+
+        fn get_preferred_editor(&self) -> anyhow::Result<Option<String>> {
+            Ok(None)
+        }
+
+        fn set_preferred_editor(&self, _editor: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn fetch(&self, _path: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn push(&self, _path: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn get_status(&self, _path: &str) -> anyhow::Result<GitStatus> {
+            Ok(GitStatus {
+                staged: vec![],
+                unstaged: vec![],
+                untracked: vec![],
+            })
+        }
+
+        fn stage_all(&self, _path: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn unstage_all(&self, _path: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn stage_file(&self, _path: &str, _file: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn unstage_file(&self, _path: &str, _file: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn commit(&self, _path: &str, _message: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn get_diff(&self, _path: &str) -> anyhow::Result<String> {
+            Ok(String::new())
+        }
+
+        fn generate_commit_message(&self, _diff: &str, _branch: &str) -> anyhow::Result<String> {
+            Ok("feat: test commit".to_string())
+        }
+
+        fn get_history(&self, _path: &str, _limit: usize) -> anyhow::Result<Vec<GitCommit>> {
+            Ok(vec![])
+        }
+
+        fn list_branches(&self) -> anyhow::Result<Vec<String>> {
+            Ok(vec![])
+        }
+
+        fn switch_branch(&self, _path: &str, _branch: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn get_api_key(&self) -> anyhow::Result<Option<String>> {
+            Ok(None)
+        }
+
+        fn set_api_key(&self, _key: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn clean_worktrees(&self, _dry_run: bool) -> anyhow::Result<Vec<String>> {
+            Ok(vec![])
+        }
+    }
+
+    #[test]
+    fn test_draw_welcome_state() {
+        let backend = TestBackend::new(120, 30);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let repo = MockRepository;
+        let mut state = AppState::Welcome;
+
+        terminal
+            .draw(|f| {
+                View::draw(f, &repo, &mut state, 0);
+            })
+            .unwrap();
+
+        // Verify the terminal buffer contains expected text
+        let buffer = terminal.backend().buffer();
+        let content = buffer.content();
+        
+        // Check for key welcome screen text
+        let content_str = content.iter().map(|c| c.symbol()).collect::<String>();
+        
+        // Check for key welcome screen text
+        let has_welcome_text = content_str.contains("NO REPOSITORY DETECTED") || 
+            content_str.contains("ONBOARDING");
+        
+        assert!(
+            has_welcome_text,
+            "Welcome state should render welcome screen text"
+        );
+    }
+
+    #[test]
+    fn test_draw_listing_worktrees_state() {
+        let backend = TestBackend::new(120, 30);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let repo = MockRepository;
+        
+        let worktrees = vec![
+            Worktree {
+                path: "/test/main".to_string(),
+                commit: "abc123".to_string(),
+                branch: "main".to_string(),
+                is_bare: false,
+                is_detached: false,
+                status_summary: Some("clean".to_string()),
+            },
+            Worktree {
+                path: "/test/dev".to_string(),
+                commit: "def456".to_string(),
+                branch: "dev".to_string(),
+                is_bare: false,
+                is_detached: false,
+                status_summary: Some("+2 ~1".to_string()),
+            },
+        ];
+
+        let mut table_state = TableState::default();
+        table_state.select(Some(0));
+
+        let mut state = AppState::ListingWorktrees {
+            worktrees,
+            table_state,
+            refresh_needed: false,
+        };
+
+        terminal
+            .draw(|f| {
+                View::draw(f, &repo, &mut state, 0);
+            })
+            .unwrap();
+
+        // Verify no panic and the buffer is populated
+        let buffer = terminal.backend().buffer();
+        assert!(!buffer.content().is_empty());
+        
+        // Check that worktree information appears
+        let content_str = buffer.content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
+        
+        assert!(
+            content_str.contains("main") || content_str.contains("dev"),
+            "Listing state should render worktree names"
+        );
+    }
+
+    #[test]
+    fn test_draw_error_state() {
+        let backend = TestBackend::new(120, 30);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let repo = MockRepository;
+        
+        let prev_state = Box::new(AppState::Welcome);
+        let mut state = AppState::Error(
+            "Test error message".to_string(),
+            prev_state,
+        );
+
+        terminal
+            .draw(|f| {
+                View::draw(f, &repo, &mut state, 0);
+            })
+            .unwrap();
+
+        // Verify the terminal buffer contains error-related text
+        let buffer = terminal.backend().buffer();
+        let content_str = buffer.content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
+        
+        assert!(
+            content_str.contains("ERROR") || content_str.contains("Test error"),
+            "Error state should render error message"
+        );
+    }
 }

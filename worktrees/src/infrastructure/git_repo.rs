@@ -516,4 +516,97 @@ impl ProjectRepository for GitProjectRepository {
 
         Ok(())
     }
+
+    fn clean_worktrees(&self, dry_run: bool) -> Result<Vec<String>> {
+        use std::fs;
+
+        let bare_path = Path::new(".bare");
+        if !bare_path.exists() {
+            return Err(anyhow::anyhow!(
+                "Not in a bare repository project. HELP: Run this command from the project root containing .bare/"
+            ));
+        }
+
+        let worktrees_admin_path = bare_path.join("worktrees");
+        if !worktrees_admin_path.exists() {
+            debug!("No worktrees directory found, nothing to clean.");
+            return Ok(Vec::new());
+        }
+
+        let mut to_remove = Vec::new();
+
+        // Get list of valid worktrees from git
+        let valid_worktrees = self.list_worktrees().unwrap_or_default();
+        let valid_paths: std::collections::HashSet<String> = valid_worktrees
+            .iter()
+            .map(|wt| wt.path.clone())
+            .collect();
+
+        // Scan the .bare/worktrees/ directory for stale entries
+        let entries = fs::read_dir(&worktrees_admin_path)
+            .context("Failed to read .bare/worktrees/ directory")?;
+
+        for entry in entries {
+            let entry = entry.context("Failed to read directory entry")?;
+            let worktree_name = entry.file_name().to_string_lossy().to_string();
+            let gitdir_file = entry.path().join("gitdir");
+
+            // Check if gitdir file exists and is valid
+            let is_stale = if !gitdir_file.exists() {
+                debug!(
+                    worktree = %worktree_name,
+                    "Missing gitdir file, marking as stale"
+                );
+                true
+            } else {
+                // Read the gitdir file to get the worktree path
+                match fs::read_to_string(&gitdir_file) {
+                    Ok(gitdir_content) => {
+                        let worktree_path = gitdir_content.trim().trim_end_matches("/.git");
+                        let worktree_exists = Path::new(worktree_path).exists();
+                        let is_in_valid_list = valid_paths.contains(worktree_path);
+
+                        if !worktree_exists {
+                            debug!(
+                                worktree = %worktree_name,
+                                path = %worktree_path,
+                                "Worktree directory does not exist, marking as stale"
+                            );
+                            true
+                        } else if !is_in_valid_list {
+                            debug!(
+                                worktree = %worktree_name,
+                                path = %worktree_path,
+                                "Worktree not in git's valid list, marking as stale"
+                            );
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    Err(e) => {
+                        debug!(
+                            worktree = %worktree_name,
+                            error = %e,
+                            "Failed to read gitdir file, marking as stale"
+                        );
+                        true
+                    }
+                }
+            };
+
+            if is_stale {
+                to_remove.push(worktree_name);
+            }
+        }
+
+        // If not dry-run, actually prune the stale worktrees
+        if !dry_run && !to_remove.is_empty() {
+            debug!("Running git worktree prune to clean up stale entries");
+            Self::run_git(&["worktree", "prune", "-v"])
+                .context("Failed to prune stale worktrees")?;
+        }
+
+        Ok(to_remove)
+    }
 }
