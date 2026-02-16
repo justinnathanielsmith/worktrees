@@ -13,6 +13,7 @@ categories = ["command-line-utilities", "development-tools"]
 [dependencies]
 anyhow = "1.0.101"
 clap = { version = "4.5.58", features = ["derive"] }
+clap_complete = "4.5.46"
 owo-colors = { version = "4.2.0", features = ["supports-colors"] }
 indicatif = "0.17.11"
 ratatui = "0.29.0"

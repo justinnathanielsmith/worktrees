@@ -48,4 +48,7 @@ pub enum Intent {
         intent: String,
         branch: String,
     },
+    Completions {
+        shell: clap_complete::Shell,
+    },
 }

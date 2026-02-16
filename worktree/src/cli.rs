@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use clap_complete::Shell;
 
 #[derive(Parser)]
 #[command(name = "worktree")]
@@ -124,6 +125,14 @@ pub enum Commands {
         intent: String,
         /// The branch to switch to
         branch: String,
+    },
+    /// Generate shell completions
+    ///
+    /// Example: worktree completions zsh > _worktree
+    Completions {
+        /// The shell to generate completions for
+        #[arg(value_enum)]
+        shell: Shell,
     },
 }
 

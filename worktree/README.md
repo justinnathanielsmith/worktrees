@@ -66,13 +66,42 @@ worktree-switch feature-login
 
 ## Commands
 
-- `init [url]`: Initialize a new bare repository (clones if URL provided).
-- `setup`: Setup default worktrees (`main` and `dev`).
-- `add <name> [branch]`: Create a new worktree.
-- `remove <name>`: Remove a worktree.
-- `switch <name>`: Switch to a worktree (prints path).
-- `config set-key <key>`: Set your Gemini API key securely.
-- `list`: View and manage worktrees in an interactive interface.
+- `init [url] [--name <name>]`: Initialize a new bare repository (clones if provided).
+- `setup`: Automatically create `main` and `dev` worktrees.
+- `add <name> [branch]`: Create a new worktree for a feature or intent.
+- `remove <name> [--force]`: Delete a worktree directory and unregister it.
+- `switch <name>`: Quick jump between workspaces.
+- `checkout <intent> <branch>`: Reassign a worktree to a different branch.
+- `list`: Enter the high-performance interactive TUI.
+- `run <name> <command>`: execute a command in an isolated temporary worktree.
+- `sync [name]`: Push configuration files to all or specific worktrees.
+- `push [name]`: Push changes from a workspace to origin.
+- `clean [--artifacts] [--dry-run]`: Reclaim disk space by purging build artifacts.
+- `config set-key <key>`: Store your Gemini API key in the system keyring.
+- `config get-key`: View your current Gemini API key.
+- `convert [--name <name>] [--branch <branch>]`: Migrate a standard repo to Bare Hub.
+- `completions <shell>`: Generate command-line completion scripts.
+
+## Shell Completions
+
+Optimized for **Warp**, Zsh, and Bash. Shell completions provide instant flag descriptions and branch name suggestions.
+
+### Zsh
+Add the following to your `~/.zshrc`:
+```bash
+source <(worktree completions zsh)
+```
+
+### Bash
+Add the following to your `~/.bashrc`:
+```bash
+source <(worktree completions bash)
+```
+
+### Fish
+```bash
+worktree completions fish > ~/.config/fish/completions/worktree.fish
+```
 
 ### Interactive TUI Features
 

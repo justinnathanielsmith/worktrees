@@ -75,10 +75,10 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
 
                 let (icon, branch_style) = if wt.is_bare {
                     (
-                        Icons::BARE,
+                        Icons::HUB,
                         Style::default()
-                            .fg(theme.subtle)
-                            .add_modifier(Modifier::ITALIC),
+                            .fg(theme.primary)
+                            .add_modifier(Modifier::BOLD),
                     )
                 } else if wt.is_detached {
                     (Icons::DETACHED, Style::default().fg(theme.error))
