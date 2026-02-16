@@ -32,6 +32,9 @@ pub enum Commands {
         /// Directory name for the project (defaults to repo name or 'project')
         #[arg(short, long)]
         name: Option<String>,
+        /// Generate Warp Workflows (.warp/workflows/worktrees.yaml)
+        #[arg(long)]
+        warp: bool,
     },
     /// Add a new worktree for a specific intent/feature
     ///
@@ -172,9 +175,10 @@ mod tests {
             .command
             .ok_or_else(|| anyhow::anyhow!("Missing command"))?
         {
-            Commands::Init { url, name } => {
+            Commands::Init { url, name, warp } => {
                 assert_eq!(url, Some("url".to_string()));
                 assert_eq!(name, None);
+                assert!(!warp);
             }
             _ => anyhow::bail!("Expected Init"),
         }

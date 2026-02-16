@@ -51,7 +51,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
         // and prepare for spawn_blocking in the next step.
 
         match intent {
-            Intent::Initialize { url, name } => {
+            Intent::Initialize { url, name, warp } => {
                 let project_name = get_project_name(&url, name);
                 if !json_mode && !quiet_mode {
                     View::render(AppState::Initializing {
@@ -86,6 +86,14 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
 
                 match res {
                     Ok(_) => {
+                        if warp {
+                            if let Err(e) = crate::infrastructure::warp_integration::generate_warp_workflows(Path::new(&project_name)) {
+                                error!(error = %e, "Failed to generate Warp workflows");
+                            } else {
+                                info!("Warp workflows generated successfully");
+                            }
+                        }
+
                         if url.is_none() {
                             // Automatically create main worktree for fresh projects
                             if let Err(e) = repo.add_new_worktree("main", "main", "HEAD") {
@@ -1184,6 +1192,7 @@ mod tests {
             .handle(Intent::Initialize {
                 url: None,
                 name: Some("fresh-project".to_string()),
+                warp: false,
             })
             .await
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
@@ -1204,6 +1213,7 @@ mod tests {
             .handle(Intent::Initialize {
                 url: Some("https://github.com/user/repo.git".to_string()),
                 name: None,
+                warp: false,
             })
             .await
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;

@@ -165,7 +165,11 @@ async fn main() -> Result<()> {
     let reducer = Reducer::new(repo, cli.json, cli.quiet);
 
     let intent = match cli.command {
-        Some(Commands::Init { url, name }) => Intent::Initialize { url, name },
+        Some(Commands::Init {
+            url,
+            name,
+            warp,
+        }) => Intent::Initialize { url, name, warp },
         Some(Commands::Add { intent, branch }) => Intent::AddWorktree { intent, branch },
         Some(Commands::Remove { intent, force }) => Intent::RemoveWorktree { intent, force },
         Some(Commands::List) => Intent::ListWorktrees,
