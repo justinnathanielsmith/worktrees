@@ -4,7 +4,7 @@ use crate::ui::theme::CyberTheme;
 use crate::ui::widgets::{details::DetailsWidget, worktree_list::WorktreeListWidget};
 use ratatui::{
     Frame,
-    layout::{Alignment, Layout},
+    layout::{Alignment, Layout, Rect},
     style::{Color as RatatuiColor, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Clear, Paragraph, TableState},
@@ -47,17 +47,16 @@ pub fn render_modals<R: ProjectRepository>(
     match state {
         AppState::Syncing { branch, .. } => {
             let theme = CyberTheme::default();
-            f.render_widget(Clear, standard_area);
-
-            let p = Paragraph::new(vec![
+            render_info_modal(
+                f,
+                standard_area,
                 Line::from(vec![Span::styled(
                     format!(" {} SYNCING CONFIGURATIONS ", spinner),
                     Style::default()
                         .fg(theme.primary)
                         .add_modifier(Modifier::BOLD),
                 )]),
-                Line::from(""),
-                Line::from(vec![
+                vec![Line::from(vec![
                     Span::raw("Branch: "),
                     Span::styled(
                         branch.as_str(),
@@ -65,29 +64,21 @@ pub fn render_modals<R: ProjectRepository>(
                             .fg(theme.secondary)
                             .add_modifier(Modifier::BOLD),
                     ),
-                ]),
-            ])
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .border_style(Style::default().fg(theme.primary)),
-            )
-            .alignment(Alignment::Center);
-            f.render_widget(p, standard_area);
+                ])],
+                Style::default().fg(theme.primary),
+            );
         }
         AppState::SyncComplete { branch, .. } => {
-            f.render_widget(Clear, standard_area);
-
-            let p = Paragraph::new(vec![
+            render_info_modal(
+                f,
+                standard_area,
                 Line::from(vec![Span::styled(
                     " ✅ SYNC COMPLETE ",
                     Style::default()
                         .fg(RatatuiColor::Green)
                         .add_modifier(Modifier::BOLD),
                 )]),
-                Line::from(""),
-                Line::from(vec![
+                vec![Line::from(vec![
                     Span::raw("Successfully synced: "),
                     Span::styled(
                         branch.as_str(),
@@ -95,29 +86,22 @@ pub fn render_modals<R: ProjectRepository>(
                             .fg(RatatuiColor::Cyan)
                             .add_modifier(Modifier::BOLD),
                     ),
-                ]),
-            ])
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded),
-            )
-            .alignment(Alignment::Center);
-            f.render_widget(p, standard_area);
+                ])],
+                Style::default(),
+            );
         }
         AppState::Pushing { branch, .. } => {
             let theme = CyberTheme::default();
-            f.render_widget(Clear, standard_area);
-
-            let p = Paragraph::new(vec![
+            render_info_modal(
+                f,
+                standard_area,
                 Line::from(vec![Span::styled(
                     format!(" {} PUSHING TO REMOTE ", spinner),
                     Style::default()
                         .fg(theme.primary)
                         .add_modifier(Modifier::BOLD),
                 )]),
-                Line::from(""),
-                Line::from(vec![
+                vec![Line::from(vec![
                     Span::raw("Pushing branch: "),
                     Span::styled(
                         branch.as_str(),
@@ -125,29 +109,21 @@ pub fn render_modals<R: ProjectRepository>(
                             .fg(theme.secondary)
                             .add_modifier(Modifier::BOLD),
                     ),
-                ]),
-            ])
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .border_style(Style::default().fg(theme.primary)),
-            )
-            .alignment(Alignment::Center);
-            f.render_widget(p, standard_area);
+                ])],
+                Style::default().fg(theme.primary),
+            );
         }
         AppState::PushComplete { branch, .. } => {
-            f.render_widget(Clear, standard_area);
-
-            let p = Paragraph::new(vec![
+            render_info_modal(
+                f,
+                standard_area,
                 Line::from(vec![Span::styled(
                     " ✅ PUSH COMPLETE ",
                     Style::default()
                         .fg(RatatuiColor::Green)
                         .add_modifier(Modifier::BOLD),
                 )]),
-                Line::from(""),
-                Line::from(vec![
+                vec![Line::from(vec![
                     Span::raw("Successfully pushed: "),
                     Span::styled(
                         branch.as_str(),
@@ -155,15 +131,9 @@ pub fn render_modals<R: ProjectRepository>(
                             .fg(RatatuiColor::Magenta)
                             .add_modifier(Modifier::BOLD),
                     ),
-                ]),
-            ])
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded),
-            )
-            .alignment(Alignment::Center);
-            f.render_widget(p, standard_area);
+                ])],
+                Style::default(),
+            );
         }
         AppState::Help { .. } => {
             let theme = CyberTheme::default();
@@ -303,17 +273,16 @@ pub fn render_modals<R: ProjectRepository>(
         }
         AppState::Fetching { branch, .. } => {
             let theme = CyberTheme::default();
-            f.render_widget(Clear, standard_area);
-
-            let p = Paragraph::new(vec![
+            render_info_modal(
+                f,
+                standard_area,
                 Line::from(vec![Span::styled(
                     format!(" {} FETCHING FROM REMOTE ", spinner),
                     Style::default()
                         .fg(theme.primary)
                         .add_modifier(Modifier::BOLD),
                 )]),
-                Line::from(""),
-                Line::from(vec![
+                vec![Line::from(vec![
                     Span::raw("Fetching for: "),
                     Span::styled(
                         branch.as_str(),
@@ -321,16 +290,9 @@ pub fn render_modals<R: ProjectRepository>(
                             .fg(theme.secondary)
                             .add_modifier(Modifier::BOLD),
                     ),
-                ]),
-            ])
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .border_style(Style::default().fg(theme.primary)),
-            )
-            .alignment(Alignment::Center);
-            f.render_widget(p, standard_area);
+                ])],
+                Style::default().fg(theme.primary),
+            );
         }
         AppState::Confirming { title, message, .. } => {
             let theme = CyberTheme::default();
@@ -383,43 +345,37 @@ pub fn render_modals<R: ProjectRepository>(
         }
         AppState::OpeningEditor { branch, editor, .. } => {
             let theme = CyberTheme::default();
-            f.render_widget(Clear, standard_area);
-
-            let p = Paragraph::new(vec![
+            render_info_modal(
+                f,
+                standard_area,
                 Line::from(vec![Span::styled(
                     format!(" {} OPENING IN EDITOR ", spinner),
                     Style::default()
                         .fg(theme.primary)
                         .add_modifier(Modifier::BOLD),
                 )]),
-                Line::from(""),
-                Line::from(vec![
-                    Span::raw("Branch: "),
-                    Span::styled(
-                        branch.as_str(),
-                        Style::default()
-                            .fg(theme.secondary)
-                            .add_modifier(Modifier::BOLD),
-                    ),
-                ]),
-                Line::from(vec![
-                    Span::raw("Editor: "),
-                    Span::styled(
-                        editor.as_str(),
-                        Style::default()
-                            .fg(theme.accent)
-                            .add_modifier(Modifier::BOLD),
-                    ),
-                ]),
-            ])
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .border_style(Style::default().fg(theme.primary)),
-            )
-            .alignment(Alignment::Center);
-            f.render_widget(p, standard_area);
+                vec![
+                    Line::from(vec![
+                        Span::raw("Branch: "),
+                        Span::styled(
+                            branch.as_str(),
+                            Style::default()
+                                .fg(theme.secondary)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                    ]),
+                    Line::from(vec![
+                        Span::raw("Editor: "),
+                        Span::styled(
+                            editor.as_str(),
+                            Style::default()
+                                .fg(theme.accent)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                    ]),
+                ],
+                Style::default().fg(theme.primary),
+            );
         }
         AppState::Welcome => {
             let theme = CyberTheme::default();
@@ -581,8 +537,7 @@ pub fn render_modals<R: ProjectRepository>(
         | AppState::AddingWorktree { .. }
         | AppState::SettingUpDefaults => {
             let theme = CyberTheme::default();
-            f.render_widget(Clear, standard_area);
-            let title = if matches!(state, AppState::Initializing { .. }) {
+            let title_text = if matches!(state, AppState::Initializing { .. }) {
                 "INITIALIZING REPOSITORY"
             } else if matches!(state, AppState::AddingWorktree { .. }) {
                 "ADDING WORKTREE"
@@ -590,42 +545,57 @@ pub fn render_modals<R: ProjectRepository>(
                 "CONFIGURING DEFAULTS"
             };
 
-            let p = Paragraph::new(vec![Line::from(vec![Span::styled(
-                format!(" {} {} ", spinner, title),
-                Style::default()
-                    .fg(theme.primary)
-                    .add_modifier(Modifier::BOLD),
-            )])])
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .border_style(Style::default().fg(theme.primary)),
-            )
-            .alignment(Alignment::Center);
-            f.render_widget(p, standard_area);
+            render_info_modal(
+                f,
+                standard_area,
+                Line::from(vec![Span::styled(
+                    format!(" {} {} ", spinner, title_text),
+                    Style::default()
+                        .fg(theme.primary)
+                        .add_modifier(Modifier::BOLD),
+                )]),
+                vec![],
+                Style::default().fg(theme.primary),
+            );
         }
         AppState::SetupComplete => {
-            f.render_widget(Clear, standard_area);
-
-            let p = Paragraph::new(vec![
+            render_info_modal(
+                f,
+                standard_area,
                 Line::from(vec![Span::styled(
                     " ✅ SETUP COMPLETE ",
                     Style::default()
                         .fg(RatatuiColor::Green)
                         .add_modifier(Modifier::BOLD),
                 )]),
-                Line::from(""),
-                Line::from("Default worktrees 'main' and 'dev' are ready."),
-            ])
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded),
-            )
-            .alignment(Alignment::Center);
-            f.render_widget(p, standard_area);
+                vec![Line::from("Default worktrees 'main' and 'dev' are ready.")],
+                Style::default(),
+            );
         }
         _ => {}
     }
+}
+
+fn render_info_modal(
+    f: &mut Frame,
+    area: Rect,
+    title: Line<'_>,
+    details: Vec<Line<'_>>,
+    border_style: Style,
+) {
+    f.render_widget(Clear, area);
+    let mut lines = vec![title];
+    if !details.is_empty() {
+        lines.push(Line::from(""));
+        lines.extend(details);
+    }
+    let p = Paragraph::new(lines)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(border_style),
+        )
+        .alignment(Alignment::Center);
+    f.render_widget(p, area);
 }
