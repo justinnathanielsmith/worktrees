@@ -190,6 +190,17 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         }));
                     }
                 }
+                KeyCode::Char('C') => {
+                    return Ok(Some(AppState::Confirming {
+                        title: " CLEAN BUILD ARTIFACTS ".into(),
+                        message: "Are you sure you want to remove all build artifacts (node_modules, target, build, etc.) from INACTIVE worktrees?".into(),
+                        action: Box::new(Intent::CleanWorktrees {
+                            dry_run: false,
+                            artifacts: true,
+                        }),
+                        prev_state: Box::new(current_state.clone()),
+                    }));
+                }
                 _ => {}
             }
 
@@ -349,7 +360,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                 KeyCode::Char('c') => {
                     // C for CLEAN stale metadata
                     let prev = Box::new(current_state.clone());
-                    match repo.clean_worktrees(false) {
+                    match repo.clean_worktrees(false, false) {
                         Ok(cleaned) => {
                             let _count = cleaned.len();
                             return Ok(Some(create_timed_state(

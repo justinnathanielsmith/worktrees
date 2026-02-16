@@ -119,7 +119,7 @@ pub trait ProjectRepository {
     fn set_api_key(&self, key: &str) -> Result<()>;
     /// Cleans up stale worktrees (missing metadata or deleted branches).
     /// Returns a list of paths that were (or would be) removed.
-    fn clean_worktrees(&self, dry_run: bool) -> Result<Vec<String>>;
+    fn clean_worktrees(&self, dry_run: bool, artifacts: bool) -> Result<Vec<String>>;
 
     /// Resolves the absolute path to the root of the project (the "Bare Hub").
     fn get_project_root(&self) -> Result<std::path::PathBuf>;

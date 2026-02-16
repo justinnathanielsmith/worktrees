@@ -111,8 +111,8 @@ import CodeBlock from './CodeBlock.astro';
                         </tr>
                         <tr>
                             <td class="px-6 py-4 text-blue-400">clean</td>
-                            <td class="px-6 py-4">[--dry-run]</td>
-                            <td class="px-6 py-4">Remove stale worktrees (directories with missing metadata or deleted branches).</td>
+                            <td class="px-6 py-4">[--artifacts] [--dry-run]</td>
+                            <td class="px-6 py-4">Remove stale worktrees or purge build artifacts (node_modules, target, etc.) from inactive environments.</td>
                         </tr>
                         <tr>
                             <td class="px-6 py-4 text-blue-400">switch</td>
@@ -191,7 +191,7 @@ import CodeBlock from './CodeBlock.astro';
                     </li>
                      <li class="flex justify-between">
                         <span>Open Status View</span>
-                        <span class="text-blue-400">g</span>
+                        <span class="text-blue-400">v</span>
                     </li>
                     <li class="flex justify-between">
                         <span>Open Commit Log</span>
@@ -212,6 +212,14 @@ import CodeBlock from './CodeBlock.astro';
                     <li class="flex justify-between">
                         <span>Pull from Remote</span>
                         <span class="text-blue-400">Shift+P</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span>Clean Artifacts</span>
+                        <span class="text-pink-500">Shift+C</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span>Prune Metadata</span>
+                        <span class="text-blue-400">c</span>
                     </li>
                 </ul>
             </div>

@@ -729,7 +729,7 @@ impl ProjectRepository for GitProjectRepository {
         Ok(())
     }
 
-    fn clean_worktrees(&self, dry_run: bool) -> Result<Vec<String>> {
+    fn clean_worktrees(&self, dry_run: bool, artifacts_only: bool) -> Result<Vec<String>> {
         use std::fs;
 
         let root = self.get_project_root()?;
@@ -740,6 +740,50 @@ impl ProjectRepository for GitProjectRepository {
             ));
         }
 
+        let mut cleaned_paths = Vec::new();
+
+        if artifacts_only {
+            let current_dir = std::env::current_dir().context("Failed to get current directory")?;
+            let worktrees = self.list_worktrees()?;
+
+            let artifact_dirs = ["node_modules", "target", "build", "dist", ".gradle", "bin", "obj"];
+
+            for wt in worktrees {
+                if wt.is_bare {
+                    continue;
+                }
+
+                let wt_path = Path::new(&wt.path);
+                
+                // Safety: Only clean worktrees that are NOT the current one
+                if wt_path == current_dir {
+                    debug!(path = ?wt_path, "Skipping current worktree for artifact cleaning");
+                    continue;
+                }
+
+                if !wt_path.exists() {
+                    continue;
+                }
+
+                for artifact in &artifact_dirs {
+                    let target = wt_path.join(artifact);
+                    if target.exists() {
+                        let path_str = target.to_string_lossy().to_string();
+                        if dry_run {
+                            cleaned_paths.push(format!("[dry-run] build artifact: {}", path_str));
+                        } else {
+                            match fs::remove_dir_all(&target) {
+                                Ok(_) => cleaned_paths.push(format!("cleaned: {}", path_str)),
+                                Err(e) => error!(error = %e, path = %path_str, "Failed to remove artifact directory"),
+                            }
+                        }
+                    }
+                }
+            }
+            return Ok(cleaned_paths);
+        }
+
+        // --- Stale Worktree Cleanup (Original Logic) ---
         let worktrees_admin_path = bare_path.join("worktrees");
         if !worktrees_admin_path.exists() {
             debug!("No worktrees directory found, nothing to clean.");
@@ -1371,6 +1415,87 @@ mod tests {
 
         // Cleanup
         std::env::set_current_dir(original_dir).unwrap();
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_clean_artifacts() {
+        let _lock = CWD_MUTEX.lock().unwrap();
+        let temp_dir =
+            std::env::temp_dir().join(format!("worktrees_clean_test_{}", std::process::id()));
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let src_dir = temp_dir.join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+        let git_cmd = std::env::var("WORKTREES_GIT_PATH").unwrap_or_else(|_| "git".to_string());
+
+        // 1. Setup a standard repo
+        Command::new(&git_cmd)
+            .args(["init", "-b", "main"])
+            .current_dir(&src_dir)
+            .output()
+            .unwrap();
+        Command::new(&git_cmd)
+            .args(["config", "user.email", "test@example.com"])
+            .current_dir(&src_dir)
+            .output()
+            .unwrap();
+        Command::new(&git_cmd)
+            .args(["config", "user.name", "Test User"])
+            .current_dir(&src_dir)
+            .output()
+            .unwrap();
+        std::fs::write(src_dir.join("a"), "a").unwrap();
+        Command::new(&git_cmd)
+            .args(["add", "."])
+            .current_dir(&src_dir)
+            .output()
+            .unwrap();
+        Command::new(&git_cmd)
+            .args(["commit", "-m", "init"])
+            .current_dir(&src_dir)
+            .output()
+            .unwrap();
+        Command::new(&git_cmd)
+            .args(["branch", "dev"])
+            .current_dir(&src_dir)
+            .output()
+            .unwrap();
+
+        // 2. Convert to bare hub
+        let repo = GitProjectRepository;
+        let original_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&src_dir).unwrap();
+        let hub_dir = repo.convert_to_bare(Some("my-hub"), Some("main")).unwrap();
+
+        // 3. Add dev worktree
+        Command::new(&git_cmd)
+            .args(["worktree", "add", "../dev", "dev"])
+            .current_dir(&hub_dir.join("main"))
+            .output()
+            .unwrap();
+
+        // 4. Create artifacts
+        std::fs::create_dir_all(hub_dir.join("dev").join("target")).unwrap();
+        std::fs::create_dir_all(hub_dir.join("main").join("target")).unwrap();
+
+        std::env::set_current_dir(hub_dir.join("main")).unwrap();
+
+        // 5. Run clean artifacts (dry-run)
+        let cleaned = repo.clean_worktrees(true, true).unwrap();
+        assert!(cleaned.iter().any(|s| s.contains("dev/target")));
+        assert!(!cleaned.iter().any(|s| s.contains("main/target"))); // Should skip current
+
+        // 6. Run clean artifacts (real)
+        repo.clean_worktrees(false, true).unwrap();
+        assert!(!hub_dir.join("dev").join("target").exists());
+        assert!(hub_dir.join("main").join("target").exists()); // Should stay
+
+        // Cleanup
+        std::env::set_current_dir(original_cwd).unwrap();
         std::fs::remove_dir_all(&temp_dir).unwrap();
     }
 }

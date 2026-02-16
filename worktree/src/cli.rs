@@ -92,6 +92,9 @@ pub enum Commands {
         /// Show what would be deleted without actually removing anything
         #[arg(long)]
         dry_run: bool,
+        /// Remove build artifacts (node_modules, target, build, etc.) from inactive worktrees
+        #[arg(long)]
+        artifacts: bool,
     },
     /// Switch to a worktree by name (prints path to stdout for shell integration)
     ///
@@ -190,7 +193,10 @@ mod tests {
             .command
             .ok_or_else(|| anyhow::anyhow!("Missing command"))?
         {
-            Commands::Clean { dry_run } => {
+            Commands::Clean {
+                dry_run,
+                artifacts: _,
+            } => {
                 assert!(dry_run);
             }
             _ => anyhow::bail!("Expected Clean"),
@@ -203,8 +209,28 @@ mod tests {
             .command
             .ok_or_else(|| anyhow::anyhow!("Missing command"))?
         {
-            Commands::Clean { dry_run } => {
+            Commands::Clean {
+                dry_run,
+                artifacts: _,
+            } => {
                 assert!(!dry_run);
+            }
+            _ => anyhow::bail!("Expected Clean"),
+        }
+
+        // Test clean with artifacts
+        let cli = Cli::try_parse_from(["worktree", "clean", "--artifacts"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match cli
+            .command
+            .ok_or_else(|| anyhow::anyhow!("Missing command"))?
+        {
+            Commands::Clean {
+                dry_run,
+                artifacts,
+            } => {
+                assert!(!dry_run);
+                assert!(artifacts);
             }
             _ => anyhow::bail!("Expected Clean"),
         }

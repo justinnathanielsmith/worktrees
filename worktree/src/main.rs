@@ -185,7 +185,13 @@ async fn main() -> Result<()> {
                 show: true,
             },
         },
-        Some(Commands::Clean { dry_run }) => Intent::CleanWorktrees { dry_run },
+        Some(Commands::Clean {
+            dry_run,
+            artifacts,
+        }) => Intent::CleanWorktrees {
+            dry_run,
+            artifacts,
+        },
         Some(Commands::Switch { name }) => match name {
             Some(n) => Intent::SwitchWorktree { name: n },
             None => {
