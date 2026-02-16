@@ -1,0 +1,16 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Aurora from '../components/Aurora.astro';
+import Navigation from '../components/Navigation.astro';
+import Footer from '../components/Footer.astro';
+import CliDocs from '../components/CliDocs.astro';
+---
+
+<BaseLayout title="CLI Manual | Bare Hub">
+    <Aurora />
+    <Navigation />
+    <main>
+        <CliDocs />
+        <Footer />
+    </main>
+</BaseLayout>

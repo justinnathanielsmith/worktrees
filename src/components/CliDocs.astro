@@ -1,0 +1,194 @@
+---
+import CodeBlock from './CodeBlock.astro';
+---
+
+<section class="py-24 space-y-32 container mx-auto px-4">
+    <!-- Header -->
+    <div class="max-w-4xl fade-in">
+        <h1 class="text-4xl md:text-6xl font-bold text-white mb-8 leading-none">
+            CLI Tool <br>
+            <span class="text-blue-500">Manual</span>
+        </h1>
+        <p class="text-xl text-slate-400 font-mono tracking-tight leading-relaxed border-l-4 border-blue-500 pl-6">
+            The <code>worktrees</code> CLI is a high-performance Rust tool designed to manage the Bare Hub architecture. 
+            It features a rich Terminal User Interface (TUI) for rapid navigation and Git operations.
+        </p>
+    </div>
+
+    <!-- 01. Installation -->
+    <div class="fade-in space-y-12">
+        <div class="flex items-center gap-4">
+            <span class="text-blue-500 font-bold text-2xl">01</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Installation</h2>
+        </div>
+        
+        <div class="space-y-6">
+            <p class="text-slate-300 leading-relaxed">
+                Build the tool from source using Cargo. Ensure you have Rust installed.
+            </p>
+            <CodeBlock code={`# Build release binary
+cargo build --release
+
+# Install to path (optional)
+cp target/release/worktrees /usr/local/bin/wt`} label="Shell" />
+        </div>
+    </div>
+
+    <!-- 02. CLI Commands -->
+    <div class="fade-in space-y-12">
+        <div class="flex items-center gap-4">
+            <span class="text-slate-400 font-bold text-2xl">02</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">CLI Commands</h2>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-800 text-slate-300 tracking-widest uppercase text-xs">
+                        <tr>
+                            <th class="px-6 py-4">Command</th>
+                            <th class="px-6 py-4">Arguments</th>
+                            <th class="px-6 py-4">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800 text-slate-400 font-mono">
+                        <tr>
+                            <td class="px-6 py-4 text-blue-400">init</td>
+                            <td class="px-6 py-4">&lt;url&gt; [name]</td>
+                            <td class="px-6 py-4">Clone a repo as a bare repository and set up the .bare directory.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 text-blue-400">add</td>
+                            <td class="px-6 py-4">&lt;name&gt; [branch]</td>
+                            <td class="px-6 py-4">Create a new worktree. If branch is omitted, it defaults to the name.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 text-blue-400">remove</td>
+                            <td class="px-6 py-4">&lt;name&gt;</td>
+                            <td class="px-6 py-4">Remove a worktree and its directory.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 text-blue-400">list</td>
+                            <td class="px-6 py-4">-</td>
+                            <td class="px-6 py-4">Launch the interactive TUI to manage worktrees.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 text-blue-400">setup</td>
+                            <td class="px-6 py-4">-</td>
+                            <td class="px-6 py-4">Opinionated setup: creates 'main' and 'dev' worktrees automatically.</td>
+                        </tr>
+                         <tr>
+                            <td class="px-6 py-4 text-blue-400">config</td>
+                            <td class="px-6 py-4">set-key &lt;key&gt;</td>
+                            <td class="px-6 py-4">Securely store your Gemini API key for AI features.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 03. TUI Worktree Manager -->
+    <div class="fade-in space-y-12">
+        <div class="flex items-center gap-4">
+            <span class="text-blue-500 font-bold text-2xl">03</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Interactive TUI</h2>
+        </div>
+
+        <p class="text-slate-300 leading-relaxed">
+            Running <code>worktrees list</code> (or just <code>worktrees</code>) opens the interactive manager. 
+            Use these key bindings to navigate and control your workspaces.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Navigation & Global -->
+             <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <h3 class="text-xl font-bold text-white mb-6 border-b border-slate-800 pb-2">Global Navigation</h3>
+                <ul class="space-y-4 text-sm font-mono text-slate-400">
+                    <li class="flex justify-between">
+                        <span>Navigate Up/Down</span>
+                        <span class="text-blue-400">j / k / Arrow Keys</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span>Quit</span>
+                        <span class="text-pink-500">q / Esc</span>
+                    </li>
+                     <li class="flex justify-between">
+                        <span>Help</span>
+                        <span class="text-blue-400">? / h</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- List View Actions -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <h3 class="text-xl font-bold text-white mb-6 border-b border-slate-800 pb-2">List View</h3>
+                <ul class="space-y-4 text-sm font-mono text-slate-400">
+                    <li class="flex justify-between">
+                        <span>Add Worktree</span>
+                        <span class="text-blue-400">a</span>
+                    </li>
+                     <li class="flex justify-between">
+                        <span>Remove Worktree</span>
+                        <span class="text-pink-500">d / x</span>
+                    </li>
+                     <li class="flex justify-between">
+                        <span>Open Status View</span>
+                        <span class="text-blue-400">g</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span>Open Commit Log</span>
+                        <span class="text-blue-400">l</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span>Switch Branch</span>
+                        <span class="text-blue-400">b</span>
+                    </li>
+                     <li class="flex justify-between">
+                        <span>Open in Editor</span>
+                        <span class="text-blue-400">o</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span>Push to Remote</span>
+                        <span class="text-blue-400">p</span>
+                    </li>
+                </ul>
+            </div>
+
+             <!-- Status View Actions -->
+             <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <h3 class="text-xl font-bold text-white mb-6 border-b border-slate-800 pb-2">Status View</h3>
+                <ul class="space-y-4 text-sm font-mono text-slate-400">
+                    <li class="flex justify-between">
+                        <span>Stage/Unstage File</span>
+                        <span class="text-blue-400">Space</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span>Stage All</span>
+                        <span class="text-blue-400">a</span>
+                    </li>
+                     <li class="flex justify-between">
+                        <span>Unstage All</span>
+                        <span class="text-blue-400">u</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span>Open Commit Menu</span>
+                        <span class="text-blue-400">c</span>
+                    </li>
+                </ul>
+            </div>
+             <!-- Dependencies -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <h3 class="text-xl font-bold text-white mb-6 border-b border-slate-800 pb-2">AI & Features</h3>
+                <div class="space-y-4 text-sm text-slate-400">
+                    <p>
+                        <strong class="text-white">AI Commit Generation:</strong> Inside the Commit Menu (<code>c</code>), select "AI Commit" to generate a conventional commit message based on your staged changes using Gemini 1.5 Flash.
+                    </p>
+                    <p>
+                         <strong class="text-white">Editor Detection:</strong> The tool automatically detects VS Code, Cursor, Zed, IntelliJ, Neovim, and others. Use <code>o</code> to open the selected worktree directly.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
