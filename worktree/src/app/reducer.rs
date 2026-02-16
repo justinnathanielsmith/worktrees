@@ -191,7 +191,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                     }
                 }
             }
-            Intent::RemoveWorktree { intent } => {
+            Intent::RemoveWorktree { intent, force } => {
                 if !json_mode {
                     View::render(AppState::RemovingWorktree {
                         intent: intent.clone(),
@@ -199,8 +199,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 }
                 let intent_clone = intent.clone();
                 let repo_clone = repo.clone();
+                let force_clone = force;
                 let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.remove_worktree(&intent_clone, false)
+                    repo_clone.remove_worktree(&intent_clone, force_clone)
                 })
                 .await
                 .into_diagnostic()?;

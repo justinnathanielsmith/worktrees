@@ -24,8 +24,13 @@ pub fn handle_confirm_events<R: ProjectRepository>(
     match normalized_code {
         KeyCode::Enter | KeyCode::Char('y') => {
             // Execute action
-            if let Intent::RemoveWorktree { intent } = action {
-                let _ = repo.remove_worktree(intent, false);
+            if let Intent::RemoveWorktree { intent, force } = action {
+                if let Err(e) = repo.remove_worktree(intent, *force) {
+                    return Ok(Some(AppState::Error(
+                        format!("Failed to remove worktree: {}", e),
+                        Box::new(prev_state.clone()),
+                    )));
+                }
             }
             Ok(Some(prev_state.clone()))
         }
