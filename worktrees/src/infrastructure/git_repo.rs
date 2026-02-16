@@ -416,9 +416,7 @@ impl ProjectRepository for GitProjectRepository {
     fn set_preferred_editor(&self, editor: &str) -> Result<()> {
         let path = self
             .resolve_config_path(".worktrees.editor", "editor")
-            .ok_or_else(|| {
-                anyhow::anyhow!("Could not determine configuration directory")
-            })?;
+            .ok_or_else(|| anyhow::anyhow!("Could not determine configuration directory"))?;
 
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;

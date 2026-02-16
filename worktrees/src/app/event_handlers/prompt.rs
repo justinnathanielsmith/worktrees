@@ -1,4 +1,4 @@
-use crate::app::model::{AppState, PromptType};
+use crate::app::model::{AppState, PromptType, RefreshType};
 use crate::domain::repository::ProjectRepository;
 use anyhow::Result;
 use ratatui::{Terminal, backend::CrosstermBackend, widgets::TableState};
@@ -42,7 +42,7 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                         return Ok(Some(AppState::ListingWorktrees {
                             worktrees: Vec::new(),
                             table_state: TableState::default(),
-                            refresh_needed: true,
+                            refresh_needed: RefreshType::Full,
                             selection_mode: false,
                             dashboard: crate::app::model::DashboardState {
                                 active_tab: crate::app::model::DashboardTab::Info,
