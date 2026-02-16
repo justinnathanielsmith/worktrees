@@ -380,6 +380,11 @@ impl ProjectRepository for GitProjectRepository {
         Ok(())
     }
 
+    fn pull(&self, path: &str) -> Result<()> {
+        Self::run_git(&["-C", path, "pull"])?;
+        Ok(())
+    }
+
     fn push(&self, path: &str) -> Result<()> {
         Self::run_git(&["-C", path, "push"])?;
         Ok(())

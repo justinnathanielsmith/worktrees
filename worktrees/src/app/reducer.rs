@@ -495,6 +495,61 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                     return Err(miette::miette!("Worktree not found."));
                 }
             }
+
+            Intent::Pull { intent } => {
+                let repo_clone = repo.clone();
+                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
+                    .await
+                    .into_diagnostic()?
+                    .map_err(|e| miette::miette!("{e:?}"))?;
+
+                let target = if let Some(name) = intent {
+                    worktrees
+                        .into_iter()
+                        .find(|wt| wt.branch == name || wt.path.ends_with(&name))
+                } else {
+                    return Err(miette::miette!(
+                        "Please specify a worktree to pull (e.g. 'worktrees pull main')."
+                    ));
+                };
+
+                if let Some(wt) = target {
+                    if !json_mode {
+                        println!(
+                            "{} Pulling worktree: {}",
+                            "➜".cyan().bold(),
+                            wt.branch.bold()
+                        );
+                    }
+
+                    let repo_clone = repo.clone();
+                    let path = wt.path.clone();
+                    let res = tokio::task::spawn_blocking(move || repo_clone.pull(&path))
+                        .await
+                        .into_diagnostic()?;
+
+                    match res {
+                        Ok(_) => {
+                            if !json_mode {
+                                println!("   {} Pull complete.", "✔".green());
+                            }
+                            if json_mode {
+                                View::render_json(&serde_json::json!({ "status": "success", "branch": wt.branch }))
+                                    .map_err(|e| miette::miette!("{e:?}"))?;
+                            }
+                        }
+                        Err(e) => {
+                            error!(error = %e, branch = %wt.branch, "Pull failed");
+                            if !json_mode {
+                                println!("   {} Error: {}", "❌".red(), e);
+                            }
+                            return Err(miette::miette!("Pull failed: {}", e));
+                        }
+                    }
+                } else {
+                    return Err(miette::miette!("Worktree not found."));
+                }
+            }
             Intent::Config { key, show } => {
                 if let Some(k) = key {
                     let k_clone = k.clone();
@@ -739,6 +794,14 @@ mod tests {
                 .unwrap()
                 .calls
                 .push(format!("sync:{}", path));
+            Ok(())
+        }
+        fn pull(&self, path: &str) -> anyhow::Result<()> {
+            self.tracker
+                .lock()
+                .unwrap()
+                .calls
+                .push(format!("pull:{}", path));
             Ok(())
         }
         fn detect_context(

@@ -70,6 +70,8 @@ pub trait ProjectRepository {
 
     /// Fetches all remotes and prunes stale branches.
     fn fetch(&self, path: &str) -> Result<()>;
+    /// Pulls changes from the remote repository.
+    fn pull(&self, path: &str) -> Result<()>;
     /// Pushes committed changes to the remote repository.
     fn push(&self, path: &str) -> Result<()>;
     /// Retrieves the porcelain status for the given worktree path.

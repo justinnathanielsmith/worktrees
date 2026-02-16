@@ -21,6 +21,10 @@ pub enum Intent {
     SyncConfigurations {
         intent: Option<String>,
     },
+    #[allow(dead_code)]
+    Pull {
+        intent: Option<String>,
+    },
     Push {
         intent: Option<String>,
     },

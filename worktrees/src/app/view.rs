@@ -529,6 +529,10 @@ mod tests {
             Ok(())
         }
 
+        fn pull(&self, _path: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
         fn push(&self, _path: &str) -> anyhow::Result<()> {
             Ok(())
         }

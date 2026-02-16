@@ -19,6 +19,41 @@ pub fn handle_listing_events<R: ProjectRepository>(
     current_state: &AppState,
     spinner_tick: &mut usize,
 ) -> Result<Option<AppState>> {
+    // Handle Shift+P for Pull before normalization (since p is Push)
+    if let KeyCode::Char('P') = key_code {
+        if let Some(i) = table_state.selected()
+            && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
+        {
+            let branch = wt.branch.clone();
+            let path = wt.path.clone();
+            let prev = Box::new(current_state.clone());
+            let mut pulling_state = AppState::Pulling {
+                branch: branch.clone(),
+                prev_state: prev.clone(),
+            };
+            terminal.draw(|f| {
+                super::super::view::View::draw(f, repo, &mut pulling_state, *spinner_tick)
+            })?;
+            if let Err(e) = repo.pull(&path) {
+                return Ok(Some(AppState::Error(
+                    format!("Failed to pull: {}", e),
+                    prev,
+                )));
+            }
+            let prev_clone = prev.clone();
+            let complete_state = AppState::PullComplete {
+                branch,
+                prev_state: prev,
+            };
+            return Ok(Some(AppState::Timed {
+                inner_state: Box::new(complete_state),
+                target_state: prev_clone,
+                start_time: std::time::Instant::now(),
+                duration: std::time::Duration::from_millis(800),
+            }));
+        }
+    }
+
     let normalized_code = match key_code {
         KeyCode::Char(c) => KeyCode::Char(c.to_ascii_lowercase()),
         _ => key_code,

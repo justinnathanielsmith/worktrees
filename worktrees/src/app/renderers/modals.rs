@@ -135,6 +135,51 @@ pub fn render_modals<R: ProjectRepository>(
                 Style::default(),
             );
         }
+        AppState::Pulling { branch, .. } => {
+            let theme = CyberTheme::default();
+            render_info_modal(
+                f,
+                standard_area,
+                Line::from(vec![Span::styled(
+                    format!(" {} PULLING FROM REMOTE ", spinner),
+                    Style::default()
+                        .fg(theme.primary)
+                        .add_modifier(Modifier::BOLD),
+                )]),
+                vec![Line::from(vec![
+                    Span::raw("Pulling branch: "),
+                    Span::styled(
+                        branch.as_str(),
+                        Style::default()
+                            .fg(theme.secondary)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                ])],
+                Style::default().fg(theme.primary),
+            );
+        }
+        AppState::PullComplete { branch, .. } => {
+            render_info_modal(
+                f,
+                standard_area,
+                Line::from(vec![Span::styled(
+                    " ✅ PULL COMPLETE ",
+                    Style::default()
+                        .fg(RatatuiColor::Green)
+                        .add_modifier(Modifier::BOLD),
+                )]),
+                vec![Line::from(vec![
+                    Span::raw("Successfully pulled: "),
+                    Span::styled(
+                        branch.as_str(),
+                        Style::default()
+                            .fg(RatatuiColor::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                ])],
+                Style::default(),
+            );
+        }
         AppState::Help { .. } => {
             let theme = CyberTheme::default();
             let area = centered_rect(80, 70, f.area());
@@ -235,6 +280,15 @@ pub fn render_modals<R: ProjectRepository>(
                             .add_modifier(Modifier::BOLD),
                     ),
                     Span::raw(" Push committed changes to the remote repository"),
+                ]),
+                Line::from(vec![
+                    Span::styled(
+                        " [Shift+P] ",
+                        Style::default()
+                            .fg(theme.secondary)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(" Pull changes from the remote repository"),
                 ]),
                 Line::from(vec![
                     Span::styled(

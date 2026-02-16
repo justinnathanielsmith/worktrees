@@ -145,6 +145,18 @@ pub enum AppState {
         #[allow(dead_code)]
         prev_state: Box<AppState>,
     },
+    /// Pulling from remote.
+    Pulling {
+        branch: String,
+        #[allow(dead_code)]
+        prev_state: Box<AppState>,
+    },
+    /// Pull completed.
+    PullComplete {
+        branch: String,
+        #[allow(dead_code)]
+        prev_state: Box<AppState>,
+    },
     /// Pushing changes to remote.
     Pushing {
         branch: String,
@@ -247,6 +259,8 @@ impl AppState {
             AppState::SyncComplete { prev_state, .. } => prev_state,
             AppState::Help { prev_state } => prev_state,
             AppState::Fetching { prev_state, .. } => prev_state,
+            AppState::Pulling { prev_state, .. } => prev_state,
+            AppState::PullComplete { prev_state, .. } => prev_state,
             AppState::Pushing { prev_state, .. } => prev_state,
             AppState::PushComplete { prev_state, .. } => prev_state,
             AppState::SelectingEditor { prev_state, .. } => prev_state,

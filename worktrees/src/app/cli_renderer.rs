@@ -221,6 +221,8 @@ impl CliRenderer {
             | AppState::Confirming { .. }
             | AppState::Help { .. }
             | AppState::Fetching { .. }
+            | AppState::Pulling { .. }
+            | AppState::PullComplete { .. }
             | AppState::Prompting { .. }
             | AppState::ViewingStatus { .. }
             | AppState::ViewingHistory { .. }

@@ -86,6 +86,14 @@ impl Widget for FooterWidget {
             Span::styled("PUSH", Style::default().fg(theme.text)),
             Span::styled(" | ", Style::default().fg(theme.subtle)),
             Span::styled(
+                " [Shift+P] ",
+                Style::default()
+                    .fg(theme.secondary)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("PULL", Style::default().fg(theme.text)),
+            Span::styled(" | ", Style::default().fg(theme.subtle)),
+            Span::styled(
                 " [D/X] ",
                 Style::default()
                     .fg(theme.error)
