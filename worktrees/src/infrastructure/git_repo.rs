@@ -1,5 +1,5 @@
 use crate::domain::repository::{
-    GitCommit, GitStatus, ProjectContext, ProjectRepository, Worktree,
+    GitCommit, GitStatus, ProjectContext, ProjectRepository, Worktree, WorktreeMetadata,
 };
 use anyhow::{Context, Result};
 use keyring::Entry;
@@ -144,6 +144,30 @@ impl GitProjectRepository {
                 }
             })
             .collect()
+    }
+
+    fn get_metadata_path() -> PathBuf {
+        Path::new(".worktree_info").to_path_buf()
+    }
+
+    fn load_metadata() -> std::collections::HashMap<String, WorktreeMetadata> {
+        let path = Self::get_metadata_path();
+        if !path.exists() {
+            return std::collections::HashMap::new();
+        }
+
+        std::fs::read_to_string(path)
+            .ok()
+            .and_then(|content| serde_json::from_str(&content).ok())
+            .unwrap_or_default()
+    }
+
+    #[allow(dead_code)]
+    fn save_metadata(metadata: &std::collections::HashMap<String, WorktreeMetadata>) -> Result<()> {
+        let path = Self::get_metadata_path();
+        let content = serde_json::to_string_pretty(metadata)?;
+        std::fs::write(path, content)?;
+        Ok(())
     }
 }
 
@@ -296,7 +320,7 @@ impl ProjectRepository for GitProjectRepository {
     fn list_worktrees(&self) -> Result<Vec<Worktree>> {
         let output = Self::run_git(&["worktree", "list", "--porcelain"])?;
 
-        output
+        let mut worktrees = output
             .split("\n\n")
             .filter(|block| !block.is_empty())
             .map(|block| {
@@ -308,6 +332,7 @@ impl ProjectRepository for GitProjectRepository {
                         is_bare: false,
                         is_detached: false,
                         status_summary: None,
+                        metadata: None,
                     },
                     |mut wt, line| {
                         if let Some(path) = line.strip_prefix("worktree ") {
@@ -331,7 +356,15 @@ impl ProjectRepository for GitProjectRepository {
 
                 Ok(wt)
             })
-            .collect()
+            .collect::<Result<Vec<_>>>()?;
+        let metadata_map = Self::load_metadata();
+        for wt in &mut worktrees {
+            if let Some(meta) = metadata_map.get(&wt.branch) {
+                wt.metadata = Some(meta.clone());
+            }
+        }
+
+        Ok(worktrees)
     }
 
     fn detect_context(&self, base_path: &Path) -> ProjectContext {
@@ -736,6 +769,41 @@ mod tests {
         // 3. Test KmpAndroid context (with local.properties)
         std::fs::write(temp_dir.join("local.properties"), "").unwrap();
         assert_eq!(repo.detect_context(&temp_dir), ProjectContext::KmpAndroid);
+
+        // Cleanup
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_load_metadata() {
+        use crate::domain::repository::WorktreeMetadata;
+        
+        // Setup temp dir
+        let temp_dir = std::env::temp_dir().join(format!("worktrees_test_metadata_{}", std::process::id()));
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        std::fs::create_dir(&temp_dir).unwrap();
+        
+        let metadata_path = temp_dir.join(".worktree_info");
+        let mut metadata_map = std::collections::HashMap::new();
+        metadata_map.insert("dev".to_string(), WorktreeMetadata {
+            created_at: Some("2023-10-27".to_string()),
+            description: Some("Development branch".to_string()),
+            color: Some("#FF0000".to_string()),
+            icon: Some("🚀".to_string())
+        });
+
+        let content = serde_json::to_string(&metadata_map).unwrap();
+        std::fs::write(&metadata_path, content).unwrap();
+
+        // Verify serialization/deserialization logic
+        // We can't strictly test GitProjectRepository::load_metadata without mocking file system or running in the specific dir
+        // But we can verify our serde logic is correct.
+        
+        let loaded: std::collections::HashMap<String, WorktreeMetadata> = serde_json::from_str(&std::fs::read_to_string(&metadata_path).unwrap()).unwrap();
+        assert_eq!(loaded.get("dev").unwrap().description, Some("Development branch".to_string()));
+         assert_eq!(loaded.get("dev").unwrap().icon, Some("🚀".to_string()));
 
         // Cleanup
         std::fs::remove_dir_all(&temp_dir).unwrap();

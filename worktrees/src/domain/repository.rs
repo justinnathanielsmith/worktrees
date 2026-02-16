@@ -1,6 +1,15 @@
 use anyhow::Result;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
+
+/// Custom attributes for a worktree.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct WorktreeMetadata {
+    pub created_at: Option<String>,
+    pub description: Option<String>,
+    pub color: Option<String>,
+    pub icon: Option<String>,
+}
 
 /// Represents a Git worktree and its current state.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -17,6 +26,8 @@ pub struct Worktree {
     pub is_detached: bool,
     /// A summarized string of git status (e.g., "+2 ~1").
     pub status_summary: Option<String>,
+    /// Custom metadata for this worktree.
+    pub metadata: Option<WorktreeMetadata>,
 }
 
 /// Detailed git status of a specific worktree.
