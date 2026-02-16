@@ -33,11 +33,26 @@ impl GitProjectRepository {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
 
-    fn get_global_config_path(&self, filename: &str) -> Option<PathBuf> {
-        let home = std::env::var("HOME")
-            .or_else(|_| std::env::var("USERPROFILE"))
-            .ok()?;
-        Some(Path::new(&home).join(filename))
+    fn resolve_config_path(&self, legacy_filename: &str, new_filename: &str) -> Option<PathBuf> {
+        // 1. Check legacy path first (for backward compatibility)
+        if let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
+            let legacy_path = Path::new(&home).join(legacy_filename);
+            if legacy_path.exists() {
+                return Some(legacy_path);
+            }
+        }
+
+        // 2. Check XDG/Standard config path
+        if let Some(config_dir) = dirs::config_dir() {
+            return Some(config_dir.join("worktrees").join(new_filename));
+        }
+
+        // 3. Fallback to HOME if dirs fails (unlikely but safe)
+        if let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
+            return Some(Path::new(&home).join(legacy_filename));
+        }
+
+        None
     }
 
     fn handle_context_files(&self, path: &str) {
@@ -389,7 +404,7 @@ impl ProjectRepository for GitProjectRepository {
     }
 
     fn get_preferred_editor(&self) -> Result<Option<String>> {
-        if let Some(path) = self.get_global_config_path(".worktrees.editor")
+        if let Some(path) = self.resolve_config_path(".worktrees.editor", "editor")
             && path.exists()
         {
             let content = std::fs::read_to_string(path)?;
@@ -400,10 +415,15 @@ impl ProjectRepository for GitProjectRepository {
 
     fn set_preferred_editor(&self, editor: &str) -> Result<()> {
         let path = self
-            .get_global_config_path(".worktrees.editor")
+            .resolve_config_path(".worktrees.editor", "editor")
             .ok_or_else(|| {
-                anyhow::anyhow!("Could not determine home directory for configuration")
+                anyhow::anyhow!("Could not determine configuration directory")
             })?;
+
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
         std::fs::write(path, editor)?;
         Ok(())
     }
@@ -559,8 +579,8 @@ impl ProjectRepository for GitProjectRepository {
             }
         }
 
-        // 3. Check Legacy File
-        if let Some(path) = self.get_global_config_path(".worktrees.gemini_key")
+        // 3. Check Config File (Legacy or New)
+        if let Some(path) = self.resolve_config_path(".worktrees.gemini_key", "gemini_key")
             && path.exists()
         {
             let content = std::fs::read_to_string(path)?;
@@ -591,7 +611,10 @@ impl ProjectRepository for GitProjectRepository {
         }
 
         // 2. Always store in file as fallback/sync
-        if let Some(path) = self.get_global_config_path(".worktrees.gemini_key") {
+        if let Some(path) = self.resolve_config_path(".worktrees.gemini_key", "gemini_key") {
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
             std::fs::write(path, key).context("Failed to store API key in fallback file")?;
         }
 
