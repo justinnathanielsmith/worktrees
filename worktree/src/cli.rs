@@ -249,10 +249,7 @@ mod tests {
             .command
             .ok_or_else(|| anyhow::anyhow!("Missing command"))?
         {
-            Commands::Clean {
-                dry_run,
-                artifacts,
-            } => {
+            Commands::Clean { dry_run, artifacts } => {
                 assert!(!dry_run);
                 assert!(artifacts);
             }

@@ -72,8 +72,11 @@ cargo install --git https://github.com/justinnathanielsmith/worktrees
 - **Smart Branching**: Create worktrees from any branch or commit.
 - **AI Integration**: Generate commit messages with Gemini 1.5 Flash.
 - **Smart Cleanup**: reclaim disk space by purging build artifacts from inactive environments.
-- **Warp-Compatible Ergonomics**: Optimized TUI with ANSI colors and high-performance rendering.
-- **Shell Completions**: Rich completions for Zsh, Bash, Fish, and PowerShell.
+- **Warp-Native Integration**: 
+    - **Warp Workflows**: Generate logical command groups with `wt init --warp`.
+    - **Warp Blocks**: Clean output borders and semantic spacing for perfect block containment and context-aware "Ask AI".
+    - **Path Copying**: Use `wt switch <name> --copy` to instantly jump to worktrees via clipboard.
+- **Shell Completions**: Rich completions for Zsh, Bash, Fish, and PowerShell (highly recommended for Warp).
 - **Cross-Platform**: Works on macOS, Linux, and Windows.
 
 ## Quick Start
@@ -81,9 +84,11 @@ cargo install --git https://github.com/justinnathanielsmith/worktrees
 ### 1. Initialize a New Project
 
 ```bash
-worktree init https://github.com/user/repo.git --name my-project
+worktree init https://github.com/user/repo.git --name my-project --warp
 cd my-project
 ```
+> [!TIP]
+> Using the `--warp` flag at initialization creates `.warp/workflows/worktrees.yaml`, making your Bare Hub operations discoverable in Warp's `Ctrl+Shift+W` menu.
 
 ### 2. Convert an Existing Repository
 
@@ -102,7 +107,7 @@ worktree
 
 ### 4. CLI Commands Reference
 
-- `worktree init <url> [--name <name>]`: Initialize a new bare repository (clones if URL provided).
+- `worktree init <url> [--name <name>] [--warp]`: Initialize a new bare repository. Use `--warp` to generate native workflows.
 - `worktree setup`: Opinionated setup; creates `main` and `dev` worktrees automatically.
 - `worktree add <name> [branch]`: Create a new worktree tracking a branch.
 - `worktree remove <name> [--force]`: Remove a worktree and its directory.

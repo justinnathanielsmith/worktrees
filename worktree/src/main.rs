@@ -165,11 +165,7 @@ async fn main() -> Result<()> {
     let reducer = Reducer::new(repo, cli.json, cli.quiet);
 
     let intent = match cli.command {
-        Some(Commands::Init {
-            url,
-            name,
-            warp,
-        }) => Intent::Initialize { url, name, warp },
+        Some(Commands::Init { url, name, warp }) => Intent::Initialize { url, name, warp },
         Some(Commands::Add { intent, branch }) => Intent::AddWorktree { intent, branch },
         Some(Commands::Remove { intent, force }) => Intent::RemoveWorktree { intent, force },
         Some(Commands::List) => Intent::ListWorktrees,
@@ -195,13 +191,9 @@ async fn main() -> Result<()> {
                 show: true,
             },
         },
-        Some(Commands::Clean {
-            dry_run,
-            artifacts,
-        }) => Intent::CleanWorktrees {
-            dry_run,
-            artifacts,
-        },
+        Some(Commands::Clean { dry_run, artifacts }) => {
+            Intent::CleanWorktrees { dry_run, artifacts }
+        }
         Some(Commands::Switch { name, copy }) => match name {
             Some(n) => Intent::SwitchWorktree { name: n, copy },
             None => {

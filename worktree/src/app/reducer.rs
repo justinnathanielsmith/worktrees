@@ -87,7 +87,11 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 match res {
                     Ok(_) => {
                         if warp {
-                            if let Err(e) = crate::infrastructure::warp_integration::generate_warp_workflows(Path::new(&project_name)) {
+                            if let Err(e) =
+                                crate::infrastructure::warp_integration::generate_warp_workflows(
+                                    Path::new(&project_name),
+                                )
+                            {
                                 error!(error = %e, "Failed to generate Warp workflows");
                             } else {
                                 info!("Warp workflows generated successfully");
@@ -264,13 +268,10 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                         View::render(AppState::Welcome);
                     }
                     View::render_listing_table(&worktrees);
-                        let tip = "Tip: Run with 'worktrees list' (no args) for interactive TUI";
-                        if !quiet_mode {
-                            println!(
-                                "\n{}",
-                                tip.if_supports_color(Stdout, |t| t.dimmed())
-                            );
-                        }
+                    let tip = "Tip: Run with 'worktrees list' (no args) for interactive TUI";
+                    if !quiet_mode {
+                        println!("\n{}", tip.if_supports_color(Stdout, |t| t.dimmed()));
+                    }
                 }
             }
             Intent::SetupDefaults => {
@@ -631,9 +632,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 let stale_worktrees = tokio::task::spawn_blocking(move || {
                     repo_clone.clean_worktrees(dry_run, artifacts)
                 })
-                        .await
-                        .into_diagnostic()?
-                        .map_err(|e| miette::miette!("Failed to clean worktrees: {}", e))?;
+                .await
+                .into_diagnostic()?
+                .map_err(|e| miette::miette!("Failed to clean worktrees: {}", e))?;
 
                 if stale_worktrees.is_empty() {
                     if !json_mode && !quiet_mode {
@@ -719,18 +720,24 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                         if copy {
                             // Copy path to clipboard using pbcopy on macOS
                             #[cfg(target_os = "macos")]
-                                {
-                                    use std::process::Stdio;
-                                    let mut child = Command::new("pbcopy")
-                                        .stdin(Stdio::piped())
-                                        .spawn()
-                                        .map_err(|e| miette::miette!("Failed to spawn pbcopy: {}", e))?;
+                            {
+                                use std::process::Stdio;
+                                let mut child = Command::new("pbcopy")
+                                    .stdin(Stdio::piped())
+                                    .spawn()
+                                    .map_err(|e| {
+                                        miette::miette!("Failed to spawn pbcopy: {}", e)
+                                    })?;
 
-                                    if let Some(mut stdin) = child.stdin.take() {
-                                        stdin.write_all(wt.path.as_bytes()).map_err(|e| miette::miette!("Failed to write to pbcopy: {}", e))?;
-                                    }
-                                    child.wait().map_err(|e| miette::miette!("Failed to wait for pbcopy: {}", e))?;
+                                if let Some(mut stdin) = child.stdin.take() {
+                                    stdin.write_all(wt.path.as_bytes()).map_err(|e| {
+                                        miette::miette!("Failed to write to pbcopy: {}", e)
+                                    })?;
                                 }
+                                child.wait().map_err(|e| {
+                                    miette::miette!("Failed to wait for pbcopy: {}", e)
+                                })?;
+                            }
                         }
 
                         if json_mode {
@@ -934,7 +941,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                     println!("---");
                     println!("\n{}", "To use this configuration:".yellow().bold());
                     println!("1. Save the above content to a file, e.g., `warp-launch.yaml`.");
-                    println!("2. Use `warp-cli launch-config warp-launch.yaml` if you have Warp CLI installed.");
+                    println!(
+                        "2. Use `warp-cli launch-config warp-launch.yaml` if you have Warp CLI installed."
+                    );
                     println!("3. Or copy/paste into Warp's Launch Configuration editor.");
                 }
             }

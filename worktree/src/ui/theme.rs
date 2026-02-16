@@ -24,7 +24,7 @@ impl Default for CyberTheme {
             error: Color::Red,
             warning: Color::Yellow,
             text: Color::White,
-            subtle: Color::Indexed(242), // Dark grey
+            subtle: Color::Indexed(242),       // Dark grey
             selection_bg: Color::Indexed(236), // Deep grey/blue
             border: Color::Indexed(239),
             header_bg: Color::Indexed(17), // Deep blue

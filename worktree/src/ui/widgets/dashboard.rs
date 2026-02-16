@@ -39,7 +39,9 @@ impl<'a> Widget for StatusTabWidget<'a> {
                         let style = if is_deleted {
                             Style::default().fg(theme.error)
                         } else {
-                            Style::default().fg(theme.success).add_modifier(Modifier::BOLD)
+                            Style::default()
+                                .fg(theme.success)
+                                .add_modifier(Modifier::BOLD)
                         };
                         lines.push(Line::from(vec![
                             Span::raw("   "),
@@ -61,7 +63,9 @@ impl<'a> Widget for StatusTabWidget<'a> {
                         let style = if is_deleted {
                             Style::default().fg(theme.error)
                         } else {
-                            Style::default().fg(theme.warning).add_modifier(Modifier::DIM)
+                            Style::default()
+                                .fg(theme.warning)
+                                .add_modifier(Modifier::DIM)
                         };
                         lines.push(Line::from(vec![
                             Span::raw("   "),
