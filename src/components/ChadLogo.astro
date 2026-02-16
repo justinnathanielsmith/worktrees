@@ -1,83 +1,31 @@
 ---
 ---
-<div class="chad-logo-container">
-    <pre class="chad-logo text-[0.4rem] sm:text-[0.6rem] md:text-xs leading-none font-mono">
-   ▄████████    ▄█    █▄       ▄████████ ████████▄  
-  ███    ███   ███    ███     ███    ███ ███   ▀███ 
-  ███    █▀    ███    ███     ███    ███ ███    ███ 
-  ███         ▄███▄▄▄▄███▄▄   ███    ███ ███    ███ 
-  ███        ▀▀███▀▀▀▀███▀  ▀███████████ ███    ███ 
-  ███    █▄    ███    ███     ███    ███ ███    ███ 
-  ███    ███   ███    ███     ███    ███ ███   ▄███ 
-  ▀████████▀   ███    █▀      ███    █▀  ████████▀  
-    </pre>
+<div class="worktrees-logo-container">
+    <img 
+        src="/worktrees/worktrees_hero_logo_final.png" 
+        alt="WORKTREES Logo" 
+        class="worktrees-logo"
+    />
 </div>
 
 <style>
-    .chad-logo-container {
+    .worktrees-logo-container {
         display: inline-block;
         position: relative;
+        /* Removed boxy styling for better flow */
         padding: 1rem;
-        background: rgba(15, 23, 42, 0.5);
-        border-radius: 0.5rem;
-        border: 1px solid rgba(6, 182, 212, 0.2);
-        box-shadow: 0 0 20px rgba(6, 182, 212, 0.1);
-        overflow: hidden;
     }
 
-    .chad-logo {
-        background: linear-gradient(135deg, #06b6d4, #ec4899, #06b6d4);
-        background-size: 200% auto;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: shimmer 4s linear infinite, flicker 5s infinite, glitch 10s step-end infinite;
-        filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.6));
-        margin: 0;
-        position: relative;
-    }
-
-    @keyframes glitch {
-        0%, 95%, 100% { transform: translate(0); }
-        96% { transform: translate(-2px, 2px); filter: hue-rotate(90deg); }
-        97% { transform: translate(2px, -2px); filter: hue-rotate(180deg); }
-        98% { transform: translate(-1px, -1px); filter: hue-rotate(270deg); }
-        99% { transform: translate(1px, 1px); filter: hue-rotate(360deg); }
-    }
-
-    @keyframes shimmer {
-        0% { background-position: 0% center; }
-        100% { background-position: 200% center; }
-    }
-
-    @keyframes flicker {
-        0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% {
-            opacity: 1;
-            filter: drop-shadow(0 0 5px rgba(6, 182, 212, 0.5));
-        }
-        20%, 21.999%, 63%, 63.999%, 65%, 69.999% {
-            opacity: 0.8;
-            filter: drop-shadow(0 0 2px rgba(6, 182, 212, 0.3));
-        }
-    }
-
-    .chad-logo-container::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
+    .worktrees-logo {
+        max-width: 600px;
         width: 100%;
-        height: 100%;
-        background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(6, 182, 212, 0.2),
-            transparent
-        );
-        animation: scan 3s infinite;
+        height: auto;
+        /* Enhanced drop shadow for better contrast against dark background */
+        filter: drop-shadow(0 0 20px rgba(6, 182, 212, 0.4));
+        transition: filter 0.3s ease;
     }
-
-    @keyframes scan {
-        0% { left: -100%; }
-        100% { left: 100%; }
+    
+    .worktrees-logo:hover {
+        filter: drop-shadow(0 0 30px rgba(6, 182, 212, 0.6)) drop-shadow(0 0 10px rgba(236, 72, 153, 0.4));
     }
 </style>
