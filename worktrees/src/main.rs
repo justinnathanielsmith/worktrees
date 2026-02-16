@@ -12,13 +12,13 @@ use cli::{Cli, Commands};
 use domain::repository::{ProjectRepository, Worktree};
 use indicatif::{ProgressBar, ProgressStyle};
 use infrastructure::git_repo::GitProjectRepository;
-use std::path::Path;
-use std::time::Duration;
-use ratatui::widgets::TableState;
 use miette::{IntoDiagnostic, Result};
 use owo_colors::{OwoColorize, Stream::Stdout};
+use ratatui::widgets::TableState;
+use std::path::Path;
 use std::process::Command;
-use tracing::{info, error, instrument};
+use std::time::Duration;
+use tracing::{error, info, instrument};
 
 fn setup_logging(json_mode: bool) {
     if json_mode {
@@ -51,7 +51,7 @@ async fn wait_for_shutdown() {
     {
         let sigterm_res = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate());
         let sigint_res = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt());
-        
+
         if let (Ok(mut sigterm), Ok(mut sigint)) = (sigterm_res, sigint_res) {
             tokio::select! {
                 _ = sigterm.recv() => info!("Received SIGTERM, shutting down gracefully..."),
@@ -110,26 +110,32 @@ impl<R: ProjectRepository> Reducer<R> {
 
                 match self.repo.init_bare_repo(&url, &project_name) {
                     Ok(_) => {
-                        if let Some(pb) = pb { pb.finish_and_clear(); }
+                        if let Some(pb) = pb {
+                            pb.finish_and_clear();
+                        }
                         info!(%project_name, "Repository initialized successfully");
                         if self.json_mode {
                             View::render_json(&serde_json::json!({
                                 "status": "success",
                                 "project": project_name,
                                 "path": format!("{}/.bare", project_name)
-                            })).map_err(|e| miette::miette!("{e:?}"))?;
+                            }))
+                            .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
                             View::render(AppState::Initialized { project_name });
                         }
                     }
                     Err(e) => {
-                        if let Some(pb) = pb { pb.finish_and_clear(); }
+                        if let Some(pb) = pb {
+                            pb.finish_and_clear();
+                        }
                         error!(error = %e, "Failed to initialize repository");
                         if self.json_mode {
                             View::render_json(&serde_json::json!({
                                 "status": "error",
                                 "message": e.to_string()
-                            })).map_err(|e| miette::miette!("{e:?}"))?;
+                            }))
+                            .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
                             View::render(AppState::Error(e.to_string()));
                         }
@@ -162,26 +168,32 @@ impl<R: ProjectRepository> Reducer<R> {
 
                 match self.repo.add_worktree(&intent, &branch_name) {
                     Ok(_) => {
-                        if let Some(pb) = pb { pb.finish_and_clear(); }
+                        if let Some(pb) = pb {
+                            pb.finish_and_clear();
+                        }
                         info!(%intent, %branch_name, "Worktree added successfully");
                         if self.json_mode {
                             View::render_json(&serde_json::json!({
                                 "status": "success",
                                 "intent": intent,
                                 "branch": branch_name
-                            })).map_err(|e| miette::miette!("{e:?}"))?;
+                            }))
+                            .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
                             View::render(AppState::WorktreeAdded { intent });
                         }
                     }
                     Err(e) => {
-                        if let Some(pb) = pb { pb.finish_and_clear(); }
+                        if let Some(pb) = pb {
+                            pb.finish_and_clear();
+                        }
                         error!(error = %e, %intent, "Failed to add worktree");
                         if self.json_mode {
                             View::render_json(&serde_json::json!({
                                 "status": "error",
                                 "message": e.to_string()
-                            })).map_err(|e| miette::miette!("{e:?}"))?;
+                            }))
+                            .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
                             View::render(AppState::Error(e.to_string()));
                         }
@@ -198,7 +210,10 @@ impl<R: ProjectRepository> Reducer<R> {
                     Ok(_) => {
                         info!(%intent, "Worktree removed successfully");
                         if self.json_mode {
-                            View::render_json(&serde_json::json!({ "status": "success", "intent": intent })).map_err(|e| miette::miette!("{e:?}"))?;
+                            View::render_json(
+                                &serde_json::json!({ "status": "success", "intent": intent }),
+                            )
+                            .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
                             View::render(AppState::WorktreeRemoved);
                         }
@@ -206,7 +221,10 @@ impl<R: ProjectRepository> Reducer<R> {
                     Err(e) => {
                         error!(error = %e, %intent, "Failed to remove worktree");
                         if self.json_mode {
-                            View::render_json(&serde_json::json!({ "status": "error", "message": e.to_string() })).map_err(|e| miette::miette!("{e:?}"))?;
+                            View::render_json(
+                                &serde_json::json!({ "status": "error", "message": e.to_string() }),
+                            )
+                            .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
                             View::render(AppState::Error(e.to_string()));
                         }
@@ -214,7 +232,10 @@ impl<R: ProjectRepository> Reducer<R> {
                 }
             }
             Intent::ListWorktrees => {
-                let worktrees = self.repo.list_worktrees().map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self
+                    .repo
+                    .list_worktrees()
+                    .map_err(|e| miette::miette!("{e:?}"))?;
                 info!(count = worktrees.len(), "Worktrees listed successfully");
                 if self.json_mode {
                     View::render_json(&worktrees).map_err(|e| miette::miette!("{e:?}"))?;
@@ -224,7 +245,11 @@ impl<R: ProjectRepository> Reducer<R> {
                         View::render(AppState::Welcome);
                     }
                     View::render_listing_table(&worktrees);
-                    println!("\n{}", "Tip: Run with 'worktrees list' (no args) for interactive TUI".if_supports_color(Stdout, |t| t.dimmed()));
+                    println!(
+                        "\n{}",
+                        "Tip: Run with 'worktrees list' (no args) for interactive TUI"
+                            .if_supports_color(Stdout, |t| t.dimmed())
+                    );
                 }
             }
             Intent::SetupDefaults => {
@@ -237,11 +262,15 @@ impl<R: ProjectRepository> Reducer<R> {
                 info!("Setting up default worktrees (main, dev)");
                 let main_res = match self.repo.add_worktree("main", "main") {
                     Ok(_) => {
-                        if !self.json_mode { println!("   Main: {}", "READY".green().bold()); }
+                        if !self.json_mode {
+                            println!("   Main: {}", "READY".green().bold());
+                        }
                         serde_json::json!({ "name": "main", "status": "ready" })
                     }
                     Err(_) => {
-                        if !self.json_mode { println!("   Main: {}", "SKIPPED".dimmed()); }
+                        if !self.json_mode {
+                            println!("   Main: {}", "SKIPPED".dimmed());
+                        }
                         serde_json::json!({ "name": "main", "status": "skipped" })
                     }
                 };
@@ -249,16 +278,22 @@ impl<R: ProjectRepository> Reducer<R> {
 
                 let dev_res = match self.repo.add_worktree("dev", "dev") {
                     Ok(_) => {
-                        if !self.json_mode { println!("   Dev:  {}", "READY".green().bold()); }
+                        if !self.json_mode {
+                            println!("   Dev:  {}", "READY".green().bold());
+                        }
                         serde_json::json!({ "name": "dev", "status": "ready" })
                     }
                     Err(_) => match self.repo.add_new_worktree("dev", "dev", "main") {
                         Ok(_) => {
-                            if !self.json_mode { println!("   Dev:  {}", "READY (Created from main)".green().bold()); }
+                            if !self.json_mode {
+                                println!("   Dev:  {}", "READY (Created from main)".green().bold());
+                            }
                             serde_json::json!({ "name": "dev", "status": "ready", "created_from": "main" })
                         }
                         Err(_) => {
-                            if !self.json_mode { println!("   Dev:  {}", "SKIPPED".dimmed()); }
+                            if !self.json_mode {
+                                println!("   Dev:  {}", "SKIPPED".dimmed());
+                            }
                             serde_json::json!({ "name": "dev", "status": "skipped" })
                         }
                     },
@@ -271,18 +306,33 @@ impl<R: ProjectRepository> Reducer<R> {
                     View::render(AppState::SetupComplete);
                 }
             }
-            Intent::RunCommand { intent, branch, command } => {
+            Intent::RunCommand {
+                intent,
+                branch,
+                command,
+            } => {
                 let branch_name = branch.unwrap_or_else(|| intent.clone());
-                
+
                 if !self.json_mode {
-                    println!("{} Creating temporary worktree '{}' tracking '{}'...", "➜".cyan().bold(), intent, branch_name);
+                    println!(
+                        "{} Creating temporary worktree '{}' tracking '{}'...",
+                        "➜".cyan().bold(),
+                        intent,
+                        branch_name
+                    );
                 }
 
                 // 1. Add worktree
-                self.repo.add_worktree(&intent, &branch_name).map_err(|e| miette::miette!("Failed to create temporary worktree: {}", e))?;
-                
+                self.repo
+                    .add_worktree(&intent, &branch_name)
+                    .map_err(|e| miette::miette!("Failed to create temporary worktree: {}", e))?;
+
                 if !self.json_mode {
-                    println!("{} Executing command: {}", "➜".cyan().bold(), command.join(" ").bold());
+                    println!(
+                        "{} Executing command: {}",
+                        "➜".cyan().bold(),
+                        command.join(" ").bold()
+                    );
                 }
 
                 // 2. Run command
@@ -293,13 +343,13 @@ impl<R: ProjectRepository> Reducer<R> {
                     .map_err(|e| miette::miette!("Failed to spawn command: {}", e))?
                     .wait()
                     .map_err(|e| miette::miette!("Failed to wait for command: {}", e))?;
-                
+
                 if !self.json_mode {
                     println!("{} Cleaning up...", "➜".cyan().bold());
                 }
 
                 // 3. Remove worktree (force to ensure cleanup)
-                let _ = self.repo.remove_worktree(&intent, true); 
+                let _ = self.repo.remove_worktree(&intent, true);
 
                 if !status.success() {
                     return Err(miette::miette!("Command failed with status: {}", status));
@@ -308,24 +358,39 @@ impl<R: ProjectRepository> Reducer<R> {
                 if !self.json_mode {
                     println!("{} Done.", "✔".green().bold());
                 } else {
-                    View::render_json(&serde_json::json!({ "status": "success", "exit_code": status.code() })).map_err(|e| miette::miette!("{e:?}"))?;
+                    View::render_json(
+                        &serde_json::json!({ "status": "success", "exit_code": status.code() }),
+                    )
+                    .map_err(|e| miette::miette!("{e:?}"))?;
                 }
             }
             Intent::SyncConfigurations { intent } => {
-                let worktrees = self.repo.list_worktrees().map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self
+                    .repo
+                    .list_worktrees()
+                    .map_err(|e| miette::miette!("{e:?}"))?;
                 let targets: Vec<Worktree> = if let Some(name) = intent {
-                    worktrees.into_iter().filter(|wt| wt.branch == name || wt.path.ends_with(&name)).collect()
+                    worktrees
+                        .into_iter()
+                        .filter(|wt| wt.branch == name || wt.path.ends_with(&name))
+                        .collect()
                 } else {
                     worktrees.into_iter().filter(|wt| !wt.is_bare).collect()
                 };
 
                 if targets.is_empty() {
-                    return Err(miette::miette!("No matching worktrees found to synchronize."));
+                    return Err(miette::miette!(
+                        "No matching worktrees found to synchronize."
+                    ));
                 }
 
                 for wt in targets {
                     if !self.json_mode {
-                        println!("{} Synchronizing configuration for: {}", "➜".cyan().bold(), wt.branch.bold());
+                        println!(
+                            "{} Synchronizing configuration for: {}",
+                            "➜".cyan().bold(),
+                            wt.branch.bold()
+                        );
                     }
                     if let Err(e) = self.repo.sync_configs(&wt.path) {
                         error!(error = %e, path = %wt.path, "Configuration synchronization failed");
@@ -338,7 +403,38 @@ impl<R: ProjectRepository> Reducer<R> {
                 }
 
                 if self.json_mode {
-                    View::render_json(&serde_json::json!({ "status": "success" })).map_err(|e| miette::miette!("{e:?}"))?;
+                    View::render_json(&serde_json::json!({ "status": "success" }))
+                        .map_err(|e| miette::miette!("{e:?}"))?;
+                }
+            }
+            Intent::Config { key, show } => {
+                if let Some(k) = key {
+                    self.repo
+                        .set_api_key(&k)
+                        .map_err(|e| miette::miette!("Failed to set API key: {}", e))?;
+                    if !self.json_mode {
+                        println!("{} Gemini API key set successfully.", "✔".green().bold());
+                    } else {
+                        View::render_json(
+                            &serde_json::json!({ "status": "success", "action": "set_key" }),
+                        )
+                        .map_err(|e| miette::miette!("{e:?}"))?;
+                    }
+                } else if show {
+                    let k = self
+                        .repo
+                        .get_api_key()
+                        .map_err(|e| miette::miette!("Failed to get API key: {}", e))?;
+                    if !self.json_mode {
+                        if let Some(val) = k {
+                            println!("{} Current API key: {}", "➜".cyan().bold(), val);
+                        } else {
+                            println!("{} No API key found.", "⚠".yellow().bold());
+                        }
+                    } else {
+                        View::render_json(&serde_json::json!({ "status": "success", "key": k }))
+                            .map_err(|e| miette::miette!("{e:?}"))?;
+                    }
                 }
             }
         }
@@ -360,16 +456,38 @@ async fn main() -> Result<()> {
         Some(Commands::Remove { intent }) => Intent::RemoveWorktree { intent },
         Some(Commands::List) => Intent::ListWorktrees,
         Some(Commands::Setup) => Intent::SetupDefaults,
-        Some(Commands::Run { intent, branch, command }) => Intent::RunCommand { intent, branch, command },
+        Some(Commands::Run {
+            intent,
+            branch,
+            command,
+        }) => Intent::RunCommand {
+            intent,
+            branch,
+            command,
+        },
         Some(Commands::Sync { intent }) => Intent::SyncConfigurations { intent },
+        Some(Commands::Config { action }) => match action {
+            cli::ConfigAction::SetKey { key } => Intent::Config {
+                key: Some(key),
+                show: false,
+            },
+            cli::ConfigAction::GetKey => Intent::Config {
+                key: None,
+                show: true,
+            },
+        },
         None => {
             if cli.json {
-                 let worktrees = GitProjectRepository.list_worktrees().map_err(|e| miette::miette!("{e:?}"))?;
-                 return View::render_json(&worktrees).map_err(|e| miette::miette!("{e:?}"));
+                let worktrees = GitProjectRepository
+                    .list_worktrees()
+                    .map_err(|e| miette::miette!("{e:?}"))?;
+                return View::render_json(&worktrees).map_err(|e| miette::miette!("{e:?}"));
             }
             // TUI Mode
             View::render_banner();
-            let worktrees = GitProjectRepository.list_worktrees().map_err(|e| miette::miette!("{e:?}"))?;
+            let worktrees = GitProjectRepository
+                .list_worktrees()
+                .map_err(|e| miette::miette!("{e:?}"))?;
             let mut table_state = TableState::default();
             if !worktrees.is_empty() {
                 table_state.select(Some(0));
@@ -379,7 +497,8 @@ async fn main() -> Result<()> {
                 table_state,
                 refresh_needed: false,
             };
-            return View::render_tui(&GitProjectRepository, initial_state).map_err(|e| miette::miette!("{e:?}"));
+            return View::render_tui(&GitProjectRepository, initial_state)
+                .map_err(|e| miette::miette!("{e:?}"));
         }
     };
 
@@ -400,9 +519,9 @@ async fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::Result;
     use domain::repository::{ProjectRepository, Worktree};
     use std::sync::{Arc, Mutex};
-    use anyhow::Result;
 
     #[derive(Default)]
     struct CallTracker {
@@ -470,7 +589,7 @@ mod tests {
                     is_bare: false,
                     is_detached: false,
                     status_summary: Some("~1".to_string()),
-                }
+                },
             ])
         }
         fn sync_configs(&self, path: &str) -> anyhow::Result<()> {
@@ -490,20 +609,56 @@ mod tests {
         fn set_preferred_editor(&self, _editor: &str) -> anyhow::Result<()> {
             Ok(())
         }
-        fn fetch(&self, _path: &str) -> anyhow::Result<()> { Ok(()) }
-        fn get_status(&self, _path: &str) -> anyhow::Result<domain::repository::GitStatus> {
-            Ok(domain::repository::GitStatus { staged: vec![], unstaged: vec![], untracked: vec![] })
+        fn fetch(&self, _path: &str) -> anyhow::Result<()> {
+            Ok(())
         }
-        fn stage_file(&self, _path: &str, _file: &str) -> anyhow::Result<()> { Ok(()) }
-        fn unstage_file(&self, _path: &str, _file: &str) -> anyhow::Result<()> { Ok(()) }
-        fn commit(&self, _path: &str, _message: &str) -> anyhow::Result<()> { Ok(()) }
-        fn get_history(&self, _path: &str, _limit: usize) -> anyhow::Result<Vec<domain::repository::GitCommit>> {
+        fn get_status(&self, _path: &str) -> anyhow::Result<domain::repository::GitStatus> {
+            Ok(domain::repository::GitStatus {
+                staged: vec![],
+                unstaged: vec![],
+                untracked: vec![],
+            })
+        }
+        fn stage_all(&self, _path: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+        fn unstage_all(&self, _path: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+        fn stage_file(&self, _path: &str, _file: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+        fn unstage_file(&self, _path: &str, _file: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+        fn commit(&self, _path: &str, _message: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+        fn get_history(
+            &self,
+            _path: &str,
+            _limit: usize,
+        ) -> anyhow::Result<Vec<domain::repository::GitCommit>> {
             Ok(vec![])
         }
         fn list_branches(&self) -> anyhow::Result<Vec<String>> {
             Ok(vec!["main".to_string(), "dev".to_string()])
         }
-        fn switch_branch(&self, _path: &str, _branch: &str) -> anyhow::Result<()> { Ok(()) }
+        fn switch_branch(&self, _path: &str, _branch: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+        fn get_diff(&self, _path: &str) -> anyhow::Result<String> {
+            Ok("diff".to_string())
+        }
+        fn generate_commit_message(&self, _diff: &str, _branch: &str) -> anyhow::Result<String> {
+            Ok("feat: mock commit message".to_string())
+        }
+        fn get_api_key(&self) -> anyhow::Result<Option<String>> {
+            Ok(Some("key".to_string()))
+        }
+        fn set_api_key(&self, _key: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
     }
 
     #[test]
@@ -532,10 +687,12 @@ mod tests {
         let repo = MockRepo::new(tracker.clone());
         let reducer = Reducer::new(repo, false);
 
-        reducer.handle(Intent::Initialize {
-            url: "https://github.com/user/repo.git".to_string(),
-            name: None,
-        }).map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        reducer
+            .handle(Intent::Initialize {
+                url: "https://github.com/user/repo.git".to_string(),
+                name: None,
+            })
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
         assert_eq!(
             tracker.lock().unwrap().calls,
@@ -550,10 +707,12 @@ mod tests {
         let repo = MockRepo::new(tracker.clone());
         let reducer = Reducer::new(repo, false);
 
-        reducer.handle(Intent::AddWorktree {
-            intent: "feat-x".to_string(),
-            branch: Some("feature/x".to_string()),
-        }).map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        reducer
+            .handle(Intent::AddWorktree {
+                intent: "feat-x".to_string(),
+                branch: Some("feature/x".to_string()),
+            })
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
         assert_eq!(tracker.lock().unwrap().calls, vec!["add:feat-x|feature/x"]);
         Ok(())
@@ -565,7 +724,9 @@ mod tests {
         let repo = MockRepo::new(tracker.clone());
         let reducer = Reducer::new(repo, false);
 
-        reducer.handle(Intent::SetupDefaults).map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        reducer
+            .handle(Intent::SetupDefaults)
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
         let calls = tracker.lock().unwrap().calls.clone();
         assert!(calls.contains(&"add:main|main".to_string()));
@@ -605,9 +766,11 @@ mod tests {
         let repo = MockRepo::new(tracker.clone());
         let reducer = Reducer::new(repo, false);
 
-        reducer.handle(Intent::SyncConfigurations {
-            intent: Some("main".to_string()),
-        }).map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        reducer
+            .handle(Intent::SyncConfigurations {
+                intent: Some("main".to_string()),
+            })
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
         let calls = tracker.lock().unwrap().calls.clone();
         assert!(calls.contains(&"list".to_string()));
@@ -620,8 +783,12 @@ mod tests {
         use clap::Parser;
 
         // Test init
-        let cli = Cli::try_parse_from(["worktrees", "init", "url"]).map_err(|e| anyhow::anyhow!(e.to_string()))?;
-        match cli.command.ok_or_else(|| anyhow::anyhow!("Missing command"))? {
+        let cli = Cli::try_parse_from(["worktrees", "init", "url"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match cli
+            .command
+            .ok_or_else(|| anyhow::anyhow!("Missing command"))?
+        {
             Commands::Init { url, name } => {
                 assert_eq!(url, "url");
                 assert_eq!(name, None);
@@ -630,8 +797,12 @@ mod tests {
         }
 
         // Test add
-        let cli = Cli::try_parse_from(["worktrees", "add", "feat", "branch"]).map_err(|e| anyhow::anyhow!(e.to_string()))?;
-        match cli.command.ok_or_else(|| anyhow::anyhow!("Missing command"))? {
+        let cli = Cli::try_parse_from(["worktrees", "add", "feat", "branch"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match cli
+            .command
+            .ok_or_else(|| anyhow::anyhow!("Missing command"))?
+        {
             Commands::Add { intent, branch } => {
                 assert_eq!(intent, "feat");
                 assert_eq!(branch, Some("branch".to_string()));
@@ -640,8 +811,13 @@ mod tests {
         }
 
         // Test list
-        let cli = Cli::try_parse_from(["worktrees", "list"]).map_err(|e| anyhow::anyhow!(e.to_string()))?;
-        assert!(matches!(cli.command.ok_or_else(|| anyhow::anyhow!("Missing command"))?, Commands::List));
+        let cli = Cli::try_parse_from(["worktrees", "list"])
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        assert!(matches!(
+            cli.command
+                .ok_or_else(|| anyhow::anyhow!("Missing command"))?,
+            Commands::List
+        ));
         Ok(())
     }
 }

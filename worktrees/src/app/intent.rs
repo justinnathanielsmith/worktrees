@@ -21,4 +21,8 @@ pub enum Intent {
     SyncConfigurations {
         intent: Option<String>,
     },
+    Config {
+        key: Option<String>,
+        show: bool,
+    },
 }

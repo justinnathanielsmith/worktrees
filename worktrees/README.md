@@ -10,6 +10,19 @@ A professional CLI tool for managing Git worktrees using a bare repository archi
 - `remove <name>`: Remove a worktree.
 - `list`: View and manage worktrees in an interactive interface.
 
+### Interactive TUI Features
+
+The `list` command (and running without arguments) opens a high-performance interactive interface:
+
+- **Git Status**: Press `G` to view a detailed, split-pane status (Staged vs Unstaged).
+- **Staging**: Press `Space` in Status view to toggle staging for files.
+- **Committing**: Press `C` in Status view to commit changes with a message.
+- **Commit Log**: Press `L` to view the worktree's commit history.
+- **Branch Switching**: Press `B` to switch a worktree to a different local branch.
+- **Remote Fetch**: Press `F` to fetch updates from origin for all worktrees.
+- **Configuration Sync**: Press `S` to sync configuration files as defined in `.worktrees.sync`.
+- **Editor Integration**: Press `O` to open the worktree in your preferred editor.
+
 ## Architecture
 
 Built with Rust for performance and reliability.

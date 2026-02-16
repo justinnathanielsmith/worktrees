@@ -22,15 +22,21 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
 
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer, state: &mut Self::State) {
         let theme = CyberTheme::default();
-        
-        let rows: Vec<Row> = self.worktrees
+
+        let rows: Vec<Row> = self
+            .worktrees
             .iter()
             .enumerate()
             .map(|(i, wt)| {
                 let is_selected = Some(i) == state.selected();
-                
+
                 let (icon, branch_style) = if wt.is_bare {
-                    (" 🏠 ", Style::default().fg(theme.subtle).add_modifier(Modifier::ITALIC))
+                    (
+                        " 🏠 ",
+                        Style::default()
+                            .fg(theme.subtle)
+                            .add_modifier(Modifier::ITALIC),
+                    )
                 } else if wt.is_detached {
                     (" ⚠️ ", Style::default().fg(theme.error))
                 } else {
@@ -40,13 +46,19 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
                 let branch_str = if wt.is_bare {
                     "MAIN".to_string()
                 } else if wt.is_detached {
-                    format!("DETACHED @ {}", &wt.commit[..std::cmp::min(wt.commit.len(), 7)])
+                    format!(
+                        "DETACHED @ {}",
+                        &wt.commit[..std::cmp::min(wt.commit.len(), 7)]
+                    )
                 } else {
                     wt.branch.clone()
                 };
 
                 let row_style = if is_selected {
-                    Style::default().bg(theme.selection_bg).fg(theme.text).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .bg(theme.selection_bg)
+                        .fg(theme.text)
+                        .add_modifier(Modifier::BOLD)
                 } else {
                     Style::default().fg(theme.text)
                 };
@@ -87,9 +99,19 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
             ],
         )
         .header(
-            Row::new(vec!["", "  BRANCH / INTENT", "STATUS", "COMMIT", "LOCAL PATH"])
-                .style(Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD))
-                .bottom_margin(1),
+            Row::new(vec![
+                "",
+                "  BRANCH / INTENT",
+                "STATUS",
+                "COMMIT",
+                "LOCAL PATH",
+            ])
+            .style(
+                Style::default()
+                    .fg(theme.secondary)
+                    .add_modifier(Modifier::BOLD),
+            )
+            .bottom_margin(1),
         )
         .block(
             Block::default()
@@ -98,12 +120,14 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
                 .border_style(Style::default().fg(theme.border))
                 .title(Span::styled(
                     format!(" ACTIVE WORKTREES ({}) ", self.worktrees.len()),
-                    Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(theme.accent)
+                        .add_modifier(Modifier::BOLD),
                 )),
         )
         .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">> ");
-        
+
         StatefulWidget::render(table, area, buf, state);
     }
 }

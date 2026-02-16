@@ -1,0 +1,6 @@
+/target
+**/*.rs.bk
+.DS_Store
+.worktrees.gemini_key
+.worktrees.editor
+.worktrees.sync
