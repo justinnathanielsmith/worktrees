@@ -62,20 +62,28 @@ impl Widget for FooterWidget {
             Span::styled("FETCH", Style::default().fg(theme.text)),
             Span::styled(" | ", Style::default().fg(theme.subtle)),
             Span::styled(
-                " [P] ",
-                Style::default()
-                    .fg(theme.primary)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("KEY", Style::default().fg(theme.text)),
-            Span::styled(" | ", Style::default().fg(theme.subtle)),
-            Span::styled(
                 " [S] ",
                 Style::default()
                     .fg(theme.primary)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled("SYNC", Style::default().fg(theme.text)),
+            Span::styled(" | ", Style::default().fg(theme.subtle)),
+            Span::styled(
+                " [U] ",
+                Style::default()
+                    .fg(theme.primary)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("SETUP", Style::default().fg(theme.text)),
+            Span::styled(" | ", Style::default().fg(theme.subtle)),
+            Span::styled(
+                " [P] ",
+                Style::default()
+                    .fg(theme.secondary)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("PUSH", Style::default().fg(theme.text)),
             Span::styled(" | ", Style::default().fg(theme.subtle)),
             Span::styled(
                 " [D/X] ",

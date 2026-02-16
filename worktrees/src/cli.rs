@@ -65,6 +65,13 @@ pub enum Commands {
         /// The name of the worktree to sync (omit to sync all)
         intent: Option<String>,
     },
+    /// Push changes to the remote repository
+    ///
+    /// Example: worktrees push feature-login
+    Push {
+        /// The name of the worktree to push (defaults to current directory if valid worktree, or fails)
+        intent: Option<String>,
+    },
     /// Configuration management
     Config {
         #[command(subcommand)]

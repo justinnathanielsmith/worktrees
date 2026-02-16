@@ -113,17 +113,42 @@ impl<'a> Widget for DetailsWidget<'a> {
                 ),
             ]));
 
+            lines.push(Line::from(""));
+            lines.push(Line::from(vec![
+                Span::styled(
+                    " 💡 TIP: ",
+                    Style::default()
+                        .fg(theme.accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    if wt.is_bare {
+                        "Use 'SETUP' to create standard worktrees."
+                    } else {
+                        "Press 'G' to manage staged files and commit."
+                    },
+                    Style::default().fg(theme.subtle).add_modifier(Modifier::ITALIC),
+                ),
+            ]));
+
             lines
         } else {
-            vec![Line::from(vec![
-                Span::styled(" ℹ️ ", Style::default().fg(theme.warning)),
-                Span::styled(
-                    "Select a worktree to view details",
-                    Style::default()
-                        .fg(theme.subtle)
-                        .add_modifier(Modifier::ITALIC),
-                ),
-            ])]
+            vec![
+                Line::from(vec![
+                    Span::styled(" 💡 PRO-TIP ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                    Span::styled(" | ", Style::default().fg(theme.subtle)),
+                    Span::styled("Use 'S' to sync your IDE configurations across all worktrees.", Style::default().fg(theme.text)),
+                ]),
+                Line::from(vec![
+                    Span::styled(" 💡 PRO-TIP ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                    Span::styled(" | ", Style::default().fg(theme.subtle)),
+                    Span::styled("Press 'O' to quickly open any worktree in your favorite editor.", Style::default().fg(theme.text)),
+                ]),
+                Line::from(""),
+                Line::from(vec![
+                    Span::styled(" Select a worktree from the list above to see its detailed status. ", Style::default().fg(theme.subtle).add_modifier(Modifier::ITALIC)),
+                ]),
+            ]
         };
 
         Paragraph::new(details_text)

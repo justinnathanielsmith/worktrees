@@ -1,4 +1,5 @@
 use crate::domain::repository::Worktree;
+use crate::app::intent::Intent;
 use ratatui::widgets::TableState;
 
 #[derive(Debug, Clone)]
@@ -46,6 +47,13 @@ pub enum AppState {
     RemovingWorktree { intent: String },
     /// Successfully removed a worktree.
     WorktreeRemoved,
+    /// Confirming a destructive operation.
+    Confirming {
+        title: String,
+        message: String,
+        action: Box<Intent>,
+        prev_state: Box<AppState>,
+    },
     /// Synchronizing configuration files.
     Syncing {
         branch: String,
@@ -53,6 +61,23 @@ pub enum AppState {
     },
     /// Synchronization completed.
     SyncComplete {
+        branch: String,
+        prev_state: Box<AppState>,
+    },
+    /// Help modal showing shortcuts.
+    Help { prev_state: Box<AppState> },
+    /// Fetching from remote.
+    Fetching {
+        branch: String,
+        prev_state: Box<AppState>,
+    },
+    /// Pushing changes to remote.
+    Pushing {
+        branch: String,
+        prev_state: Box<AppState>,
+    },
+    /// Push completed.
+    PushComplete {
         branch: String,
         prev_state: Box<AppState>,
     },
@@ -130,8 +155,13 @@ impl AppState {
     /// Helper to extract the previous state from states that track it.
     pub fn prev_state_boxed(&self) -> &AppState {
         match self {
+            AppState::Confirming { prev_state, .. } => prev_state,
             AppState::Syncing { prev_state, .. } => prev_state,
             AppState::SyncComplete { prev_state, .. } => prev_state,
+            AppState::Help { prev_state } => prev_state,
+            AppState::Fetching { prev_state, .. } => prev_state,
+            AppState::Pushing { prev_state, .. } => prev_state,
+            AppState::PushComplete { prev_state, .. } => prev_state,
             AppState::SelectingEditor { prev_state, .. } => prev_state,
             AppState::OpeningEditor { prev_state, .. } => prev_state,
             AppState::ViewingStatus { prev_state, .. } => prev_state,

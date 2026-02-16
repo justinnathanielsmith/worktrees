@@ -323,6 +323,11 @@ impl ProjectRepository for GitProjectRepository {
         Ok(())
     }
 
+    fn push(&self, path: &str) -> Result<()> {
+        Self::run_git(&["-C", path, "push"])?;
+        Ok(())
+    }
+
     fn get_status(&self, path: &str) -> Result<GitStatus> {
         let output = Self::run_git(&["-C", path, "status", "--porcelain"])?;
         let mut staged = Vec::new();

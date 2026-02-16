@@ -416,6 +416,54 @@ impl<R: ProjectRepository> Reducer<R> {
                         .map_err(|e| miette::miette!("{e:?}"))?;
                 }
             }
+            Intent::Push { intent } => {
+                let worktrees = self
+                    .repo
+                    .list_worktrees()
+                    .map_err(|e| miette::miette!("{e:?}"))?;
+                
+                let target = if let Some(name) = intent {
+                    worktrees
+                        .into_iter()
+                        .find(|wt| wt.branch == name || wt.path.ends_with(&name))
+                } else {
+                     return Err(miette::miette!(
+                        "Please specify a worktree to push (e.g. 'worktrees push main')."
+                    ));
+                };
+
+                if let Some(wt) = target {
+                     if !self.json_mode {
+                        println!(
+                            "{} Pushing worktree: {}",
+                            "➜".cyan().bold(),
+                            wt.branch.bold()
+                        );
+                    }
+                    match self.repo.push(&wt.path) {
+                        Ok(_) => {
+                            if !self.json_mode {
+                                println!("   {} Push complete.", "✔".green());
+                            }
+                            if self.json_mode {
+                                View::render_json(&serde_json::json!({ "status": "success", "branch": wt.branch }))
+                                    .map_err(|e| miette::miette!("{e:?}"))?;
+                            }
+                        }
+                        Err(e) => {
+                             error!(error = %e, branch = %wt.branch, "Push failed");
+                             if !self.json_mode {
+                                println!("   {} Error: {}", "❌".red(), e);
+                            }
+                             return Err(miette::miette!("Push failed: {}", e));
+                        }
+                    }
+                } else {
+                     return Err(miette::miette!(
+                        "Worktree not found."
+                    ));
+                }
+            }
             Intent::Config { key, show } => {
                 if let Some(k) = key {
                     self.repo
@@ -475,6 +523,7 @@ async fn main() -> Result<()> {
             command,
         },
         Some(Commands::Sync { intent }) => Intent::SyncConfigurations { intent },
+        Some(Commands::Push { intent }) => Intent::Push { intent },
         Some(Commands::Config { action }) => match action {
             cli::ConfigAction::SetKey { key } => Intent::Config {
                 key: Some(key),
@@ -619,6 +668,14 @@ mod tests {
             Ok(())
         }
         fn fetch(&self, _path: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+        fn push(&self, path: &str) -> anyhow::Result<()> {
+            self.tracker
+                .lock()
+                .unwrap()
+                .calls
+                .push(format!("push:{}", path));
             Ok(())
         }
         fn get_status(&self, _path: &str) -> anyhow::Result<domain::repository::GitStatus> {
@@ -784,6 +841,24 @@ mod tests {
         let calls = tracker.lock().unwrap().calls.clone();
         assert!(calls.contains(&"list".to_string()));
         assert!(calls.contains(&"sync:main".to_string()));
+        Ok(())
+    }
+
+    #[test]
+    fn test_reducer_handle_push() -> Result<()> {
+        let tracker = Arc::new(Mutex::new(CallTracker::default()));
+        let repo = MockRepo::new(tracker.clone());
+        let reducer = Reducer::new(repo, false);
+
+        reducer
+            .handle(Intent::Push {
+                intent: Some("main".to_string()),
+            })
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let calls = tracker.lock().unwrap().calls.clone();
+        assert!(calls.contains(&"list".to_string()));
+        assert!(calls.contains(&"push:main".to_string()));
         Ok(())
     }
 
