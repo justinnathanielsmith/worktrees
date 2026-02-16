@@ -47,10 +47,72 @@ import CodeBlock from './CodeBlock.astro';
         </div>
     </div>
 
-    <!-- 02. The Command Reference -->
+    <!-- 02. Worktrees: The Stash Killer -->
     <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-slate-400 font-bold text-2xl">02</span>
+            <span class="text-blue-500 font-bold text-2xl">02</span>
+            <h2 class="text-3xl font-bold text-white tracking-wide">Worktrees: The Stash Killer</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div class="space-y-6 text-slate-300 leading-relaxed text-lg">
+                <p>
+                    Most developers rely on <code class="text-blue-400 bg-blue-400/10 px-2 py-1 rounded">git stash</code> to temporarily store uncommitted work. However, stashing is inherently <strong>destructive</strong> and ephemeral. It forces you to wipe your current state and leads to "stash-amnesia"—forgetting what was stored, why it was stored, and losing track of vital context.
+                </p>
+                <p>
+                    Worktrees eliminate this bottleneck by providing <strong>persistent, named environments</strong>. Instead of hiding your work in a stack, you move it to a physical workspace where it remains alive, isolated, and ready for immediate resumption.
+                </p>
+            </div>
+            <div class="space-y-4">
+                <div class="bg-slate-900 p-8 border border-slate-800 rounded-xl relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <span class="text-6xl">⚔️</span>
+                    </div>
+                    <h4 class="text-white font-bold mb-6 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                        Why it's Superior
+                    </h4>
+                    <ul class="space-y-4 text-slate-400">
+                        <li class="flex items-start gap-3">
+                            <span class="text-blue-500 font-bold">✓</span>
+                            <span><strong>Non-Destructive:</strong> No more "popping" errors or lost hunks. Your uncommitted changes stay exactly where you left them.</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-blue-500 font-bold">✓</span>
+                            <span><strong>Context Isolation:</strong> Each task has its own physical folder. No more polluting your IDE with unrelated branch files.</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-blue-500 font-bold">✓</span>
+                            <span><strong>Parallel Development:</strong> Keep your feature branch running in one terminal while you fix a hotfix in another.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="p-6 bg-slate-900/50 border border-slate-800 rounded-xl hover:bg-slate-900 transition-colors">
+                <div class="text-blue-400 text-3xl font-bold mb-2">-40%</div>
+                <h5 class="text-white font-bold text-sm mb-1 uppercase tracking-tight">Merge Conflicts</h5>
+                <p class="text-xs text-slate-500">Isolating long-running features in their own worktrees reduces accidental cross-branch pollution and stash collisions.</p>
+            </div>
+            <div class="p-6 bg-slate-900/50 border border-slate-800 rounded-xl hover:bg-slate-900 transition-colors">
+                <div class="text-blue-400 text-3xl font-bold mb-2">Instant</div>
+                <h5 class="text-white font-bold text-sm mb-1 uppercase tracking-tight">Context Switching</h5>
+                <p class="text-xs text-slate-500">Eliminate the "Git checkout" lag. Switching between tasks is as fast as a <code class="text-blue-500">cd</code> command.</p>
+            </div>
+            <div class="p-6 bg-slate-900/50 border border-slate-800 rounded-xl hover:bg-slate-900 transition-colors">
+                <div class="text-blue-400 text-3xl font-bold mb-2">+2x</div>
+                <h5 class="text-white font-bold text-sm mb-1 uppercase tracking-tight">Review Efficiency</h5>
+                <p class="text-xs text-slate-500">Review PRs in a dedicated 'review' worktree without disturbing your active development state or uncommitted work.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 03. The Command Reference -->
+    <div class="fade-in space-y-12">
+        <div class="flex items-center gap-4">
+            <span class="text-slate-400 font-bold text-2xl">03</span>
             <h2 class="text-3xl font-bold text-white tracking-wide">Command Reference</h2>
         </div>
 
@@ -96,10 +158,10 @@ import CodeBlock from './CodeBlock.astro';
         </div>
     </div>
 
-    <!-- 03. The Advantage Set -->
+    <!-- 04. The Advantage Set -->
     <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-blue-500 font-bold text-2xl">03</span>
+            <span class="text-blue-500 font-bold text-2xl">04</span>
             <h2 class="text-3xl font-bold text-white tracking-wide">Key Advantages</h2>
         </div>
 
@@ -122,10 +184,10 @@ import CodeBlock from './CodeBlock.astro';
         </div>
     </div>
 
-    <!-- 04. Implementation Protocol -->
+    <!-- 05. Implementation Protocol -->
     <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-blue-500 font-bold text-2xl">04</span>
+            <span class="text-blue-500 font-bold text-2xl">05</span>
             <h2 class="text-3xl font-bold text-white tracking-wide">Implementation Steps</h2>
         </div>
 
@@ -150,10 +212,10 @@ import CodeBlock from './CodeBlock.astro';
         </div>
     </div>
 
-    <!-- 05. The Mindset Shift -->
+    <!-- 06. The Mindset Shift -->
     <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-blue-500 font-bold text-2xl">05</span>
+            <span class="text-blue-500 font-bold text-2xl">06</span>
             <h2 class="text-3xl font-bold text-white tracking-wide">Workflow Patterns</h2>
         </div>
 
@@ -171,10 +233,10 @@ import CodeBlock from './CodeBlock.astro';
         </div>
     </div>
 
-    <!-- 06. Standard Git Flow -->
+    <!-- 07. Standard Git Flow -->
     <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-blue-500 font-bold text-2xl">06</span>
+            <span class="text-blue-500 font-bold text-2xl">07</span>
             <h2 class="text-3xl font-bold text-white tracking-wide">Standard Git Flow</h2>
         </div>
 
@@ -200,10 +262,10 @@ import CodeBlock from './CodeBlock.astro';
         </div>
     </div>
 
-    <!-- 07. Advanced Maneuvers -->
+    <!-- 08. Advanced Maneuvers -->
     <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-blue-500 font-bold text-2xl">07</span>
+            <span class="text-blue-500 font-bold text-2xl">08</span>
             <h2 class="text-3xl font-bold text-white tracking-wide">Advanced Techniques</h2>
         </div>
 
@@ -247,10 +309,10 @@ import CodeBlock from './CodeBlock.astro';
         </div>
     </div>
 
-    <!-- 08. Toolchain Integration -->
+    <!-- 09. Toolchain Integration -->
     <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-slate-400 font-bold text-2xl">08</span>
+            <span class="text-slate-400 font-bold text-2xl">09</span>
             <h2 class="text-3xl font-bold text-white tracking-wide">Toolchain Integration</h2>
         </div>
 
@@ -273,10 +335,10 @@ import CodeBlock from './CodeBlock.astro';
         </div>
     </div>
 
-    <!-- 09. Troubleshooting -->
+    <!-- 10. Troubleshooting -->
     <div class="fade-in space-y-12">
         <div class="flex items-center gap-4">
-            <span class="text-yellow-500 font-bold text-2xl">09</span>
+            <span class="text-yellow-500 font-bold text-2xl">10</span>
             <h2 class="text-3xl font-bold text-white tracking-wide">Troubleshooting</h2>
         </div>
 
