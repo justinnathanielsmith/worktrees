@@ -7,7 +7,10 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "cli:test": "cd worktrees && make test",
+    "cli:lint": "cd worktrees && make check",
+    "cli:fmt": "cd worktrees && make fmt"
   },
   "dependencies": {
     "@astrojs/tailwind": "^6.0.2",

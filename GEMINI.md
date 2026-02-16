@@ -5,6 +5,7 @@ This project, titled **"Giga Chad's Bare Worktree Guide,"** is an elite educatio
 
 ### Main Technologies
 - **Astro 4.x+**: Modern static site generator for superior performance and componentization.
+- **Rust**: Powering the `worktrees` CLI for high-performance Git automation.
 - **Tailwind CSS**: Utility-first CSS for rapid, consistent styling of the "High-Performance Cyber" UI.
 - **Vanilla CSS**: Used for bespoke animations (Aurora, Scanlines, Grain) to avoid the "AI slop" look.
 - **TypeScript**: Ensuring type safety across components and logic.
@@ -22,6 +23,14 @@ The project is a multi-page Astro application employing a component-based archit
 - **Build**: `npm run build` to generate the optimized static site in the `dist/` directory.
 - **Preview**: `npm run preview` to test the production build locally.
 - **Deployment**: Automated via GitHub Actions to GitHub Pages (`/worktrees` base path).
+
+## CLI Development (Rust)
+The `worktrees` directory contains the Rust-based automation tool.
+- **Run**: `cargo run -- --help` (from within `worktrees/`)
+- **Test**: `cargo test`
+- **Lint**: `cargo clippy`
+- **Format**: `cargo fmt`
+- **Build**: `cargo build --release`
 
 ## Development Conventions
 - **Thematic Consistency**: All documentation and UI elements must adhere to the **"High-Performance Cyber"** persona and palette:

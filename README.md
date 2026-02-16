@@ -27,6 +27,7 @@ This site is built with **Astro 4.x+** and **Tailwind CSS**, featuring a **High-
 
 Get the engine running locally:
 
+#### Astro Site
 ```bash
 # Clone the repository
 git clone https://github.com/justinnathanielsmith/worktrees.git
@@ -37,6 +38,14 @@ npm install
 
 # Start the dev server
 npm run dev
+```
+
+#### Worktrees CLI (Rust)
+The CLI tool for managing these worktrees lives in `worktrees/`.
+
+```bash
+cd worktrees
+cargo run -- --help
 ```
 
 ### Production Build

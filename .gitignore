@@ -5,3 +5,24 @@ node_modules/
 # Astro
 .astro/
 dist/
+out/
+.vercel
+.netlify
+
+# Rust
+target/
+**/*.rs.bk
+*.pdb
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
