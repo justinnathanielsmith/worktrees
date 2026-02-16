@@ -27,6 +27,8 @@ pub struct Worktree {
     pub is_detached: bool,
     /// A summarized string of git status (e.g., "+2 ~1").
     pub status_summary: Option<String>,
+    /// The size of the worktree directory on disk in bytes.
+    pub size_bytes: u64,
     /// Custom metadata for this worktree.
     pub metadata: Option<WorktreeMetadata>,
 }
