@@ -36,8 +36,8 @@ pub struct Worktree {
 /// Detailed git status of a specific worktree.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct GitStatus {
-    pub staged: Vec<String>,
-    pub unstaged: Vec<String>,
+    pub staged: Vec<(String, String)>,   // (path, code)
+    pub unstaged: Vec<(String, String)>, // (path, code)
     pub untracked: Vec<String>,
 }
 

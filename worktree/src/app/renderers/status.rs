@@ -133,17 +133,22 @@ pub fn render_status(
             Span::styled("No staged changes", Style::default().fg(theme.subtle)),
         ]));
     } else {
-        for (i, file) in status.staged.iter().enumerate() {
+        for (i, file_info) in status.staged.iter().enumerate() {
+            let (file, code) = file_info;
             let is_selected = i == status.selected_index;
             let (icon, file_type_color) = get_file_icon_and_color(file, &theme);
 
-            let style = if is_selected {
-                Style::default()
-                    .bg(theme.selection_bg)
-                    .fg(theme.primary)
-                    .add_modifier(Modifier::BOLD)
+            let is_deleted = code.contains('D');
+            let base_style = if is_deleted {
+                Style::default().fg(theme.error)
             } else {
-                Style::default().fg(theme.success)
+                Style::default().fg(theme.success).add_modifier(Modifier::BOLD)
+            };
+
+            let style = if is_selected {
+                base_style.bg(theme.selection_bg).fg(theme.primary)
+            } else {
+                base_style
             };
 
             let prefix = if is_selected { " ▶ " } else { "   " };
@@ -152,7 +157,7 @@ pub fn render_status(
                 Span::styled("󰄬 ", style),
                 Span::styled(icon, Style::default().fg(file_type_color)),
                 Span::styled(" ", style),
-                Span::styled(file, style),
+                Span::styled(file.as_str(), style),
             ]));
         }
     }
@@ -179,18 +184,23 @@ pub fn render_status(
             Span::styled("No unstaged changes", Style::default().fg(theme.subtle)),
         ]));
     } else {
-        let unstaged_start = status.staged.len();
-        for (i, file) in status.unstaged.iter().enumerate() {
-            let is_selected = (i + unstaged_start) == status.selected_index;
+        let unstaged_start_index = status.staged.len();
+        for (i, file_info) in status.unstaged.iter().enumerate() {
+            let (file, code) = file_info;
+            let is_selected = (i + unstaged_start_index) == status.selected_index;
             let (icon, file_type_color) = get_file_icon_and_color(file, &theme);
 
-            let style = if is_selected {
-                Style::default()
-                    .bg(theme.selection_bg)
-                    .fg(theme.primary)
-                    .add_modifier(Modifier::BOLD)
+            let is_deleted = code.contains('D');
+            let base_style = if is_deleted {
+                Style::default().fg(theme.error)
             } else {
-                Style::default().fg(theme.warning)
+                Style::default().fg(theme.warning).add_modifier(Modifier::DIM)
+            };
+
+            let style = if is_selected {
+                base_style.bg(theme.selection_bg).fg(theme.primary)
+            } else {
+                base_style
             };
 
             let prefix = if is_selected { " ▶ " } else { "   " };
@@ -199,13 +209,13 @@ pub fn render_status(
                 Span::styled("󱇨 ", style),
                 Span::styled(icon, Style::default().fg(file_type_color)),
                 Span::styled(" ", style),
-                Span::styled(file, style),
+                Span::styled(file.as_str(), style),
             ]));
         }
 
-        let untracked_start = status.staged.len() + status.unstaged.len();
+        let untracked_start_index = status.staged.len() + status.unstaged.len();
         for (i, file) in status.untracked.iter().enumerate() {
-            let is_selected = (i + untracked_start) == status.selected_index;
+            let is_selected = (i + untracked_start_index) == status.selected_index;
             let (icon, file_type_color) = get_file_icon_and_color(file, &theme);
 
             let style = if is_selected {

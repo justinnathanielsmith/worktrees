@@ -34,10 +34,16 @@ impl<'a> Widget for StatusTabWidget<'a> {
                             .fg(theme.success)
                             .add_modifier(Modifier::BOLD),
                     )));
-                    for file in &status.staged {
+                    for (file, code) in &status.staged {
+                        let is_deleted = code.contains('D');
+                        let style = if is_deleted {
+                            Style::default().fg(theme.error)
+                        } else {
+                            Style::default().fg(theme.success).add_modifier(Modifier::BOLD)
+                        };
                         lines.push(Line::from(vec![
                             Span::raw("   "),
-                            Span::styled(file, Style::default().fg(theme.success)),
+                            Span::styled(file, style),
                         ]));
                     }
                     lines.push(Line::from(""));
@@ -50,10 +56,16 @@ impl<'a> Widget for StatusTabWidget<'a> {
                             .fg(theme.warning)
                             .add_modifier(Modifier::BOLD),
                     )));
-                    for file in &status.unstaged {
+                    for (file, code) in &status.unstaged {
+                        let is_deleted = code.contains('D');
+                        let style = if is_deleted {
+                            Style::default().fg(theme.error)
+                        } else {
+                            Style::default().fg(theme.warning).add_modifier(Modifier::DIM)
+                        };
                         lines.push(Line::from(vec![
                             Span::raw("   "),
-                            Span::styled(file, Style::default().fg(theme.warning)),
+                            Span::styled(file, style),
                         ]));
                     }
                     for file in &status.untracked {

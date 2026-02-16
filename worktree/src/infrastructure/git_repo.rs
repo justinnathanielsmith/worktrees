@@ -542,12 +542,16 @@ impl ProjectRepository for GitProjectRepository {
             let file = line[3..].to_string();
 
             match status {
-                "M " | "A " | "D " | "R " | "C " => staged.push(file),
-                " M" | " D" => unstaged.push(file),
+                "M " | "A " | "D " | "R " | "C " => staged.push((file, status.to_string())),
+                " M" | " D" => unstaged.push((file, status.to_string())),
                 "??" => untracked.push(file),
                 "MM" => {
-                    staged.push(file.clone());
-                    unstaged.push(file);
+                    staged.push((file.clone(), "M ".to_string()));
+                    unstaged.push((file, " M".to_string()));
+                }
+                "MD" => {
+                    staged.push((file.clone(), "M ".to_string()));
+                    unstaged.push((file, " D".to_string()));
                 }
                 _ => {}
             }
