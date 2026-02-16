@@ -137,7 +137,10 @@ impl<R: ProjectRepository> Reducer<R> {
                             }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            View::render(AppState::Error(e.to_string()));
+                            View::render(AppState::Error(
+                                e.to_string(),
+                                Box::new(AppState::Welcome),
+                            ));
                         }
                     }
                 }
@@ -195,7 +198,10 @@ impl<R: ProjectRepository> Reducer<R> {
                             }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            View::render(AppState::Error(e.to_string()));
+                            View::render(AppState::Error(
+                                e.to_string(),
+                                Box::new(AppState::Welcome),
+                            ));
                         }
                     }
                 }
@@ -226,7 +232,10 @@ impl<R: ProjectRepository> Reducer<R> {
                             )
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            View::render(AppState::Error(e.to_string()));
+                            View::render(AppState::Error(
+                                e.to_string(),
+                                Box::new(AppState::Welcome),
+                            ));
                         }
                     }
                 }

@@ -18,6 +18,7 @@ miette = { version = "7.5.0", features = ["fancy"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["json", "env-filter"] }
 tokio = { version = "1.43.0", features = ["full"] }
+keyring = "3.6.2"
 
 [profile.release]
 opt-level = 3

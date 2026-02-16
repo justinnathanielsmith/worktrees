@@ -8,19 +8,23 @@ A professional CLI tool for managing Git worktrees using a bare repository archi
 - `setup`: Setup default worktrees (`main` and `dev`).
 - `add <name> [branch]`: Create a new worktree.
 - `remove <name>`: Remove a worktree.
+- `config set-key <key>`: Set your Gemini API key securely.
 - `list`: View and manage worktrees in an interactive interface.
 
 ### Interactive TUI Features
 
 The `list` command (and running without arguments) opens a high-performance interactive interface:
 
-- **Git Status**: Press `G` to view a detailed, split-pane status (Staged vs Unstaged).
-- **Staging**: Press `Space` in Status view to toggle staging for files.
-- **Committing**: Press `C` in Status view to commit changes with a message.
+- **Git Status**: Press `G` to view a detailed status pane.
+- **Staging**: In Status view, use `Space` to toggle files or `A` to stage all.
+- **Commit Menu**: Press `C` in Status view to open the commit menu.
+    - **Manual**: Enter your own commit message.
+    - **AI Generation**: Automatically generate a conventional commit message using Gemini 1.5 Flash based on your staged changes.
 - **Commit Log**: Press `L` to view the worktree's commit history.
-- **Branch Switching**: Press `B` to switch a worktree to a different local branch.
-- **Remote Fetch**: Press `F` to fetch updates from origin for all worktrees.
-- **Configuration Sync**: Press `S` to sync configuration files as defined in `.worktrees.sync`.
+- **Branch Switching**: Press `B` to switch branches.
+- **Remote Fetch**: Press `F` to fetch updates from origin.
+- **API Key**: Press `P` in the main list to securely set your Gemini API key.
+- **Configuration Sync**: Press `S` to sync configuration files.
 - **Editor Integration**: Press `O` to open the worktree in your preferred editor.
 
 ## Architecture

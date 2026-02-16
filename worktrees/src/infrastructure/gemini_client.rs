@@ -62,12 +62,11 @@ impl GeminiClient {
 
     pub async fn generate_commit_message(&self, diff: &str, branch: &str) -> Result<String> {
         let prompt = format!(
-            "Generate a concise, professional conventional commit message based on the following git diff and branch name. 
-            The message should follow the format: <type>(<scope>): <description>
-
+            "You are an expert developer. Generate a short, concise, professional conventional commit message based on the following git diff and branch name. 
+            Follow the format: <type>(<scope>): <description>
+            Do not include any conversational filler, markdown blocks, or explanations. Just the message.
 
             Branch: {}
-
 
             Diff:
 {}",
@@ -75,7 +74,7 @@ impl GeminiClient {
         );
 
         let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={}",
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={}",
             self.api_key
         );
 

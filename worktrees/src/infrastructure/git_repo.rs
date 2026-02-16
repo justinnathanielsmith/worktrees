@@ -2,6 +2,7 @@ use crate::domain::repository::{
     GitCommit, GitStatus, ProjectContext, ProjectRepository, Worktree,
 };
 use anyhow::{Context, Result};
+use keyring::Entry;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
@@ -390,10 +391,16 @@ impl ProjectRepository for GitProjectRepository {
     }
 
     fn generate_commit_message(&self, diff: &str, branch: &str) -> Result<String> {
+        debug!("Retrieving API key for commit message generation...");
         let api_key = self.get_api_key()?.ok_or_else(|| {
+            debug!("API key not found in environment, keyring, or fallback file.");
             anyhow::anyhow!("Gemini API key not found. Set it with 'wt config set-key <key>' or GEMINI_API_KEY environment variable.")
         })?;
 
+        debug!(
+            "API key retrieved (length: {}). Initializing Gemini client...",
+            api_key.len()
+        );
         let client = super::gemini_client::GeminiClient::new(api_key);
 
         tokio::task::block_in_place(|| {
@@ -442,21 +449,66 @@ impl ProjectRepository for GitProjectRepository {
     }
 
     fn get_api_key(&self) -> Result<Option<String>> {
+        // 1. Check Environment
         if let Ok(key) = std::env::var("GEMINI_API_KEY") {
-            return Ok(Some(key));
+            if !key.trim().is_empty() {
+                return Ok(Some(key.trim().to_string()));
+            }
         }
 
+        // 2. Check Keyring
+        let entry = Entry::new("worktrees", "gemini_api_key")
+            .context("Failed to initialize system keyring entry for 'worktrees'")?;
+
+        match entry.get_password() {
+            Ok(password) if !password.trim().is_empty() => {
+                return Ok(Some(password.trim().to_string()));
+            }
+            Ok(_) => { /* empty, continue */ }
+            Err(keyring::Error::NoEntry) => { /* missing, continue */ }
+            Err(e) => {
+                return Err(anyhow::anyhow!(
+                    "System keyring error ({}). Please ensure your system keychain is unlocked.",
+                    e
+                ));
+            }
+        }
+
+        // 3. Check Legacy File
         let path = Path::new(".worktrees.gemini_key");
         if path.exists() {
             let content = std::fs::read_to_string(path)?;
-            Ok(Some(content.trim().to_string()))
-        } else {
-            Ok(None)
+            let key = content.trim().to_string();
+            if !key.is_empty() {
+                return Ok(Some(key));
+            }
         }
+
+        Ok(None)
     }
 
     fn set_api_key(&self, key: &str) -> Result<()> {
-        std::fs::write(".worktrees.gemini_key", key)?;
+        let key = key.trim();
+        if key.is_empty() {
+            return Err(anyhow::anyhow!("API key cannot be empty"));
+        }
+
+        // 1. Try Keyring
+        let entry_res = Entry::new("worktrees", "gemini_api_key");
+        match entry_res {
+            Ok(entry) => {
+                if let Err(e) = entry.set_password(key) {
+                    debug!(error = %e, "Failed to store key in keyring, falling back to file.");
+                }
+            }
+            Err(e) => debug!(error = %e, "Failed to initialize keyring, falling back to file."),
+        }
+
+        // 2. Always store in file as fallback/sync
+        let path = Path::new(".worktrees.gemini_key");
+        std::fs::write(path, key)
+            .context("Failed to store API key in fallback file '.worktrees.gemini_key'")?;
+
         Ok(())
     }
 }

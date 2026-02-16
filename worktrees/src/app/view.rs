@@ -230,7 +230,8 @@ impl View {
                     }
                     AppState::Syncing { prev_state, .. }
                     | AppState::SyncComplete { prev_state, .. }
-                    | AppState::OpeningEditor { prev_state, .. } => match key.code {
+                    | AppState::OpeningEditor { prev_state, .. }
+                    | AppState::Error(_, prev_state) => match key.code {
                         KeyCode::Char('q') | KeyCode::Esc | KeyCode::Enter => {
                             new_state = Some(*prev_state.clone());
                         }
@@ -474,6 +475,13 @@ impl View {
                     return Ok(Some(current_state.clone()));
                 }
             }
+            KeyCode::Char('p') => {
+                return Ok(Some(AppState::Prompting {
+                    prompt_type: PromptType::ApiKey,
+                    input: String::new(),
+                    prev_state: Box::new(current_state.clone()),
+                }));
+            }
             _ => {}
         }
         Ok(None)
@@ -605,14 +613,36 @@ impl View {
                     }
                     1 => {
                         // AI
-                        if let Ok(diff) = repo.get_diff(path)
-                            && let Ok(msg) = repo.generate_commit_message(&diff, branch)
-                        {
-                            return Ok(Some(AppState::Prompting {
-                                prompt_type: PromptType::CommitMessage,
-                                input: msg,
-                                prev_state: Box::new(current_state.clone()),
-                            }));
+                        match repo.get_diff(path) {
+                            Ok(diff) => {
+                                if diff.trim().is_empty() {
+                                    return Ok(Some(AppState::Error(
+                                        "No changes detected to generate a message for.".into(),
+                                        Box::new(current_state.clone()),
+                                    )));
+                                }
+                                match repo.generate_commit_message(&diff, branch) {
+                                    Ok(msg) => {
+                                        return Ok(Some(AppState::Prompting {
+                                            prompt_type: PromptType::CommitMessage,
+                                            input: msg,
+                                            prev_state: Box::new(current_state.clone()),
+                                        }));
+                                    }
+                                    Err(e) => {
+                                        return Ok(Some(AppState::Error(
+                                            format!("AI Generation failed: {}", e),
+                                            Box::new(current_state.clone()),
+                                        )));
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                return Ok(Some(AppState::Error(
+                                    format!("Failed to get diff: {}", e),
+                                    Box::new(current_state.clone()),
+                                )));
+                            }
                         }
                     }
                     _ => {}
@@ -785,10 +815,20 @@ impl View {
                             }));
                         }
                         PromptType::CommitMessage => {
-                            if let AppState::ViewingStatus { path, .. } = prev_state {
-                                let _ = repo.commit(path, &val);
-                                if let Ok(status) = repo.get_status(path) {
-                                    let mut new_state = prev_state.clone();
+                            let (path, target_state) = match prev_state {
+                                AppState::ViewingStatus { path, .. } => {
+                                    (Some(path.clone()), prev_state.clone())
+                                }
+                                AppState::Committing {
+                                    path, prev_state, ..
+                                } => (Some(path.clone()), (**prev_state).clone()),
+                                _ => (None, prev_state.clone()),
+                            };
+
+                            if let Some(p) = path {
+                                let _ = repo.commit(&p, &val);
+                                if let Ok(status) = repo.get_status(&p) {
+                                    let mut new_state = target_state;
                                     if let AppState::ViewingStatus { status: s, .. } =
                                         &mut new_state
                                     {
@@ -799,6 +839,10 @@ impl View {
                                     return Ok(Some(new_state));
                                 }
                             }
+                            return Ok(Some(prev_state.clone()));
+                        }
+                        PromptType::ApiKey => {
+                            let _ = repo.set_api_key(&val);
                             return Ok(Some(prev_state.clone()));
                         }
                     }
@@ -1204,6 +1248,7 @@ impl View {
                     PromptType::AddIntent => (" ADD NEW WORKTREE ", "󰙅 "),
                     PromptType::InitUrl => (" INITIALIZE REPOSITORY ", "󰚚 "),
                     PromptType::CommitMessage => (" COMMIT MESSAGE ", "󰊚 "),
+                    PromptType::ApiKey => (" SET GEMINI API KEY ", "󰌆 "),
                 };
 
                 let input_widget = Paragraph::new(Line::from(vec![
@@ -1447,6 +1492,61 @@ impl View {
                 f.render_widget(p, chunks[1]);
                 f.render_widget(DetailsWidget::new(None, context), chunks[2]);
             }
+            AppState::Error(msg, _) => {
+                let table = WorktreeListWidget::new(&[]);
+                f.render_stateful_widget(table, chunks[1], &mut TableState::default());
+                f.render_widget(DetailsWidget::new(None, context), chunks[2]);
+
+                let area = centered_rect(60, 40, f.area());
+                f.render_widget(Clear, area);
+
+                let mut error_lines = vec![
+                    Line::from(vec![Span::styled(
+                        " 󰅚 SYSTEM ERROR ",
+                        Style::default()
+                            .fg(RatatuiColor::Red)
+                            .add_modifier(Modifier::BOLD),
+                    )]),
+                    Line::from(""),
+                    Line::from(msg.as_str()),
+                    Line::from(""),
+                ];
+
+                if msg.contains("API key not found") {
+                    error_lines.push(Line::from(vec![
+                        Span::raw("TIP: Press "),
+                        Span::styled(
+                            "[P]",
+                            Style::default()
+                                .fg(RatatuiColor::Yellow)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                        Span::raw(" in the main list to set your key."),
+                    ]));
+                    error_lines.push(Line::from(""));
+                }
+
+                error_lines.push(Line::from(vec![
+                    Span::raw("Press "),
+                    Span::styled(
+                        "[ENTER/ESC]",
+                        Style::default()
+                            .fg(RatatuiColor::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(" to return"),
+                ]));
+
+                let p = Paragraph::new(error_lines)
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_type(BorderType::Rounded)
+                            .border_style(Style::default().fg(RatatuiColor::Red)),
+                    )
+                    .alignment(Alignment::Center);
+                f.render_widget(p, area);
+            }
             _ => {}
         }
 
@@ -1570,7 +1670,7 @@ impl View {
                 println!("\n{} {}", "🚀".blue(), "SETUP COMPLETE.".blue().bold());
                 println!("   {}", "All default worktrees have been created.".dimmed());
             }
-            AppState::Error(msg) => {
+            AppState::Error(msg, _) => {
                 eprintln!("\n{} {} {}", "❌".red(), "ERROR:".red().bold(), msg.red());
                 eprintln!(
                     "   {} {}",

@@ -6,6 +6,7 @@ pub enum PromptType {
     AddIntent,
     InitUrl,
     CommitMessage,
+    ApiKey,
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
@@ -113,7 +114,7 @@ pub enum AppState {
     /// Canonical setup completed.
     SetupComplete,
     /// An error state with a message.
-    Error(String),
+    Error(String, Box<AppState>),
     /// Signal to exit the application.
     Exiting,
 }
@@ -138,6 +139,7 @@ impl AppState {
             AppState::SwitchingBranch { prev_state, .. } => prev_state,
             AppState::Committing { prev_state, .. } => prev_state,
             AppState::Prompting { prev_state, .. } => prev_state,
+            AppState::Error(_, prev_state) => prev_state,
             _ => panic!("State does not have a previous state"),
         }
     }
