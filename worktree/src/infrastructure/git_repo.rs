@@ -1051,6 +1051,113 @@ impl ProjectRepository for GitProjectRepository {
 
         Ok(rx)
     }
+
+    fn migrate_to_bare(&self, force: bool, dry_run: bool) -> Result<PathBuf> {
+        let current_dir = std::env::current_dir().context("Failed to get current directory")?;
+        let git_dir = current_dir.join(".git");
+
+        // 1. Validate Repo Status
+        if !git_dir.exists() || !git_dir.is_dir() {
+            return Err(anyhow::anyhow!(
+                "Not a standard Git repository (missing .git directory). HELP: Ensure you are in the root of a standard repository."
+            ));
+        }
+
+        // 2. Get Current Branch
+        let branch = match Self::run_git(&["rev-parse", "--abbrev-ref", "HEAD"]) {
+            Ok(out) => out.trim().to_string(),
+            Err(_) => "main".to_string(), // Fallback
+        };
+
+        if dry_run {
+            println!("[Dry Run] Would migrate '{}' to Bare Hub structure.", current_dir.display());
+            println!("[Dry Run] 1. Move .git to .bare");
+            println!("[Dry Run] 2. Configure .bare as bare repository");
+            println!("[Dry Run] 3. Create worktree '{}' (no checkout)", branch);
+            println!("[Dry Run] 4. Move all files to '{}'", branch);
+            println!("[Dry Run] 5. Reset index in '{}'", branch);
+            return Ok(current_dir.join(&branch));
+        }
+
+        // Check for potential issues (unless forced)
+        if !force {
+            // naive check for collision
+            if current_dir.join(".bare").exists() {
+                 return Err(anyhow::anyhow!("Target '.bare' directory already exists. Use --force to overwrite."));
+            }
+            if current_dir.join(&branch).exists() {
+                 return Err(anyhow::anyhow!("Target worktree directory '{}' already exists. Use --force to overwrite.", branch));
+            }
+        }
+
+        debug!("Starting in-place migration for branch: {}", branch);
+
+        // 3. Move .git to .bare
+        let bare_dir = current_dir.join(".bare");
+        std::fs::rename(&git_dir, &bare_dir).context("Failed to move .git to .bare")?;
+
+        // 4. Configure .bare
+        Self::run_git(&[
+            "-C",
+            &bare_dir.to_string_lossy(),
+            "config",
+            "--bool",
+            "core.bare",
+            "true",
+        ])
+        .context("Failed to set core.bare to true")?;
+
+        // 5. Create Worktree (No Checkout)
+        // We use --no-checkout so we don't overwrite existing files in the root yet,
+        // and we create the folder where we will move everything.
+        let worktree_dir = current_dir.join(&branch);
+        Self::run_git(&[
+            "-C",
+            &bare_dir.to_string_lossy(),
+            "worktree",
+            "add",
+            "--no-checkout",
+            &worktree_dir.to_string_lossy(),
+            &branch,
+        ])
+        .context("Failed to create worktree directory")?;
+
+        // 6. Move Files
+        // Identify files to move: everything except .bare and the new worktree dir
+        let items = std::fs::read_dir(&current_dir).context("Failed to read current directory")?;
+        for item in items {
+            let entry = item?;
+            let path = entry.path();
+            let file_name = entry.file_name();
+            let file_name_str = file_name.to_string_lossy();
+
+            if file_name_str == ".bare" || file_name_str == branch.as_str() || file_name_str == ".git" {
+                continue;
+            }
+
+            let dest = worktree_dir.join(&file_name);
+            debug!("Moving {:?} to {:?}", path, dest);
+            if let Err(e) = std::fs::rename(&path, &dest) {
+                // If rename fails (e.g. across devices), try copy+delete
+                debug!("Rename failed ({}), trying copy+delete...", e);
+                 // Note: This is risky for directories, mainly relying on rename working within same FS
+                 return Err(anyhow::anyhow!("Failed to move file {:?}: {}. Migration aborted mid-process.", path, e));
+            }
+        }
+
+        // 7. Reset Index in New Worktree
+        // This makes the git index match the moved files
+        Self::run_git(&["-C", &worktree_dir.to_string_lossy(), "reset", "HEAD"])
+            .context("Failed to reset index in new worktree")?;
+        
+        // 8. Create .git file in root pointing to .bare (acting as main entry point?)
+        // Actually, in Bare Hub, the root has NO .git file usually, or it has a .git dir if it was a repo.
+        // But here we want the root to be just the holder.
+        // The user might want a .git file in the root to make editors happy if they open the root? 
+        // No, the root is not a worktree. It's the hub.
+        
+        Ok(worktree_dir)
+    }
 }
 
 #[cfg(test)]
@@ -1499,6 +1606,139 @@ mod tests {
 
         // Cleanup
         std::env::set_current_dir(original_cwd).unwrap();
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_migrate_in_place() {
+        let _lock = CWD_MUTEX.lock().unwrap();
+        let temp_dir =
+            std::env::temp_dir().join(format!("worktrees_migrate_test_{}", std::process::id()));
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let git_cmd = std::env::var("WORKTREES_GIT_PATH").unwrap_or_else(|_| "git".to_string());
+
+        // 1. Init Standard Repo
+        Command::new(&git_cmd)
+            .args(["init", "-b", "main"])
+            .current_dir(&temp_dir)
+            .output()
+            .unwrap();
+        Command::new(&git_cmd)
+            .args(["config", "user.email", "test@example.com"])
+            .current_dir(&temp_dir)
+            .output()
+            .unwrap();
+        Command::new(&git_cmd)
+            .args(["config", "user.name", "Test User"])
+            .current_dir(&temp_dir)
+            .output()
+            .unwrap();
+
+        // 2. Create Content
+        std::fs::write(temp_dir.join("committed.txt"), "committed").unwrap();
+        Command::new(&git_cmd)
+            .args(["add", "."])
+            .current_dir(&temp_dir)
+            .output()
+            .unwrap();
+        Command::new(&git_cmd)
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(&temp_dir)
+            .output()
+            .unwrap();
+
+        // 3. Create Dirty State
+        std::fs::write(temp_dir.join("committed.txt"), "modified").unwrap(); // Modified
+        std::fs::write(temp_dir.join("untracked.txt"), "untracked").unwrap(); // Untracked
+
+        // 4. Run Migration
+        let repo = GitProjectRepository;
+        let original_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&temp_dir).unwrap();
+
+        let res = repo.migrate_to_bare(false, false);
+
+        std::env::set_current_dir(original_cwd).unwrap();
+
+        let worktree_path = res.expect("Migration failed");
+        
+        // 5. Verification
+        assert!(temp_dir.join(".bare").exists(), ".bare not found");
+        assert!(!temp_dir.join(".git").exists(), "Original .git still exists");
+        assert!(worktree_path.exists(), "Worktree dir not found");
+        assert!(worktree_path.join("committed.txt").exists());
+        assert!(worktree_path.join("untracked.txt").exists());
+
+        // Read content to ensure file move was correct
+        let content = std::fs::read_to_string(worktree_path.join("committed.txt")).unwrap();
+        assert_eq!(content, "modified");
+
+        // Verify Git Status inside worktree
+        let status_out = Command::new(&git_cmd)
+            .args(["status", "--porcelain"])
+            .current_dir(&worktree_path)
+            .output()
+            .unwrap();
+        let status = String::from_utf8_lossy(&status_out.stdout);
+        
+        // Should show 'M committed.txt' and '?? untracked.txt'
+        assert!(status.contains("M committed.txt"));
+        assert!(status.contains("?? untracked.txt"));
+
+        // Cleanup
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_migrate_in_place_dry_run() {
+        let _lock = CWD_MUTEX.lock().unwrap();
+        let temp_dir =
+            std::env::temp_dir().join(format!("worktrees_migrate_dry_run_test_{}", std::process::id()));
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let git_cmd = std::env::var("WORKTREES_GIT_PATH").unwrap_or_else(|_| "git".to_string());
+
+        // 1. Init Standard Repo
+        Command::new(&git_cmd)
+            .args(["init", "-b", "main"])
+            .current_dir(&temp_dir)
+            .output()
+            .unwrap();
+
+        // 2. Run Migration (Dry Run)
+        let repo = GitProjectRepository;
+        let original_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&temp_dir).unwrap();
+
+        let res = repo.migrate_to_bare(false, true);
+
+        std::env::set_current_dir(original_cwd).unwrap();
+
+        let path = res.expect("Dry run failed");
+
+        // 3. Verification
+        // Nothing should have changed
+        assert!(temp_dir.join(".git").exists(), "Original .git should exist");
+        assert!(!temp_dir.join(".bare").exists(), ".bare should NOT exist");
+        
+        let expected = temp_dir.join("main");
+        // Canonicalize if possible, or handle Mac /var vs /private/var
+        let path_str = path.to_string_lossy();
+        let expected_str = expected.to_string_lossy();
+        
+        if cfg!(target_os = "macos") {
+             assert!(path_str.ends_with(expected_str.trim_start_matches("/private")));
+        } else {
+             assert_eq!(path, expected);
+        }
+
+        // Cleanup
         std::fs::remove_dir_all(&temp_dir).unwrap();
     }
 }

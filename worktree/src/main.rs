@@ -64,7 +64,7 @@ fn check_and_handle_repo_state(repo: &GitProjectRepository) -> Result<bool> {
         RepoStatus::BareHub => Ok(true),
         RepoStatus::StandardGit => {
             print!(
-                "This directory is a standard Git repository. The tool requires a Bare Hub setup. Do you want to convert it? (y/N): "
+                "This directory is a standard Git repository. The tool requires a Bare Hub setup.\nDo you want to MIGRATE it in-place to a Bare Hub? (This will move current files to a worktree) (y/N): "
             );
             io::stdout().flush().map_err(|e| miette::miette!(e))?;
             let mut input = String::new();
@@ -73,14 +73,17 @@ fn check_and_handle_repo_state(repo: &GitProjectRepository) -> Result<bool> {
                 .map_err(|e| miette::miette!(e))?;
             if input.trim().to_lowercase() == "y" {
                 let path = repo
-                    .convert_to_bare(None, None)
+                    .migrate_to_bare(false, false) // force=false, dry_run=false
                     .map_err(|e| miette::miette!(e))?;
                 println!(
-                    "Conversion successful! The Bare Hub is located at: {}",
+                    "Migration successful! The Bare Hub is now set up."
+                );
+                println!(
+                    "Main worktree is located at: {}",
                     path.display()
                 );
                 println!(
-                    "Please navigate to that directory (or one of its worktrees) to continue."
+                    "Please navigate to that directory to continue."
                 );
             }
             Ok(false)
@@ -199,6 +202,7 @@ async fn main() -> Result<()> {
             }
         }
         Some(Commands::Convert { name, branch }) => Intent::Convert { name, branch },
+        Some(Commands::Migrate { force, dry_run }) => Intent::Migrate { force, dry_run },
         Some(Commands::Checkout { intent, branch }) => Intent::CheckoutWorktree { intent, branch },
         Some(Commands::Completions { shell }) => Intent::Completions { shell },
         Some(Commands::Open) => Intent::Open,

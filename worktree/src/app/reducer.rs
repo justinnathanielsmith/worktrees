@@ -837,6 +837,100 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                     }
                 }
             }
+            Intent::Migrate { force, dry_run } => {
+                let repo_clone = repo.clone();
+                let force_clone = force;
+                let dry_run_clone = dry_run;
+
+                if !json_mode && !quiet_mode {
+                    println!(
+                        "{} Migrating repository to Bare Hub structure (in-place)...",
+                        "➜".cyan().bold()
+                    );
+                }
+
+                let pb = if !json_mode && !quiet_mode && !dry_run {
+                    let pb = ProgressBar::new_spinner();
+                    pb.set_style(
+                        ProgressStyle::default_spinner()
+                            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
+                            .template("{spinner:.cyan} {msg}")
+                            .into_diagnostic()?,
+                    );
+                    pb.set_message("Migrating in-place...");
+                    pb.enable_steady_tick(Duration::from_millis(100));
+                    Some(pb)
+                } else {
+                    None
+                };
+
+                let res = tokio::task::spawn_blocking(move || {
+                    repo_clone.migrate_to_bare(force_clone, dry_run_clone)
+                })
+                .await
+                .into_diagnostic()?;
+
+                if let Some(pb) = pb {
+                    pb.finish_and_clear();
+                }
+
+                match res {
+                    Ok(path) => {
+                        if dry_run {
+                            if !json_mode {
+                                println!(
+                                    "\n{} Dry run complete. Migration would create worktree at: {}",
+                                    "✔".green().bold(),
+                                    path.display()
+                                );
+                            } else {
+                                View::render_json(&serde_json::json!({
+                                    "status": "success",
+                                    "dry_run": true,
+                                    "would_create": path
+                                }))
+                                .map_err(|e| miette::miette!("{e:?}"))?;
+                            }
+                        } else {
+                            info!("Repository migrated successfully");
+                            if json_mode {
+                                View::render_json(&serde_json::json!({
+                                    "status": "success",
+                                    "path": path,
+                                    "message": "Repository migrated to Bare Hub structure."
+                                }))
+                                .map_err(|e| miette::miette!("{e:?}"))?;
+                            } else if !quiet_mode {
+                                println!(
+                                    "\n{} Migration complete! You are now in a Bare Hub.",
+                                    "✔".green().bold()
+                                );
+                                println!(
+                                    "   New main worktree: {}",
+                                    path.display().bold()
+                                );
+                                println!(
+                                    "   To start working, cd into the new worktree."
+                                );
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        error!(error = %e, "Failed to migrate repository");
+                        if json_mode {
+                            View::render_json(
+                                &serde_json::json!({ "status": "error", "message": e.to_string() }),
+                            )
+                            .map_err(|e| miette::miette!("{e:?}"))?;
+                        } else {
+                           println!("\n{} Migration failed: {}", "❌".red().bold(), e);
+                           if e.to_string().contains("already exists") {
+                               println!("   Tip: Use --force to overwrite existing directories.");
+                           }
+                        }
+                    }
+                }
+            }
             Intent::CheckoutWorktree { intent, branch } => {
                 let repo_clone = repo.clone();
                 let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
@@ -1148,6 +1242,15 @@ mod tests {
                 .calls
                 .push(format!("convert:{name:?}|{branch:?}"));
             Ok(std::path::PathBuf::from("hub"))
+        }
+
+        fn migrate_to_bare(&self, force: bool, dry_run: bool) -> Result<std::path::PathBuf> {
+             self.tracker
+                .lock()
+                .unwrap()
+                .calls
+                .push(format!("migrate:force={force}|dry_run={dry_run}"));
+            Ok(std::path::PathBuf::from("migrated_hub"))
         }
 
         fn check_status(&self, _path: &Path) -> crate::domain::repository::RepoStatus {

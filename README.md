@@ -68,7 +68,7 @@ cargo install --git https://github.com/justinnathanielsmith/worktrees
 
 - **Bare Hub Architecture**: Automatically manages `.bare` git dir and `.git` file pointer.
 - **Reactive TUI**: Real-time updates when files or branches change.
-- **Convert Existing Repos**: Turn standard git repositories into Bare Hubs with `worktree convert`.
+- **Convert & Migrate**: Turn standard git repositories into Bare Hubs (new or in-place).
 - **Smart Branching**: Create worktrees from any branch or commit.
 - **AI Integration**: Generate commit messages with Gemini 1.5 Flash.
 - **Smart Cleanup**: reclaim disk space by purging build artifacts from inactive environments.
@@ -120,7 +120,8 @@ worktree
 - `worktree push [name]`: Push changes from a specific worktree to remote.
 - `worktree config set-key <key>`: Securely store your Gemini API key.
 - `worktree config get-key`: Retrieve the stored Gemini API key.
-- `worktree convert [--name <name>] [--branch <branch>]`: Convert a standard repo to Bare Hub.
+- `worktree convert [--name <name>] [--branch <branch>]`: Create a *new* Bare Hub from an existing repo (sibling directory).
+- `worktree migrate [--force] [--dry-run]`: **In-place** migration of the current repo to a Bare Hub structure.
 - `worktree clean [--artifacts] [--dry-run]`: Cleanup stale worktrees or heavy build artifacts.
 - `worktree completions <shell>`: Generate completion scripts for `zsh`, `bash`, `fish`, or `powershell`.
 

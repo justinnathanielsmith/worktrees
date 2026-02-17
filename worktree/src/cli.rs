@@ -127,6 +127,20 @@ pub enum Commands {
         #[arg(short, long)]
         branch: Option<String>,
     },
+    /// In-place migration of a standard repository to a Bare Hub structure
+    ///
+    /// This safely converts the current repository into a Bare Hub without moving the root folder.
+    /// All existing files are moved into a new worktree for the current branch.
+    ///
+    /// Example: worktree migrate
+    Migrate {
+        /// Force migration even if potential issues are detected
+        #[arg(short, long)]
+        force: bool,
+        /// Perform a dry-run to see what would happen
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Switch a worktree to a different branch
     ///
     /// Example: worktree checkout feature-login develop
