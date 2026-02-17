@@ -5,18 +5,20 @@ use crate::app::model::{
 };
 use crate::domain::repository::{ProjectRepository, Worktree};
 use anyhow::Result;
-use ratatui::{Terminal, backend::CrosstermBackend, widgets::TableState};
-use std::io;
+use ratatui::{backend::Backend, widgets::TableState, Terminal};
 use std::process::Command;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::helpers::{create_timed_state, move_selection};
 
 #[allow(clippy::too_many_arguments)]
-pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'static>(
+pub fn handle_listing_events<
+    R: ProjectRepository + Clone + Send + Sync + 'static,
+    B: Backend,
+>(
     event: &crossterm::event::Event,
     repo: &R,
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    terminal: &mut Terminal<B>,
     worktrees: &[Worktree],
     table_state: &mut TableState,
     current_state: &AppState,
@@ -267,6 +269,60 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                                 filter_query: filter_query.clone(),
                                 is_filtering: *is_filtering,
                                 mode: *m,
+                            }));
+                        }
+                    }
+                    KeyCode::Char('o') => {
+                        if let Some(i) = table_state.selected()
+                            && let Some(wt) = filtered_worktrees.get(i)
+                            && wt.is_bare
+                        {
+                            let path = repo.get_project_root()?.to_string_lossy().to_string();
+                            #[cfg(target_os = "macos")]
+                            let _ = Command::new("open").arg(&path).spawn();
+                            #[cfg(target_os = "linux")]
+                            let _ = Command::new("xdg-open").arg(&path).spawn();
+                            #[cfg(target_os = "windows")]
+                            let _ = Command::new("explorer").arg(&path).spawn();
+                        }
+                    }
+                    KeyCode::Char('f') => {
+                        if let Some(i) = table_state.selected()
+                            && let Some(wt) = filtered_worktrees.get(i)
+                            && wt.is_bare
+                        {
+                            let repo_clone = repo.clone();
+                            let path_clone = wt.path.clone();
+                            let branch_clone = wt.branch.clone();
+                            let tx = async_tx.clone();
+
+                            tokio::task::spawn_blocking(move || {
+                                let result = repo_clone.fetch(&path_clone);
+                                let _ = tx.send(AsyncResult::FetchCompleted {
+                                    branch: branch_clone,
+                                    result,
+                                });
+                            });
+
+                            return Ok(Some(AppState::Fetching {
+                                branch: wt.branch.clone(),
+                                prev_state: Box::new(current_state.clone()),
+                            }));
+                        }
+                    }
+                    KeyCode::Char('c') => {
+                        if let Some(i) = table_state.selected()
+                            && let Some(wt) = filtered_worktrees.get(i)
+                            && wt.is_bare
+                        {
+                            return Ok(Some(AppState::Confirming {
+                                title: " PRUNE ".into(),
+                                message: "Are you sure you want to prune stale worktrees?".into(),
+                                action: Box::new(Intent::CleanWorktrees {
+                                    dry_run: false,
+                                    artifacts: false,
+                                }),
+                                prev_state: Box::new(current_state.clone()),
                             }));
                         }
                     }
@@ -599,4 +655,107 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
         _ => {}
     }
     Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::model::{DashboardState, DashboardTab, RefreshType};
+    use crate::app::test_utils::scaffolding::MockRepoBuilder;
+    use crate::domain::repository::Worktree;
+    use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+    use ratatui::backend::TestBackend;
+    use tokio::sync::mpsc;
+
+    #[tokio::test]
+    async fn test_handle_listing_events_normal_mode_system_actions() {
+        // 1. Setup
+        let hub_wt = Worktree {
+            path: "/path/to/hub".into(),
+            commit: "abcdef1".into(),
+            branch: "main".into(),
+            is_bare: true,
+            is_detached: false,
+            status_summary: None,
+            size_bytes: 0,
+            metadata: None,
+        };
+        let worktrees = vec![hub_wt.clone()];
+        let repo = MockRepoBuilder::default()
+            .with_worktrees(worktrees.clone())
+            .build();
+        
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+        let mut table_state = TableState::default();
+        table_state.select(Some(0));
+        
+        let (async_tx, _async_rx) = mpsc::unbounded_channel();
+        
+        let current_state = AppState::ListingWorktrees {
+            worktrees: worktrees.clone(),
+            table_state: table_state.clone(),
+            refresh_needed: RefreshType::None,
+            selection_mode: false,
+            dashboard: DashboardState {
+                active_tab: DashboardTab::Info,
+                cached_status: None,
+                cached_history: None,
+                loading: false,
+            },
+            filter_query: String::new(),
+            is_filtering: false,
+            mode: AppMode::Normal,
+        };
+
+        // 2. Test Fetch ('f')
+        let fetch_event = Event::Key(KeyEvent::new(KeyCode::Char('f'), KeyModifiers::empty()));
+        let res = handle_listing_events(
+            &fetch_event,
+            &repo,
+            &mut terminal,
+            &worktrees,
+            &mut table_state,
+            &current_state,
+            &0,
+            &async_tx,
+        ).unwrap();
+
+        match res {
+            Some(AppState::Fetching { branch, .. }) => assert_eq!(branch, "main"),
+            _ => panic!("Expected Fetching state, got {:?}", res),
+        }
+
+        // 3. Test Prune ('c')
+        let prune_event = Event::Key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::empty()));
+        let res = handle_listing_events(
+            &prune_event,
+            &repo,
+            &mut terminal,
+            &worktrees,
+            &mut table_state,
+            &current_state,
+            &0,
+            &async_tx,
+        ).unwrap();
+
+        match res {
+            Some(AppState::Confirming { title, .. }) => assert_eq!(title, " PRUNE "),
+            _ => panic!("Expected Confirming state for prune, got {:?}", res),
+        }
+
+        // 4. Test Open ('o') - verify it doesn't return a state (it's a side effect)
+        let open_event = Event::Key(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::empty()));
+        let res = handle_listing_events(
+            &open_event,
+            &repo,
+            &mut terminal,
+            &worktrees,
+            &mut table_state,
+            &current_state,
+            &0,
+            &async_tx,
+        ).unwrap();
+
+        assert!(res.is_none());
+    }
 }
