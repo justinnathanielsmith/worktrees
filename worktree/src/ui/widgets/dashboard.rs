@@ -10,11 +10,11 @@ use ratatui::{
 };
 
 pub struct StatusTabWidget<'a> {
-    pub status: &'a Option<GitStatus>,
+    pub status: Option<&'a GitStatus>,
     pub is_bare: bool,
 }
 
-impl<'a> Widget for StatusTabWidget<'a> {
+impl Widget for StatusTabWidget<'_> {
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
         let theme = CyberTheme::default();
         let mut lines = Vec::new();
@@ -110,11 +110,11 @@ impl<'a> Widget for StatusTabWidget<'a> {
 }
 
 pub struct LogTabWidget<'a> {
-    pub history: &'a Option<Vec<GitCommit>>,
+    pub history: Option<&'a [GitCommit]>,
     pub is_bare: bool,
 }
 
-impl<'a> Widget for LogTabWidget<'a> {
+impl Widget for LogTabWidget<'_> {
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
         let theme = CyberTheme::default();
         let mut lines = Vec::new();
@@ -174,18 +174,18 @@ pub struct DashboardWidget<'a> {
     all_worktrees: &'a [Worktree],
     context: ProjectContext,
     active_tab: DashboardTab,
-    status: &'a Option<GitStatus>,
-    history: &'a Option<Vec<GitCommit>>,
+    status: Option<&'a GitStatus>,
+    history: Option<&'a [GitCommit]>,
 }
 
 impl<'a> DashboardWidget<'a> {
-    pub fn new(
+    pub const fn new(
         worktree: Option<&'a Worktree>,
         all_worktrees: &'a [Worktree],
         context: ProjectContext,
         active_tab: DashboardTab,
-        status: &'a Option<GitStatus>,
-        history: &'a Option<Vec<GitCommit>>,
+        status: Option<&'a GitStatus>,
+        history: Option<&'a [GitCommit]>,
     ) -> Self {
         Self {
             worktree,
@@ -198,7 +198,7 @@ impl<'a> DashboardWidget<'a> {
     }
 }
 
-impl<'a> Widget for DashboardWidget<'a> {
+impl Widget for DashboardWidget<'_> {
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
         let theme = CyberTheme::default();
 
@@ -235,7 +235,7 @@ impl<'a> Widget for DashboardWidget<'a> {
             };
 
             tab_spans.push(Span::styled(
-                format!(" {} ", icon),
+                format!(" {icon} "),
                 if is_active {
                     Style::default().fg(color).bg(theme.selection_bg)
                 } else {
@@ -258,16 +258,16 @@ impl<'a> Widget for DashboardWidget<'a> {
         match self.active_tab {
             DashboardTab::Info => {
                 DetailsWidget::new(self.worktree, self.all_worktrees, self.context)
-                    .render(chunks[1], buf)
+                    .render(chunks[1], buf);
             }
             DashboardTab::Status => StatusTabWidget {
                 status: self.status,
-                is_bare: self.worktree.map(|wt| wt.is_bare).unwrap_or(false),
+                is_bare: self.worktree.is_some_and(|wt| wt.is_bare),
             }
             .render(chunks[1], buf),
             DashboardTab::Log => LogTabWidget {
                 history: self.history,
-                is_bare: self.worktree.map(|wt| wt.is_bare).unwrap_or(false),
+                is_bare: self.worktree.is_some_and(|wt| wt.is_bare),
             }
             .render(chunks[1], buf),
         }

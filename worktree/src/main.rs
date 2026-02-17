@@ -82,10 +82,8 @@ fn check_and_handle_repo_state(repo: &GitProjectRepository) -> Result<bool> {
                 println!(
                     "Please navigate to that directory (or one of its worktrees) to continue."
                 );
-                Ok(false)
-            } else {
-                Ok(false)
             }
+            Ok(false)
         }
         RepoStatus::NoRepo => {
             print!(
@@ -110,14 +108,9 @@ fn check_and_handle_repo_state(repo: &GitProjectRepository) -> Result<bool> {
                 }
                 repo.init_bare_repo(None, name)
                     .map_err(|e| miette::miette!(e))?;
-                println!(
-                    "Project initialized! Please navigate to '{}' to continue.",
-                    name
-                );
-                Ok(false)
-            } else {
-                Ok(false)
+                println!("Project initialized! Please navigate to '{name}' to continue.");
             }
+            Ok(false)
         }
     }
 }
@@ -194,16 +187,17 @@ async fn main() -> Result<()> {
         Some(Commands::Clean { dry_run, artifacts }) => {
             Intent::CleanWorktrees { dry_run, artifacts }
         }
-        Some(Commands::Switch { name, copy }) => match name {
-            Some(n) => Intent::SwitchWorktree { name: n, copy },
-            None => {
+        Some(Commands::Switch { name, copy }) => {
+            if let Some(n) = name {
+                Intent::SwitchWorktree { name: n, copy }
+            } else {
                 let result = render_tui_mode(&GitProjectRepository, true, cli.quiet)?;
                 if let Some(path) = result {
-                    println!("{}", path);
+                    println!("{path}");
                 }
                 return Ok(());
             }
-        },
+        }
         Some(Commands::Convert { name, branch }) => Intent::Convert { name, branch },
         Some(Commands::Checkout { intent, branch }) => Intent::CheckoutWorktree { intent, branch },
         Some(Commands::Completions { shell }) => Intent::Completions { shell },
@@ -225,7 +219,7 @@ async fn main() -> Result<()> {
         res = reducer.handle(intent) => {
             res?;
         }
-        _ = wait_for_shutdown() => {}
+        () = wait_for_shutdown() => {}
     }
 
     if !cli.json && !cli.quiet {

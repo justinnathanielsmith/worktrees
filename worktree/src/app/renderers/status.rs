@@ -57,7 +57,7 @@ pub fn render_status(
         .border_type(BorderType::Thick)
         .border_style(Style::default().fg(theme.primary))
         .title(Span::styled(
-            format!("  󰊢 GIT STATUS: {} ", branch),
+            format!("  󰊢 GIT STATUS: {branch} "),
             Style::default()
                 .fg(theme.primary)
                 .add_modifier(Modifier::BOLD),
@@ -83,28 +83,28 @@ pub fn render_status(
         Line::from(vec![
             Span::styled("  ", Style::default()),
             Span::styled(
-                format!("󰄬 {} Staged", staged_count),
+                format!("󰄬 {staged_count} Staged"),
                 Style::default()
                     .fg(theme.success)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled("  │  ", Style::default().fg(theme.border)),
             Span::styled(
-                format!("󱇨 {} Modified", unstaged_count),
+                format!("󱇨 {unstaged_count} Modified"),
                 Style::default()
                     .fg(theme.warning)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled("  │  ", Style::default().fg(theme.border)),
             Span::styled(
-                format!("󰡯 {} Untracked", untracked_count),
+                format!("󰡯 {untracked_count} Untracked"),
                 Style::default()
                     .fg(theme.error)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled("  │  ", Style::default().fg(theme.border)),
             Span::styled(
-                format!(" {} Total", total_files),
+                format!(" {total_files} Total"),
                 Style::default().fg(theme.text).add_modifier(Modifier::BOLD),
             ),
         ]),
@@ -169,7 +169,7 @@ pub fn render_status(
             .borders(Borders::RIGHT)
             .border_style(Style::default().fg(theme.border))
             .title(Span::styled(
-                format!(" 󰄬 STAGED ({}) ", staged_count),
+                format!(" 󰄬 STAGED ({staged_count}) "),
                 Style::default()
                     .fg(theme.success)
                     .add_modifier(Modifier::BOLD),
@@ -265,7 +265,7 @@ pub fn render_status(
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(theme.accent))
             .title(Span::styled(
-                format!("  DIFF PREVIEW: {} ", selected_file),
+                format!("  DIFF PREVIEW: {selected_file} "),
                 Style::default()
                     .fg(theme.accent)
                     .add_modifier(Modifier::BOLD),
@@ -388,27 +388,27 @@ fn parse_diff_with_colors<'a>(diff: &'a str, theme: &CyberTheme) -> Vec<Line<'a>
         .map(|line| {
             if line.starts_with('+') && !line.starts_with("+++") {
                 Line::from(Span::styled(
-                    format!(" {}", line),
+                    format!(" {line}"),
                     Style::default().fg(theme.success),
                 ))
             } else if line.starts_with('-') && !line.starts_with("---") {
                 Line::from(Span::styled(
-                    format!(" {}", line),
+                    format!(" {line}"),
                     Style::default().fg(theme.error),
                 ))
             } else if line.starts_with("@@") {
                 Line::from(Span::styled(
-                    format!(" {}", line),
+                    format!(" {line}"),
                     Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
                 ))
             } else if line.starts_with("diff") || line.starts_with("index") {
                 Line::from(Span::styled(
-                    format!(" {}", line),
+                    format!(" {line}"),
                     Style::default().fg(theme.subtle),
                 ))
             } else {
                 Line::from(Span::styled(
-                    format!(" {}", line),
+                    format!(" {line}"),
                     Style::default().fg(theme.text),
                 ))
             }

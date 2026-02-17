@@ -1,17 +1,16 @@
 use crate::app::model::{AppState, PromptType};
-use anyhow::Result;
 use crossterm::event::{Event, KeyCode};
 
 pub fn handle_picking_ref_events(
-    event: Event,
+    event: &Event,
     branches: &[String],
     selected_index: &mut usize,
     prev_state: &AppState,
-) -> Result<Option<AppState>> {
+) -> Option<AppState> {
     let key_code = if let Event::Key(key) = event {
         key.code
     } else {
-        return Ok(None);
+        return None;
     };
 
     let normalized_code = match key_code {
@@ -22,7 +21,7 @@ pub fn handle_picking_ref_events(
     match normalized_code {
         KeyCode::Esc | KeyCode::Char('q') => {
             // Cancel and return to previous state
-            return Ok(Some(prev_state.clone()));
+            return Some(prev_state.clone());
         }
         KeyCode::Down | KeyCode::Char('j') => {
             if !branches.is_empty() {
@@ -37,16 +36,16 @@ pub fn handle_picking_ref_events(
         KeyCode::Enter => {
             if let Some(branch) = branches.get(*selected_index) {
                 // Transition to Prompting state
-                return Ok(Some(AppState::Prompting {
+                return Some(AppState::Prompting {
                     prompt_type: PromptType::NameNewWorktree {
                         base_ref: branch.clone(),
                     },
                     input: String::new(),
                     prev_state: Box::new(prev_state.clone()),
-                }));
+                });
             }
         }
         _ => {}
     }
-    Ok(None)
+    None
 }

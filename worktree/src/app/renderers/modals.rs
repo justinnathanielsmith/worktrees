@@ -51,7 +51,7 @@ pub fn render_modals<R: ProjectRepository>(
                 f,
                 standard_area,
                 Line::from(vec![Span::styled(
-                    format!(" {} SYNCING CONFIGURATIONS ", spinner),
+                    format!(" {spinner} SYNCING CONFIGURATIONS "),
                     Style::default()
                         .fg(theme.primary)
                         .add_modifier(Modifier::BOLD),
@@ -96,7 +96,7 @@ pub fn render_modals<R: ProjectRepository>(
                 f,
                 standard_area,
                 Line::from(vec![Span::styled(
-                    format!(" {} PUSHING TO REMOTE ", spinner),
+                    format!(" {spinner} PUSHING TO REMOTE "),
                     Style::default()
                         .fg(theme.primary)
                         .add_modifier(Modifier::BOLD),
@@ -141,7 +141,7 @@ pub fn render_modals<R: ProjectRepository>(
                 f,
                 standard_area,
                 Line::from(vec![Span::styled(
-                    format!(" {} PULLING FROM REMOTE ", spinner),
+                    format!(" {spinner} PULLING FROM REMOTE "),
                     Style::default()
                         .fg(theme.primary)
                         .add_modifier(Modifier::BOLD),
@@ -331,7 +331,7 @@ pub fn render_modals<R: ProjectRepository>(
                 f,
                 standard_area,
                 Line::from(vec![Span::styled(
-                    format!(" {} FETCHING FROM REMOTE ", spinner),
+                    format!(" {spinner} FETCHING FROM REMOTE "),
                     Style::default()
                         .fg(theme.primary)
                         .add_modifier(Modifier::BOLD),
@@ -370,7 +370,7 @@ pub fn render_modals<R: ProjectRepository>(
             let items = vec![
                 Line::from(""),
                 Line::from(vec![Span::styled(
-                    format!("  {}  ", message),
+                    format!("  {message}  "),
                     Style::default().fg(theme.text),
                 )]),
                 Line::from(""),
@@ -403,7 +403,7 @@ pub fn render_modals<R: ProjectRepository>(
                 f,
                 standard_area,
                 Line::from(vec![Span::styled(
-                    format!(" {} OPENING IN EDITOR ", spinner),
+                    format!(" {spinner} OPENING IN EDITOR "),
                     Style::default()
                         .fg(theme.primary)
                         .add_modifier(Modifier::BOLD),
@@ -603,7 +603,7 @@ pub fn render_modals<R: ProjectRepository>(
                 f,
                 standard_area,
                 Line::from(vec![Span::styled(
-                    format!(" {} {} ", spinner, title_text),
+                    format!(" {spinner} {title_text} "),
                     Style::default()
                         .fg(theme.primary)
                         .add_modifier(Modifier::BOLD),

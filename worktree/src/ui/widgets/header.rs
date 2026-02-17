@@ -14,7 +14,7 @@ pub struct HeaderWidget<'a> {
     pub state: &'a AppState,
 }
 
-impl<'a> Widget for HeaderWidget<'a> {
+impl Widget for HeaderWidget<'_> {
     fn render(self, area: ratatui::layout::Rect, buf: &mut ratatui::buffer::Buffer) {
         let theme = CyberTheme::default();
 

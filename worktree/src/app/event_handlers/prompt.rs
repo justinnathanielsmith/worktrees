@@ -5,13 +5,13 @@ use ratatui::{Terminal, backend::CrosstermBackend, widgets::TableState};
 use std::io;
 
 pub fn handle_prompt_events<R: ProjectRepository>(
-    event: crossterm::event::Event,
+    event: &crossterm::event::Event,
     repo: &R,
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     prompt_type: &PromptType,
     input: &mut String,
     prev_state: &AppState,
-    spinner_tick: &mut usize,
+    spinner_tick: &usize,
 ) -> Result<Option<AppState>> {
     use crossterm::event::{Event, KeyCode};
     let key_code = if let Event::Key(key) = event {
@@ -42,7 +42,7 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                                     repo,
                                     &mut adding_state,
                                     *spinner_tick,
-                                )
+                                );
                             })?;
 
                             // Smart Add Logic
@@ -84,9 +84,8 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                                 filter_query: String::new(),
                                 is_filtering: false,
                             }));
-                        } else {
-                            return Ok(Some(prev_state.clone()));
                         }
+                        return Ok(Some(prev_state.clone()));
                     }
                     PromptType::CommitMessage => {
                         let (path, target_state) =
@@ -120,9 +119,8 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                         return Ok(Some(prev_state.clone()));
                     }
                 }
-            } else {
-                return Ok(Some(prev_state.clone()));
             }
+            return Ok(Some(prev_state.clone()));
         }
         KeyCode::Esc => {
             return Ok(Some(prev_state.clone()));
