@@ -1,5 +1,5 @@
-use worktree::infrastructure::warp_integration::is_warp_terminal;
 use serial_test::serial;
+use worktree::infrastructure::warp_integration::is_warp_terminal;
 
 #[test]
 #[serial]
