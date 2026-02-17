@@ -5,7 +5,6 @@ use crate::domain::repository::{ProjectRepository, Worktree};
 use indicatif::{ProgressBar, ProgressStyle};
 use miette::{IntoDiagnostic, Result};
 use owo_colors::{OwoColorize, Stream::Stdout};
-use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
