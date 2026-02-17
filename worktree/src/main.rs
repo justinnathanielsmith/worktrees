@@ -137,6 +137,7 @@ fn render_tui_mode(
         filter_query: String::new(),
         is_filtering: false,
         mode: worktree::app::model::AppMode::Normal,
+        last_selection_change: std::time::Instant::now(),
     };
     View::render_tui(repo, initial_state).map_err(|e| miette::miette!("{e:?}"))
 }

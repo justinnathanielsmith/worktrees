@@ -212,6 +212,7 @@ pub enum AppState {
         filter_query: String,
         is_filtering: bool,
         mode: AppMode,
+        last_selection_change: Instant,
     },
     /// Detailed Git status view for a specific worktree.
     ViewingStatus {

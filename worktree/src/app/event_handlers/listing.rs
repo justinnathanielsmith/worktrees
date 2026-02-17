@@ -24,16 +24,17 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
 ) -> Result<Option<AppState>> {
     use crossterm::event::{Event, KeyCode, MouseButton, MouseEventKind};
 
-    let (filter_query, _is_filtering, mode) = if let AppState::ListingWorktrees {
+    let (filter_query, _is_filtering, mode, last_selection_change) = if let AppState::ListingWorktrees {
         filter_query,
         is_filtering,
         mode,
+        last_selection_change,
         ..
     } = current_state
     {
-        (filter_query.clone(), *is_filtering, *mode)
+        (filter_query.clone(), *is_filtering, *mode, *last_selection_change)
     } else {
-        (String::new(), false, AppMode::Normal)
+        (String::new(), false, AppMode::Normal, std::time::Instant::now())
     };
 
     let filtered_worktrees = filter_worktrees(worktrees, &filter_query);
@@ -87,6 +88,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         refresh_needed,
                         mode: m,
                         table_state: ts,
+                        last_selection_change,
                         ..
                     } = &mut new_state
                     {
@@ -99,6 +101,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         }
                         if changed || selection_changed {
                             *refresh_needed = RefreshType::Dashboard;
+                            *last_selection_change = std::time::Instant::now();
                         }
                         *ts = table_state.clone();
                     }
@@ -143,11 +146,13 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         if let AppState::ListingWorktrees {
                             table_state: ts,
                             refresh_needed,
+                            last_selection_change,
                             ..
                         } = &mut new_state
                         {
                             *ts = table_state.clone();
                             *refresh_needed = RefreshType::Dashboard;
+                            *last_selection_change = std::time::Instant::now();
                         }
                         return Ok(Some(new_state));
                     }
@@ -157,11 +162,13 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         if let AppState::ListingWorktrees {
                             table_state: ts,
                             refresh_needed,
+                            last_selection_change,
                             ..
                         } = &mut new_state
                         {
                             *ts = table_state.clone();
                             *refresh_needed = RefreshType::Dashboard;
+                            *last_selection_change = std::time::Instant::now();
                         }
                         return Ok(Some(new_state));
                     }
@@ -266,6 +273,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                                 filter_query: filter_query.clone(),
                                 is_filtering: *is_filtering,
                                 mode: *m,
+                                last_selection_change: std::time::Instant::now(),
                             }));
                         }
                     }
@@ -555,6 +563,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                                     filter_query: filter_query.clone(),
                                     is_filtering: *is_filtering,
                                     mode: *m,
+                                    last_selection_change: std::time::Instant::now(),
                                 }));
                             }
                         }
@@ -594,6 +603,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                                 filter_query: filter_query.clone(),
                                 is_filtering: *is_filtering,
                                 mode: *m,
+                                last_selection_change: std::time::Instant::now(),
                             }));
                         }
                     }
@@ -620,6 +630,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         filter_query: filter_query.clone(),
                         is_filtering: *is_filtering,
                         mode: *m,
+                        last_selection_change: std::time::Instant::now(),
                     }));
                 }
             }
@@ -644,6 +655,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         filter_query: filter_query.clone(),
                         is_filtering: *is_filtering,
                         mode: *m,
+                        last_selection_change: std::time::Instant::now(),
                     }));
                 }
             }
@@ -702,6 +714,7 @@ mod tests {
             filter_query: String::new(),
             is_filtering: false,
             mode: AppMode::Normal,
+            last_selection_change: std::time::Instant::now(),
         };
 
         // 2. Test Fetch ('f')

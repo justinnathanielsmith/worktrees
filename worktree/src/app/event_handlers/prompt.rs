@@ -78,6 +78,7 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                                     filter_query: String::new(),
                                     is_filtering: false,
                                     mode: crate::app::model::AppMode::Normal,
+                                    last_selection_change: std::time::Instant::now(),
                                 }),
                             )));
                         }
@@ -96,6 +97,7 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                             filter_query: String::new(),
                             is_filtering: false,
                             mode: crate::app::model::AppMode::Normal,
+                            last_selection_change: std::time::Instant::now(),
                         }));
                     }
                 }
