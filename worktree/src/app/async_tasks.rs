@@ -42,4 +42,47 @@ pub enum AsyncResult {
     CleanCompleted {
         result: anyhow::Result<Vec<String>>,
     },
+    StagedFile {
+        path: String,
+        result: anyhow::Result<()>,
+    },
+    UnstagedFile {
+        path: String,
+        result: anyhow::Result<()>,
+    },
+    StagedAll {
+        path: String,
+        result: anyhow::Result<()>,
+    },
+    UnstagedAll {
+        path: String,
+        result: anyhow::Result<()>,
+    },
+    BranchSwitched {
+        path: String,
+        result: anyhow::Result<()>,
+    },
+    DiffFetched {
+        path: String,
+        result: anyhow::Result<String>,
+    },
+    CommitMessageGenerated {
+        result: anyhow::Result<String>,
+    },
+    StashesFetched {
+        path: String,
+        result: anyhow::Result<Vec<crate::domain::repository::StashEntry>>,
+    },
+    StashApplied {
+        result: anyhow::Result<()>,
+    },
+    StashPopped {
+        result: anyhow::Result<()>,
+    },
+    StashDropped {
+        result: anyhow::Result<()>,
+    },
+    StashSaved {
+        result: anyhow::Result<()>,
+    },
 }

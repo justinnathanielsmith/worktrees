@@ -229,6 +229,17 @@ pub enum AppState {
         selected_index: usize,
         prev_state: Box<Self>,
     },
+    /// Loading stashes for a worktree.
+    LoadingStashes {
+        path: String,
+        branch: String,
+        prev_state: Box<Self>,
+    },
+    /// Actively applying/popping/dropping/saving stash.
+    StashAction {
+        message: String,
+        prev_state: Box<Self>,
+    },
     /// Git commit history log view.
     ViewingHistory {
         branch: String,
@@ -253,6 +264,29 @@ pub enum AppState {
     },
     /// Cleaning stale worktrees/artifacts.
     Cleaning {
+        prev_state: Box<Self>,
+    },
+    /// Actively staging a file.
+    Staging {
+        path: String,
+        prev_state: Box<Self>,
+    },
+    /// Actively unstaging a file.
+    Unstaging {
+        path: String,
+        prev_state: Box<Self>,
+    },
+    /// Actively switching branch.
+    SwitchingBranchTask {
+        path: String,
+        prev_state: Box<Self>,
+    },
+    /// Actively generating a commit message.
+    GeneratingCommitMessage {
+        prev_state: Box<Self>,
+    },
+    /// Loading diff for preview.
+    LoadingDiff {
         prev_state: Box<Self>,
     },
     /// Branch selection menu for switching worktree branches.
@@ -328,10 +362,13 @@ impl AppState {
             | Self::LoadingHistory { prev_state, .. }
             | Self::LoadingBranches { prev_state, .. }
             | Self::Cleaning { prev_state, .. }
-            | Self::SwitchingBranch { prev_state, .. }
-            | Self::Committing { prev_state, .. }
-            | Self::PickingBaseRef { prev_state, .. }
-            | Self::Prompting { prev_state, .. }
+            | Self::Staging { prev_state, .. }
+            | Self::Unstaging { prev_state, .. }
+            | Self::SwitchingBranchTask { prev_state, .. }
+            | Self::GeneratingCommitMessage { prev_state, .. }
+            | Self::LoadingDiff { prev_state, .. }
+            | Self::LoadingStashes { prev_state, .. }
+            | Self::StashAction { prev_state, .. }
             | Self::Error(_, prev_state) => prev_state,
             Self::Timed { target_state, .. } => target_state,
             _ => panic!("State does not have a previous state"),

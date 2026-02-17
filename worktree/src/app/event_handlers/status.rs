@@ -2,7 +2,7 @@ use crate::app::model::AppState;
 use crate::domain::repository::ProjectRepository;
 
 #[allow(clippy::too_many_arguments)]
-pub fn handle_status_events<R: ProjectRepository>(
+pub fn handle_status_events<R: ProjectRepository + Clone + Send + Sync + 'static>(
     event: &crossterm::event::Event,
     repo: &R,
     path: &str,
@@ -10,7 +10,9 @@ pub fn handle_status_events<R: ProjectRepository>(
     status: &mut crate::app::model::StatusViewState,
     prev_state: &AppState,
     current_state: &AppState,
+    async_tx: &tokio::sync::mpsc::UnboundedSender<crate::app::async_tasks::AsyncResult>,
 ) -> Option<AppState> {
+    use crate::app::async_tasks::AsyncResult;
     use crossterm::event::{Event, KeyCode, MouseButton, MouseEventKind};
     use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
@@ -57,25 +59,51 @@ pub fn handle_status_events<R: ProjectRepository>(
                 }
                 KeyCode::Char(' ') => {
                     let idx = status.selected_index;
+                    let repo_clone = repo.clone();
+                    let path_clone = path.to_string();
+                    let tx = async_tx.clone();
+
                     if idx < status.staged.len() {
-                        let _ = repo.unstage_file(path, &status.staged[idx].0);
+                        let file = status.staged[idx].0.clone();
+                        tokio::task::spawn_blocking(move || {
+                            let result = repo_clone.unstage_file(&path_clone, &file);
+                            let _ = tx.send(AsyncResult::UnstagedFile {
+                                path: path_clone,
+                                result,
+                            });
+                        });
+                        return Some(AppState::Unstaging {
+                            path: path.to_string(),
+                            prev_state: Box::new(current_state.clone()),
+                        });
                     } else if idx < status.staged.len() + status.unstaged.len() {
-                        let _ =
-                            repo.stage_file(path, &status.unstaged[idx - status.staged.len()].0);
+                        let file = status.unstaged[idx - status.staged.len()].0.clone();
+                        tokio::task::spawn_blocking(move || {
+                            let result = repo_clone.stage_file(&path_clone, &file);
+                            let _ = tx.send(AsyncResult::StagedFile {
+                                path: path_clone,
+                                result,
+                            });
+                        });
+                        return Some(AppState::Staging {
+                            path: path.to_string(),
+                            prev_state: Box::new(current_state.clone()),
+                        });
                     } else if idx < status.total() {
-                        let _ = repo.stage_file(
-                            path,
-                            &status.untracked[idx - status.staged.len() - status.unstaged.len()],
-                        );
-                    }
-                    if let Ok(new_status) = repo.get_status(path) {
-                        status.staged = new_status.staged;
-                        status.unstaged = new_status.unstaged;
-                        status.untracked = new_status.untracked;
-                        let new_total = status.total();
-                        if new_total > 0 && status.selected_index >= new_total {
-                            status.selected_index = new_total - 1;
-                        }
+                        let file = status.untracked
+                            [idx - status.staged.len() - status.unstaged.len()]
+                        .clone();
+                        tokio::task::spawn_blocking(move || {
+                            let result = repo_clone.stage_file(&path_clone, &file);
+                            let _ = tx.send(AsyncResult::StagedFile {
+                                path: path_clone,
+                                result,
+                            });
+                        });
+                        return Some(AppState::Staging {
+                            path: path.to_string(),
+                            prev_state: Box::new(current_state.clone()),
+                        });
                     }
                 }
                 KeyCode::Char('c') => {
@@ -87,28 +115,36 @@ pub fn handle_status_events<R: ProjectRepository>(
                     });
                 }
                 KeyCode::Char('a') => {
-                    let _ = repo.stage_all(path);
-                    if let Ok(new_status) = repo.get_status(path) {
-                        status.staged = new_status.staged;
-                        status.unstaged = new_status.unstaged;
-                        status.untracked = new_status.untracked;
-                        let new_total = status.total();
-                        if new_total > 0 && status.selected_index >= new_total {
-                            status.selected_index = new_total - 1;
-                        }
-                    }
+                    let repo_clone = repo.clone();
+                    let path_clone = path.to_string();
+                    let tx = async_tx.clone();
+                    tokio::task::spawn_blocking(move || {
+                        let result = repo_clone.stage_all(&path_clone);
+                        let _ = tx.send(AsyncResult::StagedAll {
+                            path: path_clone,
+                            result,
+                        });
+                    });
+                    return Some(AppState::Staging {
+                        path: path.to_string(),
+                        prev_state: Box::new(current_state.clone()),
+                    });
                 }
                 KeyCode::Char('u') => {
-                    let _ = repo.unstage_all(path);
-                    if let Ok(new_status) = repo.get_status(path) {
-                        status.staged = new_status.staged;
-                        status.unstaged = new_status.unstaged;
-                        status.untracked = new_status.untracked;
-                        let new_total = status.total();
-                        if new_total > 0 && status.selected_index >= new_total {
-                            status.selected_index = new_total - 1;
-                        }
-                    }
+                    let repo_clone = repo.clone();
+                    let path_clone = path.to_string();
+                    let tx = async_tx.clone();
+                    tokio::task::spawn_blocking(move || {
+                        let result = repo_clone.unstage_all(&path_clone);
+                        let _ = tx.send(AsyncResult::UnstagedAll {
+                            path: path_clone,
+                            result,
+                        });
+                    });
+                    return Some(AppState::Unstaging {
+                        path: path.to_string(),
+                        prev_state: Box::new(current_state.clone()),
+                    });
                 }
                 KeyCode::Char('d') => {
                     // Toggle diff preview
@@ -116,25 +152,37 @@ pub fn handle_status_events<R: ProjectRepository>(
 
                     // Load diff if showing and we have a selected file
                     if status.show_diff && status.selected_file().is_some() {
-                        status.diff_preview = repo.get_diff(path).ok();
+                        let repo_clone = repo.clone();
+                        let path_clone = path.to_string();
+                        let tx = async_tx.clone();
+                        tokio::task::spawn_blocking(move || {
+                            let result = repo_clone.get_diff(&path_clone);
+                            let _ = tx.send(AsyncResult::DiffFetched {
+                                path: path_clone,
+                                result,
+                            });
+                        });
+                        return Some(AppState::LoadingDiff {
+                            prev_state: Box::new(current_state.clone()),
+                        });
                     }
                 }
                 KeyCode::Char('r') => {
-                    // Refresh status
-                    if let Ok(new_status) = repo.get_status(path) {
-                        status.staged = new_status.staged;
-                        status.unstaged = new_status.unstaged;
-                        status.untracked = new_status.untracked;
-                        let new_total = status.total();
-                        if new_total > 0 && status.selected_index >= new_total {
-                            status.selected_index = new_total - 1;
-                        }
-
-                        // Refresh diff if showing
-                        if status.show_diff && status.selected_file().is_some() {
-                            status.diff_preview = repo.get_diff(path).ok();
-                        }
-                    }
+                    let repo_clone = repo.clone();
+                    let path_clone = path.to_string();
+                    let tx = async_tx.clone();
+                    tokio::task::spawn_blocking(move || {
+                        let result = repo_clone.get_status(&path_clone);
+                        let _ = tx.send(AsyncResult::StatusFetched {
+                            path: path_clone,
+                            result,
+                        });
+                    });
+                    return Some(AppState::LoadingStatus {
+                        path: path.to_string(),
+                        branch: branch.to_string(),
+                        prev_state: Box::new(current_state.clone()),
+                    });
                 }
                 KeyCode::Char('s') => {
                     if key
@@ -156,7 +204,19 @@ pub fn handle_status_events<R: ProjectRepository>(
 
             // Update diff preview when selection changes
             if status.show_diff && status.selected_file().is_some() {
-                status.diff_preview = repo.get_diff(path).ok();
+                let repo_clone = repo.clone();
+                let path_clone = path.to_string();
+                let tx = async_tx.clone();
+                tokio::task::spawn_blocking(move || {
+                    let result = repo_clone.get_diff(&path_clone);
+                    let _ = tx.send(AsyncResult::DiffFetched {
+                        path: path_clone,
+                        result,
+                    });
+                });
+                return Some(AppState::LoadingDiff {
+                    prev_state: Box::new(current_state.clone()),
+                });
             }
         }
         Event::Mouse(mouse) => {
@@ -221,7 +281,19 @@ pub fn handle_status_events<R: ProjectRepository>(
                             if (relative_y as usize) < status.staged.len() {
                                 status.selected_index = relative_y as usize;
                                 if status.show_diff {
-                                    status.diff_preview = repo.get_diff(path).ok();
+                                    let repo_clone = repo.clone();
+                                    let path_clone = path.to_string();
+                                    let tx = async_tx.clone();
+                                    tokio::task::spawn_blocking(move || {
+                                        let result = repo_clone.get_diff(&path_clone);
+                                        let _ = tx.send(AsyncResult::DiffFetched {
+                                            path: path_clone,
+                                            result,
+                                        });
+                                    });
+                                    return Some(AppState::LoadingDiff {
+                                        prev_state: Box::new(current_state.clone()),
+                                    });
                                 }
                             }
                         }
@@ -237,7 +309,19 @@ pub fn handle_status_events<R: ProjectRepository>(
                             if (relative_y as usize) < unstaged_len + untracked_len {
                                 status.selected_index = status.staged.len() + relative_y as usize;
                                 if status.show_diff {
-                                    status.diff_preview = repo.get_diff(path).ok();
+                                    let repo_clone = repo.clone();
+                                    let path_clone = path.to_string();
+                                    let tx = async_tx.clone();
+                                    tokio::task::spawn_blocking(move || {
+                                        let result = repo_clone.get_diff(&path_clone);
+                                        let _ = tx.send(AsyncResult::DiffFetched {
+                                            path: path_clone,
+                                            result,
+                                        });
+                                    });
+                                    return Some(AppState::LoadingDiff {
+                                        prev_state: Box::new(current_state.clone()),
+                                    });
                                 }
                             }
                         }
@@ -248,7 +332,19 @@ pub fn handle_status_events<R: ProjectRepository>(
                     if total > 0 {
                         status.selected_index = (status.selected_index + 1) % total;
                         if status.show_diff {
-                            status.diff_preview = repo.get_diff(path).ok();
+                            let repo_clone = repo.clone();
+                            let path_clone = path.to_string();
+                            let tx = async_tx.clone();
+                            tokio::task::spawn_blocking(move || {
+                                let result = repo_clone.get_diff(&path_clone);
+                                let _ = tx.send(AsyncResult::DiffFetched {
+                                    path: path_clone,
+                                    result,
+                                });
+                            });
+                            return Some(AppState::LoadingDiff {
+                                prev_state: Box::new(current_state.clone()),
+                            });
                         }
                     }
                 }
@@ -257,7 +353,19 @@ pub fn handle_status_events<R: ProjectRepository>(
                     if total > 0 {
                         status.selected_index = (status.selected_index + total - 1) % total;
                         if status.show_diff {
-                            status.diff_preview = repo.get_diff(path).ok();
+                            let repo_clone = repo.clone();
+                            let path_clone = path.to_string();
+                            let tx = async_tx.clone();
+                            tokio::task::spawn_blocking(move || {
+                                let result = repo_clone.get_diff(&path_clone);
+                                let _ = tx.send(AsyncResult::DiffFetched {
+                                    path: path_clone,
+                                    result,
+                                });
+                            });
+                            return Some(AppState::LoadingDiff {
+                                prev_state: Box::new(current_state.clone()),
+                            });
                         }
                     }
                 }

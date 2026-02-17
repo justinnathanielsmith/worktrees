@@ -3,7 +3,7 @@ use crate::domain::repository::ProjectRepository;
 use crossterm::event::{Event, KeyCode, KeyEvent};
 
 #[allow(clippy::too_many_arguments)]
-pub fn handle_stash_events<R: ProjectRepository>(
+pub fn handle_stash_events<R: ProjectRepository + Clone + Send + Sync + 'static>(
     event: &Event,
     repo: &R,
     path: &str,
@@ -12,7 +12,9 @@ pub fn handle_stash_events<R: ProjectRepository>(
     selected_index: &usize,
     prev_state: &AppState,
     _current_state: &AppState,
+    async_tx: &tokio::sync::mpsc::UnboundedSender<crate::app::async_tasks::AsyncResult>,
 ) -> Option<AppState> {
+    use crate::app::async_tasks::AsyncResult;
     if let Event::Key(KeyEvent { code, .. }) = event {
         match code {
             KeyCode::Esc => return Some(prev_state.clone()),
@@ -46,44 +48,50 @@ pub fn handle_stash_events<R: ProjectRepository>(
             }
             KeyCode::Char('a') => {
                 if let Some(stash) = stashes.get(*selected_index) {
-                    if let Err(e) = repo.apply_stash(path, stash.index) {
-                        return Some(AppState::Error(
-                            format!("Failed to apply stash: {e}"),
-                            Box::new(_current_state.clone()),
-                        ));
-                    }
-                    return Some(prev_state.clone());
+                    let repo_clone = repo.clone();
+                    let path_clone = path.to_string();
+                    let idx = stash.index;
+                    let tx = async_tx.clone();
+                    tokio::task::spawn_blocking(move || {
+                        let result = repo_clone.apply_stash(&path_clone, idx);
+                        let _ = tx.send(AsyncResult::StashApplied { result });
+                    });
+                    return Some(AppState::StashAction {
+                        message: "Applying stash...".into(),
+                        prev_state: Box::new(_current_state.clone()),
+                    });
                 }
             }
             KeyCode::Char('p') => {
                 if let Some(stash) = stashes.get(*selected_index) {
-                    if let Err(e) = repo.pop_stash(path, stash.index) {
-                        return Some(AppState::Error(
-                            format!("Failed to pop stash: {e}"),
-                            Box::new(_current_state.clone()),
-                        ));
-                    }
-                    return Some(prev_state.clone());
+                    let repo_clone = repo.clone();
+                    let path_clone = path.to_string();
+                    let idx = stash.index;
+                    let tx = async_tx.clone();
+                    tokio::task::spawn_blocking(move || {
+                        let result = repo_clone.pop_stash(&path_clone, idx);
+                        let _ = tx.send(AsyncResult::StashPopped { result });
+                    });
+                    return Some(AppState::StashAction {
+                        message: "Popping stash...".into(),
+                        prev_state: Box::new(_current_state.clone()),
+                    });
                 }
             }
             KeyCode::Char('d') => {
                 if let Some(stash) = stashes.get(*selected_index) {
-                    if let Err(e) = repo.drop_stash(path, stash.index) {
-                        return Some(AppState::Error(
-                            format!("Failed to drop stash: {e}"),
-                            Box::new(_current_state.clone()),
-                        ));
-                    }
-                    if let Ok(new_stashes) = repo.list_stashes(path) {
-                        let new_index = *selected_index.min(&new_stashes.len().saturating_sub(1));
-                        return Some(AppState::ViewingStashes {
-                            path: path.to_string(),
-                            branch: branch.to_string(),
-                            stashes: new_stashes,
-                            selected_index: new_index,
-                            prev_state: Box::new(prev_state.clone()),
-                        });
-                    }
+                    let repo_clone = repo.clone();
+                    let path_clone = path.to_string();
+                    let idx = stash.index;
+                    let tx = async_tx.clone();
+                    tokio::task::spawn_blocking(move || {
+                        let result = repo_clone.drop_stash(&path_clone, idx);
+                        let _ = tx.send(AsyncResult::StashDropped { result });
+                    });
+                    return Some(AppState::StashAction {
+                        message: "Dropping stash...".into(),
+                        prev_state: Box::new(_current_state.clone()),
+                    });
                 }
             }
             KeyCode::Char('n') => {

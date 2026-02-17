@@ -1,14 +1,16 @@
 use crate::app::model::AppState;
 use crate::domain::repository::ProjectRepository;
 
-pub fn handle_branch_events<R: ProjectRepository>(
+pub fn handle_branch_events<R: ProjectRepository + Clone + Send + Sync + 'static>(
     event: &crossterm::event::Event,
     repo: &R,
     path: &str,
     branches: &[String],
     selected_index: &mut usize,
     prev_state: &AppState,
+    async_tx: &tokio::sync::mpsc::UnboundedSender<crate::app::async_tasks::AsyncResult>,
 ) -> Option<AppState> {
+    use crate::app::async_tasks::AsyncResult;
     use crossterm::event::{Event, KeyCode};
     let key_code = if let Event::Key(key) = event {
         key.code
@@ -36,13 +38,23 @@ pub fn handle_branch_events<R: ProjectRepository>(
             }
         }
         KeyCode::Enter => {
-            if let Some(branch) = branches.get(*selected_index)
-                && let Err(e) = repo.switch_branch(path, branch)
-            {
-                return Some(AppState::Error(
-                    format!("Failed to switch branch: {e}"),
-                    Box::new(prev_state.clone()),
-                ));
+            if let Some(branch) = branches.get(*selected_index) {
+                let repo_clone = repo.clone();
+                let path_clone = path.to_string();
+                let branch_clone = branch.clone();
+                let tx = async_tx.clone();
+
+                tokio::task::spawn_blocking(move || {
+                    let result = repo_clone.switch_branch(&path_clone, &branch_clone);
+                    let _ = tx.send(AsyncResult::BranchSwitched {
+                        path: path_clone,
+                        result,
+                    });
+                });
+                return Some(AppState::SwitchingBranchTask {
+                    path: path.to_string(),
+                    prev_state: Box::new(prev_state.clone()),
+                });
             }
             return Some(prev_state.clone());
         }

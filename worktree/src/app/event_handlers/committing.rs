@@ -1,7 +1,7 @@
 use crate::app::model::{AppState, PromptType};
 use crate::domain::repository::ProjectRepository;
 
-pub fn handle_committing_events<R: ProjectRepository>(
+pub fn handle_committing_events<R: ProjectRepository + Clone + Send + Sync + 'static>(
     event: &crossterm::event::Event,
     repo: &R,
     path: &str,
@@ -9,7 +9,9 @@ pub fn handle_committing_events<R: ProjectRepository>(
     selected_index: &mut usize,
     prev_state: &AppState,
     current_state: &AppState,
+    async_tx: &tokio::sync::mpsc::UnboundedSender<crate::app::async_tasks::AsyncResult>,
 ) -> Option<AppState> {
+    use crate::app::async_tasks::AsyncResult;
     use crossterm::event::{Event, KeyCode};
     let key_code = if let Event::Key(key) = event {
         key.code
@@ -44,37 +46,26 @@ pub fn handle_committing_events<R: ProjectRepository>(
             }
             1 => {
                 // AI
-                match repo.get_diff(path) {
-                    Ok(diff) => {
+                let repo_clone = repo.clone();
+                let path_clone = path.to_string();
+                let branch_clone = branch.to_string();
+                let tx = async_tx.clone();
+
+                tokio::task::spawn_blocking(move || {
+                    let result = (|| -> anyhow::Result<String> {
+                        let diff = repo_clone.get_diff(&path_clone)?;
                         if diff.trim().is_empty() {
-                            return Some(AppState::Error(
-                                "No changes detected to generate a message for.".into(),
-                                Box::new(current_state.clone()),
-                            ));
+                            return Err(anyhow::anyhow!("No changes detected."));
                         }
-                        match repo.generate_commit_message(&diff, branch) {
-                            Ok(msg) => {
-                                return Some(AppState::Prompting {
-                                    prompt_type: PromptType::CommitMessage,
-                                    input: msg,
-                                    prev_state: Box::new(current_state.clone()),
-                                });
-                            }
-                            Err(e) => {
-                                return Some(AppState::Error(
-                                    format!("AI Generation failed: {e}"),
-                                    Box::new(current_state.clone()),
-                                ));
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        return Some(AppState::Error(
-                            format!("Failed to get diff: {e}"),
-                            Box::new(current_state.clone()),
-                        ));
-                    }
-                }
+                        repo_clone.generate_commit_message(&diff, &branch_clone)
+                    })();
+
+                    let _ = tx.send(AsyncResult::CommitMessageGenerated { result });
+                });
+
+                return Some(AppState::GeneratingCommitMessage {
+                    prev_state: Box::new(current_state.clone()),
+                });
             }
             2 => {
                 // Set API Key

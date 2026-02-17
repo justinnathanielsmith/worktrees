@@ -96,7 +96,12 @@ impl View {
             AppState::LoadingStatus { prev_state, .. }
             | AppState::LoadingHistory { prev_state, .. }
             | AppState::LoadingBranches { prev_state, .. }
-            | AppState::Cleaning { prev_state, .. } => {
+            | AppState::Cleaning { prev_state, .. }
+            | AppState::Staging { prev_state, .. }
+            | AppState::Unstaging { prev_state, .. }
+            | AppState::SwitchingBranchTask { prev_state, .. }
+            | AppState::GeneratingCommitMessage { prev_state, .. }
+            | AppState::LoadingDiff { prev_state, .. } => {
                 Self::render_background(f, prev_state, context, area, spinner_tick);
             }
             _ => {}
@@ -374,6 +379,166 @@ impl View {
                             state.request_refresh();
                         }
                     }
+                    AsyncResult::StagedFile { path: _, result }
+                    | AsyncResult::UnstagedFile { path: _, result }
+                    | AsyncResult::StagedAll { path: _, result }
+                    | AsyncResult::UnstagedAll { path: _, result } => {
+                        if let AppState::Staging { prev_state, .. }
+                        | AppState::Unstaging { prev_state, .. } = state
+                        {
+                            if let Err(e) = result {
+                                *state = AppState::Error(
+                                    format!("Operation failed: {e}"),
+                                    prev_state.clone(),
+                                );
+                            } else {
+                                *state = *prev_state.clone();
+                                // We need to refresh the status in the view
+                                if let AppState::ViewingStatus {
+                                    path,
+                                    branch,
+                                    prev_state: inner_prev,
+                                    ..
+                                } = state
+                                {
+                                    let path_clone = path.clone();
+                                    let branch_clone = branch.clone();
+                                    let tx = async_tx.clone();
+                                    let repo_clone = repo.clone();
+                                    tokio::task::spawn_blocking(move || {
+                                        let res = repo_clone.get_status(&path_clone);
+                                        let _ = tx.send(AsyncResult::StatusFetched {
+                                            path: path_clone,
+                                            result: res,
+                                        });
+                                    });
+                                    *state = AppState::LoadingStatus {
+                                        path: path.clone(),
+                                        branch: branch_clone,
+                                        prev_state: inner_prev.clone(),
+                                    };
+                                }
+                            }
+                        }
+                    }
+                    AsyncResult::DiffFetched { path: _, result } => {
+                        if let AppState::LoadingDiff { prev_state, .. } = state {
+                            match result {
+                                Ok(diff) => {
+                                    *state = *prev_state.clone();
+                                    if let AppState::ViewingStatus { status, .. } = state {
+                                        status.diff_preview = Some(diff);
+                                    }
+                                }
+                                Err(e) => {
+                                    *state = AppState::Error(
+                                        format!("Failed to fetch diff: {e}"),
+                                        prev_state.clone(),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    AsyncResult::BranchSwitched { path: _, result } => {
+                        if let AppState::SwitchingBranchTask { prev_state, .. } = state {
+                            if let Err(e) = result {
+                                *state = AppState::Error(
+                                    format!("Branch switch failed: {e}"),
+                                    prev_state.clone(),
+                                );
+                            } else {
+                                *state = *prev_state.clone();
+                                state.request_refresh();
+                            }
+                        }
+                    }
+                    AsyncResult::CommitMessageGenerated { result } => {
+                        if let AppState::GeneratingCommitMessage { prev_state, .. } = state {
+                            match result {
+                                Ok(msg) => {
+                                    *state = AppState::Prompting {
+                                        prompt_type: crate::app::model::PromptType::CommitMessage,
+                                        input: msg,
+                                        prev_state: prev_state.clone(),
+                                    };
+                                }
+                                Err(e) => {
+                                    *state = AppState::Error(
+                                        format!("AI generation failed: {e}"),
+                                        prev_state.clone(),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    AsyncResult::StashApplied { result }
+                    | AsyncResult::StashPopped { result }
+                    | AsyncResult::StashDropped { result }
+                    | AsyncResult::StashSaved { result } => {
+                        if let AppState::StashAction { prev_state, .. } = state {
+                            if let Err(e) = result {
+                                *state = AppState::Error(
+                                    format!("Stash operation failed: {e}"),
+                                    prev_state.clone(),
+                                );
+                            } else {
+                                *state = *prev_state.clone();
+                                // If we were in ViewingStashes, we need to refresh the stash list
+                                if let AppState::ViewingStashes {
+                                    path,
+                                    branch,
+                                    selected_index: _,
+                                    prev_state: inner_prev,
+                                    ..
+                                } = state
+                                {
+                                    let path_clone = path.clone();
+                                    let branch_clone = branch.clone();
+                                    let tx = async_tx.clone();
+                                    let repo_clone = repo.clone();
+                                    let path_clone_for_task = path_clone.clone();
+                                    tokio::task::spawn_blocking(move || {
+                                        let res = repo_clone.list_stashes(&path_clone_for_task);
+                                        let _ = tx.send(AsyncResult::StashesFetched {
+                                            path: path_clone_for_task,
+                                            result: res,
+                                        });
+                                    });
+                                    *state = AppState::LoadingStashes {
+                                        path: path_clone.clone(),
+                                        branch: branch_clone,
+                                        prev_state: inner_prev.clone(),
+                                    };
+                                }
+                            }
+                        }
+                    }
+                    AsyncResult::StashesFetched { path: _, result } => {
+                        if let AppState::LoadingStashes {
+                            path,
+                            branch,
+                            prev_state,
+                        } = state
+                        {
+                            match result {
+                                Ok(stashes) => {
+                                    *state = AppState::ViewingStashes {
+                                        path: path.clone(),
+                                        branch: branch.clone(),
+                                        stashes,
+                                        selected_index: 0, // Reset for now or track it
+                                        prev_state: prev_state.clone(),
+                                    };
+                                }
+                                Err(e) => {
+                                    *state = AppState::Error(
+                                        format!("Failed to list stashes: {e}"),
+                                        prev_state.clone(),
+                                    );
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -539,6 +704,7 @@ impl View {
                             status,
                             prev_state,
                             &current_state_clone,
+                            &async_tx,
                         );
                     }
                     AppState::ViewingHistory {
@@ -565,6 +731,7 @@ impl View {
                             branches,
                             selected_index,
                             prev_state,
+                            &async_tx,
                         );
                     }
                     AppState::PickingBaseRef {
@@ -623,6 +790,7 @@ impl View {
                             selected_index,
                             prev_state,
                             &current_state_clone,
+                            &async_tx,
                         );
                     }
                     AppState::ViewingStashes {
@@ -641,12 +809,18 @@ impl View {
                             selected_index,
                             prev_state,
                             &current_state_clone,
+                            &async_tx,
                         );
                     }
                     AppState::LoadingStatus { .. }
                     | AppState::LoadingHistory { .. }
                     | AppState::LoadingBranches { .. }
-                    | AppState::Cleaning { .. } => {
+                    | AppState::Cleaning { .. }
+                    | AppState::Staging { .. }
+                    | AppState::Unstaging { .. }
+                    | AppState::SwitchingBranchTask { .. }
+                    | AppState::GeneratingCommitMessage { .. }
+                    | AppState::LoadingDiff { .. } => {
                         // Background loading states don't have secondary event handlers
                         // But can still be exited via global q/Esc handled below
                     }
@@ -843,7 +1017,14 @@ impl View {
             AppState::LoadingStatus { .. }
             | AppState::LoadingHistory { .. }
             | AppState::LoadingBranches { .. }
-            | AppState::Cleaning { .. } => {
+            | AppState::Cleaning { .. }
+            | AppState::Staging { .. }
+            | AppState::Unstaging { .. }
+            | AppState::SwitchingBranchTask { .. }
+            | AppState::GeneratingCommitMessage { .. }
+            | AppState::LoadingDiff { .. }
+            | AppState::LoadingStashes { .. }
+            | AppState::StashAction { .. } => {
                 render_modals(f, repo, display_state, spinner_tick);
             }
             _ => {
