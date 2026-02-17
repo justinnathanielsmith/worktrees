@@ -1,17 +1,11 @@
-mod app;
-mod cli;
-mod domain;
-mod infrastructure;
-mod ui;
-
-use app::intent::Intent;
-use app::model::{AppState, RefreshType};
-use app::reducer::Reducer;
-use app::view::View;
+use worktree::app::intent::Intent;
+use worktree::app::model::{AppState, RefreshType};
+use worktree::app::reducer::Reducer;
+use worktree::app::view::View;
 use clap::Parser;
-use cli::{Cli, Commands};
-use domain::repository::{ProjectRepository, RepoStatus};
-use infrastructure::git_repo::GitProjectRepository;
+use worktree::cli::{self, Cli, Commands};
+use worktree::domain::repository::{ProjectRepository, RepoStatus};
+use worktree::infrastructure::git_repo::GitProjectRepository;
 use miette::Result;
 use ratatui::widgets::TableState;
 use std::io::{self, Write};
@@ -134,8 +128,8 @@ fn render_tui_mode(
         table_state,
         refresh_needed: RefreshType::None,
         selection_mode,
-        dashboard: app::model::DashboardState {
-            active_tab: app::model::DashboardTab::Info,
+        dashboard: worktree::app::model::DashboardState {
+            active_tab: worktree::app::model::DashboardTab::Info,
             cached_status: None,
             cached_history: None,
         },
