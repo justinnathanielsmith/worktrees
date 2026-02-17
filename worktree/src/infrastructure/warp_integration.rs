@@ -49,3 +49,7 @@ arguments:
 
     Ok(())
 }
+
+pub fn is_warp_terminal() -> bool {
+    std::env::var("TERM_PROGRAM").is_ok_and(|v| v == "WarpTerminal")
+}

@@ -98,14 +98,24 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 match res {
                     Ok(()) => {
                         if warp {
-                            if let Err(e) =
-                                crate::infrastructure::warp_integration::generate_warp_workflows(
-                                    Path::new(&project_name),
-                                )
-                            {
-                                error!(error = %e, "Failed to generate Warp workflows");
+                            if crate::infrastructure::warp_integration::is_warp_terminal() {
+                                if let Err(e) =
+                                    crate::infrastructure::warp_integration::generate_warp_workflows(
+                                        Path::new(&project_name),
+                                    )
+                                {
+                                    error!(error = %e, "Failed to generate Warp workflows");
+                                } else {
+                                    info!("Warp workflows generated successfully");
+                                }
                             } else {
-                                info!("Warp workflows generated successfully");
+                                info!("Skipping Warp workflow generation: Not running in Warp Terminal");
+                                if !json_mode && !quiet_mode {
+                                    println!(
+                                        "{} Skipping Warp workflow generation: Not running in Warp Terminal",
+                                        "⚠".yellow()
+                                    );
+                                }
                             }
                         }
 
