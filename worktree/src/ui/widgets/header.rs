@@ -69,7 +69,12 @@ impl Widget for HeaderWidget<'_> {
 
         // -- Right Side: Status Matrix --
         let mode_str = match self.state {
-            AppState::ListingWorktrees { .. } => "IDLE", // Listing is effectively Idle/Ready
+            AppState::ListingWorktrees { mode, .. } => match mode {
+                crate::app::model::AppMode::Normal => "READY",
+                crate::app::model::AppMode::Manage => "MANAGE",
+                crate::app::model::AppMode::Git => "GIT_OPS",
+                crate::app::model::AppMode::Filter => "FILTERING",
+            },
             AppState::ViewingStatus { .. } => "INSPECT",
             AppState::ViewingHistory { .. } => "LOG_VIEW",
             AppState::SwitchingBranch { .. } => "SWITCH",
