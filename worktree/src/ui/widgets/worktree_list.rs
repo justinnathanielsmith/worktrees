@@ -5,7 +5,8 @@ use ratatui::{
     style::{Modifier, Style},
     text::{Line, Span},
     widgets::{
-        Block, BorderType, Borders, Cell, Paragraph, Row, StatefulWidget, Table, TableState, Widget,
+        Block, BorderType, Borders, Cell, Paragraph, Row, Scrollbar, ScrollbarOrientation,
+        ScrollbarState, StatefulWidget, Table, TableState, Widget,
     },
 };
 
@@ -68,8 +69,9 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 title_style,
             ));
 
+        let inner_area = block.inner(area);
+
         if self.worktrees.is_empty() {
-            let inner_area = block.inner(area);
             block.render(area, buf);
 
             let chunks = Layout::default()
@@ -255,6 +257,28 @@ impl StatefulWidget for WorktreeListWidget<'_> {
         .row_highlight_style(Style::default().add_modifier(Modifier::BOLD)); // Handled manually in row mapping, but keeping basic highlight
 
         StatefulWidget::render(table, area, buf, state);
+
+        if self.worktrees.len() > inner_area.height as usize {
+            let scrollbar = Scrollbar::default()
+                .orientation(ScrollbarOrientation::VerticalRight)
+                .begin_symbol(None)
+                .end_symbol(None)
+                .track_symbol(None)
+                .thumb_symbol("▐")
+                .thumb_style(if self.is_dimmed {
+                    Style::default()
+                        .fg(theme.subtle)
+                        .add_modifier(Modifier::DIM)
+                } else {
+                    Style::default().fg(theme.secondary)
+                });
+
+            let mut scrollbar_state = ScrollbarState::new(self.worktrees.len())
+                .position(state.offset())
+                .viewport_content_length(inner_area.height as usize);
+
+            StatefulWidget::render(scrollbar, inner_area, buf, &mut scrollbar_state);
+        }
     }
 }
 
