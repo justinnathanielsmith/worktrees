@@ -29,6 +29,11 @@ use std::io;
 use std::time::Duration;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
+pub struct RenderContext {
+    pub project_name: String,
+    pub context: crate::domain::repository::ProjectContext,
+}
+
 pub struct View;
 
 impl View {
@@ -137,6 +142,18 @@ impl View {
         async_tx: UnboundedSender<AsyncResult>,
         mut async_rx: UnboundedReceiver<AsyncResult>,
     ) -> Result<Option<String>> {
+        let current_dir = std::env::current_dir().unwrap_or_default();
+        let project_name = current_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("UNKNOWN")
+            .to_string();
+        let context = repo.detect_context(std::path::Path::new("."));
+        let render_context = RenderContext {
+            project_name,
+            context,
+        };
+
         loop {
             // Handle repository events
             if let Some(ref rx) = rx {
@@ -344,7 +361,7 @@ impl View {
                 }
             }
 
-            terminal.draw(|f| Self::draw(f, repo, state, *spinner_tick))?;
+            terminal.draw(|f| Self::draw(f, repo, state, *spinner_tick, &render_context))?;
             *spinner_tick = spinner_tick.wrapping_add(1);
 
             if event::poll(Duration::from_millis(100))? {
@@ -556,6 +573,7 @@ impl View {
         repo: &R,
         state: &mut AppState,
         spinner_tick: usize,
+        render_context: &RenderContext,
     ) {
         let display_state = if let AppState::Timed { inner_state, .. } = state {
             &mut **inner_state
@@ -576,18 +594,11 @@ impl View {
             )
             .split(f.area());
 
-        let current_dir = std::env::current_dir().unwrap_or_default();
-        let project_name = current_dir
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("UNKNOWN")
-            .to_string();
-
-        let context = repo.detect_context(std::path::Path::new("."));
+        let context = render_context.context;
         f.render_widget(
             HeaderWidget {
                 context,
-                project_name,
+                project_name: &render_context.project_name,
                 state: display_state,
             },
             chunks[0],
@@ -895,10 +906,14 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let repo = MockRepository;
         let mut state = AppState::Welcome;
+        let render_context = RenderContext {
+            project_name: "test-project".to_string(),
+            context: ProjectContext::Standard,
+        };
 
         terminal
             .draw(|f| {
-                View::draw(f, &repo, &mut state, 0);
+                View::draw(f, &repo, &mut state, 0, &render_context);
             })
             .unwrap();
 
@@ -969,10 +984,14 @@ mod tests {
             is_filtering: false,
             mode: crate::app::model::AppMode::Normal,
         };
+        let render_context = RenderContext {
+            project_name: "test-project".to_string(),
+            context: ProjectContext::Standard,
+        };
 
         terminal
             .draw(|f| {
-                View::draw(f, &repo, &mut state, 0);
+                View::draw(f, &repo, &mut state, 0, &render_context);
             })
             .unwrap();
 
@@ -1001,10 +1020,14 @@ mod tests {
 
         let prev_state = Box::new(AppState::Welcome);
         let mut state = AppState::Error("Test error message".to_string(), prev_state);
+        let render_context = RenderContext {
+            project_name: "test-project".to_string(),
+            context: ProjectContext::Standard,
+        };
 
         terminal
             .draw(|f| {
-                View::draw(f, &repo, &mut state, 0);
+                View::draw(f, &repo, &mut state, 0, &render_context);
             })
             .unwrap();
 
@@ -1040,10 +1063,14 @@ mod tests {
             start_time: std::time::Instant::now(),
             duration: std::time::Duration::from_millis(800),
         };
+        let render_context = RenderContext {
+            project_name: "test-project".to_string(),
+            context: ProjectContext::Standard,
+        };
 
         terminal
             .draw(|f| {
-                View::draw(f, &repo, &mut state, 0);
+                View::draw(f, &repo, &mut state, 0, &render_context);
             })
             .unwrap();
 

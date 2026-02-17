@@ -32,12 +32,26 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                                 val.clone()
                             },
                         };
+                        // Create a temporary render context for this immediate draw
+                        let current_dir = std::env::current_dir().unwrap_or_default();
+                        let project_name = current_dir
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("UNKNOWN")
+                            .to_string();
+                        let context = repo.detect_context(std::path::Path::new("."));
+                        let render_context = crate::app::view::RenderContext {
+                            project_name,
+                            context,
+                        };
+
                         terminal.draw(|f| {
-                            super::super::view::View::draw(
+                            crate::app::view::View::draw(
                                 f,
                                 repo,
                                 &mut adding_state,
                                 *spinner_tick,
+                                &render_context,
                             );
                         })?;
 
