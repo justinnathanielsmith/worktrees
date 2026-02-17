@@ -10,7 +10,7 @@ use ratatui::{
 
 pub struct HeaderWidget<'a> {
     pub context: ProjectContext,
-    pub project_name: String,
+    pub project_name: &'a str,
     pub state: &'a AppState,
 }
 
