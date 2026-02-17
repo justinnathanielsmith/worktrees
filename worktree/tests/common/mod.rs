@@ -6,6 +6,7 @@ use worktree::infrastructure::git_repo::GitProjectRepository;
 pub struct GitFixture {
     _temp_dir: TempDir,
     pub root_path: PathBuf,
+    #[allow(dead_code)]
     pub repo: GitProjectRepository,
 }
 
