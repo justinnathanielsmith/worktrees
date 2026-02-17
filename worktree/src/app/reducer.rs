@@ -717,6 +717,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                             // Copy path to clipboard using pbcopy on macOS
                             #[cfg(target_os = "macos")]
                             {
+                                use std::io::Write;
                                 use std::process::Stdio;
                                 let mut child = Command::new("pbcopy")
                                     .stdin(Stdio::piped())
