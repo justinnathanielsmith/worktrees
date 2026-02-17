@@ -1117,7 +1117,10 @@ impl ProjectRepository for GitProjectRepository {
         };
 
         if dry_run {
-            println!("[Dry Run] Would migrate '{}' to Bare Hub structure.", current_dir.display());
+            println!(
+                "[Dry Run] Would migrate '{}' to Bare Hub structure.",
+                current_dir.display()
+            );
             println!("[Dry Run] 1. Move .git to .bare");
             println!("[Dry Run] 2. Configure .bare as bare repository");
             println!("[Dry Run] 3. Create worktree '{}' (no checkout)", branch);
@@ -1130,10 +1133,15 @@ impl ProjectRepository for GitProjectRepository {
         if !force {
             // naive check for collision
             if current_dir.join(".bare").exists() {
-                 return Err(anyhow::anyhow!("Target '.bare' directory already exists. Use --force to overwrite."));
+                return Err(anyhow::anyhow!(
+                    "Target '.bare' directory already exists. Use --force to overwrite."
+                ));
             }
             if current_dir.join(&branch).exists() {
-                 return Err(anyhow::anyhow!("Target worktree directory '{}' already exists. Use --force to overwrite.", branch));
+                return Err(anyhow::anyhow!(
+                    "Target worktree directory '{}' already exists. Use --force to overwrite.",
+                    branch
+                ));
             }
         }
 
@@ -1178,7 +1186,10 @@ impl ProjectRepository for GitProjectRepository {
             let file_name = entry.file_name();
             let file_name_str = file_name.to_string_lossy();
 
-            if file_name_str == ".bare" || file_name_str == branch.as_str() || file_name_str == ".git" {
+            if file_name_str == ".bare"
+                || file_name_str == branch.as_str()
+                || file_name_str == ".git"
+            {
                 continue;
             }
 
@@ -1187,8 +1198,12 @@ impl ProjectRepository for GitProjectRepository {
             if let Err(e) = std::fs::rename(&path, &dest) {
                 // If rename fails (e.g. across devices), try copy+delete
                 debug!("Rename failed ({}), trying copy+delete...", e);
-                 // Note: This is risky for directories, mainly relying on rename working within same FS
-                 return Err(anyhow::anyhow!("Failed to move file {:?}: {}. Migration aborted mid-process.", path, e));
+                // Note: This is risky for directories, mainly relying on rename working within same FS
+                return Err(anyhow::anyhow!(
+                    "Failed to move file {:?}: {}. Migration aborted mid-process.",
+                    path,
+                    e
+                ));
             }
         }
 
@@ -1196,13 +1211,13 @@ impl ProjectRepository for GitProjectRepository {
         // This makes the git index match the moved files
         Self::run_git(&["-C", &worktree_dir.to_string_lossy(), "reset", "HEAD"])
             .context("Failed to reset index in new worktree")?;
-        
+
         // 8. Create .git file in root pointing to .bare (acting as main entry point?)
         // Actually, in Bare Hub, the root has NO .git file usually, or it has a .git dir if it was a repo.
         // But here we want the root to be just the holder.
-        // The user might want a .git file in the root to make editors happy if they open the root? 
+        // The user might want a .git file in the root to make editors happy if they open the root?
         // No, the root is not a worktree. It's the hub.
-        
+
         Ok(worktree_dir)
     }
 }
@@ -1712,10 +1727,13 @@ mod tests {
         std::env::set_current_dir(original_cwd).unwrap();
 
         let worktree_path = res.expect("Migration failed");
-        
+
         // 5. Verification
         assert!(temp_dir.join(".bare").exists(), ".bare not found");
-        assert!(!temp_dir.join(".git").exists(), "Original .git still exists");
+        assert!(
+            !temp_dir.join(".git").exists(),
+            "Original .git still exists"
+        );
         assert!(worktree_path.exists(), "Worktree dir not found");
         assert!(worktree_path.join("committed.txt").exists());
         assert!(worktree_path.join("untracked.txt").exists());
@@ -1731,7 +1749,7 @@ mod tests {
             .output()
             .unwrap();
         let status = String::from_utf8_lossy(&status_out.stdout);
-        
+
         // Should show 'M committed.txt' and '?? untracked.txt'
         assert!(status.contains("M committed.txt"));
         assert!(status.contains("?? untracked.txt"));
@@ -1743,8 +1761,10 @@ mod tests {
     #[test]
     fn test_migrate_in_place_dry_run() {
         let _lock = CWD_MUTEX.lock().unwrap();
-        let temp_dir =
-            std::env::temp_dir().join(format!("worktrees_migrate_dry_run_test_{}", std::process::id()));
+        let temp_dir = std::env::temp_dir().join(format!(
+            "worktrees_migrate_dry_run_test_{}",
+            std::process::id()
+        ));
         if temp_dir.exists() {
             std::fs::remove_dir_all(&temp_dir).unwrap();
         }
@@ -1773,16 +1793,16 @@ mod tests {
         // Nothing should have changed
         assert!(temp_dir.join(".git").exists(), "Original .git should exist");
         assert!(!temp_dir.join(".bare").exists(), ".bare should NOT exist");
-        
+
         let expected = temp_dir.join("main");
         // Canonicalize if possible, or handle Mac /var vs /private/var
         let path_str = path.to_string_lossy();
         let expected_str = expected.to_string_lossy();
-        
+
         if cfg!(target_os = "macos") {
-             assert!(path_str.ends_with(expected_str.trim_start_matches("/private")));
+            assert!(path_str.ends_with(expected_str.trim_start_matches("/private")));
         } else {
-             assert_eq!(path, expected);
+            assert_eq!(path, expected);
         }
 
         // Cleanup

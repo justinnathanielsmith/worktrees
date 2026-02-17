@@ -5,7 +5,6 @@ use crate::domain::repository::{ProjectRepository, Worktree};
 use indicatif::{ProgressBar, ProgressStyle};
 use miette::{IntoDiagnostic, Result};
 use owo_colors::{OwoColorize, Stream::Stdout};
-use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
@@ -905,13 +904,8 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                                     "\n{} Migration complete! You are now in a Bare Hub.",
                                     "✔".green().bold()
                                 );
-                                println!(
-                                    "   New main worktree: {}",
-                                    path.display().bold()
-                                );
-                                println!(
-                                    "   To start working, cd into the new worktree."
-                                );
+                                println!("   New main worktree: {}", path.display().bold());
+                                println!("   To start working, cd into the new worktree.");
                             }
                         }
                     }
@@ -923,10 +917,10 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                             )
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                           println!("\n{} Migration failed: {}", "❌".red().bold(), e);
-                           if e.to_string().contains("already exists") {
-                               println!("   Tip: Use --force to overwrite existing directories.");
-                           }
+                            println!("\n{} Migration failed: {}", "❌".red().bold(), e);
+                            if e.to_string().contains("already exists") {
+                                println!("   Tip: Use --force to overwrite existing directories.");
+                            }
                         }
                     }
                 }
@@ -1078,7 +1072,10 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                         error!(error = %e, "Rebase failed");
                         if !json_mode {
                             println!("\n{} Rebase failed: {}", "❌".red().bold(), e);
-                            println!("{} Analyzing conflicts with Gemini AI...", "➜".cyan().bold());
+                            println!(
+                                "{} Analyzing conflicts with Gemini AI...",
+                                "➜".cyan().bold()
+                            );
 
                             let repo_clone = repo.clone();
                             let path_clone = path;
@@ -1315,7 +1312,7 @@ mod tests {
         }
 
         fn migrate_to_bare(&self, force: bool, dry_run: bool) -> Result<std::path::PathBuf> {
-             self.tracker
+            self.tracker
                 .lock()
                 .unwrap()
                 .calls
