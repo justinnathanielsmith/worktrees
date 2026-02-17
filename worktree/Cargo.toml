@@ -1,6 +1,6 @@
 [package]
 name = "worktree"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 authors = ["Justin Smith"]
 description = "A professional CLI for managing Git worktrees using the Bare Hub Architecture."
