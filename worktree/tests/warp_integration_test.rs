@@ -1,6 +1,8 @@
 use worktree::infrastructure::warp_integration::is_warp_terminal;
+use serial_test::serial;
 
 #[test]
+#[serial]
 fn test_is_warp_terminal_positive() {
     // We need to run this in a separate process or ensure no other tests are running
     // but for now, we'll just set it and unset it carefully.
@@ -20,6 +22,7 @@ fn test_is_warp_terminal_positive() {
 }
 
 #[test]
+#[serial]
 fn test_is_warp_terminal_negative() {
     unsafe {
         std::env::set_var("TERM_PROGRAM", "iTerm.app");
@@ -31,6 +34,7 @@ fn test_is_warp_terminal_negative() {
 }
 
 #[test]
+#[serial]
 fn test_is_warp_terminal_missing() {
     unsafe {
         std::env::remove_var("TERM_PROGRAM");
