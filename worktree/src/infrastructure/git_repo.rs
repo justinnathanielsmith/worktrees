@@ -540,7 +540,31 @@ impl ProjectRepository for GitProjectRepository {
             std::fs::create_dir_all(parent)?;
         }
 
-        std::fs::write(path, editor)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .mode(0o600)
+                .open(&path)
+                .context("Failed to open editor config file with secure permissions")?;
+
+            // Ensure permissions are set even if file existed
+            let mut perms = file.metadata()?.permissions();
+            perms.set_mode(0o600);
+            file.set_permissions(perms)?;
+
+            file.write_all(editor.as_bytes())
+                .context("Failed to write editor config to file")?;
+        }
+
+        #[cfg(not(unix))]
+        {
+            std::fs::write(path, editor)?;
+        }
+
         Ok(())
     }
 
@@ -1393,6 +1417,68 @@ mod tests {
             repo.detect_context(&temp_dir),
             crate::domain::repository::ProjectContext::KmpAndroid
         );
+
+        // Cleanup
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    #[cfg(unix)]
+    #[serial_test::serial]
+    fn test_editor_config_file_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+
+        // Setup temp dir
+        let temp_dir =
+            std::env::temp_dir().join(format!("worktrees_test_editor_perms_{}", std::process::id()));
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        std::fs::create_dir(&temp_dir).unwrap();
+
+        // Backup existing HOME/USERPROFILE/XDG_CONFIG_HOME
+        // Note: Environment variables are process-wide. This test should run in isolation or serially.
+        let old_home = std::env::var("HOME").ok();
+        let old_xdg = std::env::var("XDG_CONFIG_HOME").ok();
+
+        unsafe {
+            std::env::set_var("HOME", &temp_dir);
+            std::env::set_var("XDG_CONFIG_HOME", &temp_dir);
+        }
+
+        let repo = GitProjectRepository;
+        repo.set_preferred_editor("vim").unwrap();
+
+        // Check file existence
+        let path1 = temp_dir.join("worktrees").join("editor");
+        let path2 = temp_dir.join(".worktrees.editor");
+
+        let actual_path = if path1.exists() { path1 } else { path2 };
+        assert!(actual_path.exists(), "Editor config file should be created");
+
+        // Verify permissions
+        let metadata = std::fs::metadata(&actual_path).unwrap();
+        let mode = metadata.permissions().mode() & 0o777;
+
+        // This assertion is expected to FAIL before the fix
+        assert_eq!(
+            mode, 0o600,
+            "Editor config file permissions should be 600, but were {mode:o}"
+        );
+
+        // Restore env
+        unsafe {
+            if let Some(h) = old_home {
+                std::env::set_var("HOME", h);
+            } else {
+                std::env::remove_var("HOME");
+            }
+            if let Some(x) = old_xdg {
+                std::env::set_var("XDG_CONFIG_HOME", x);
+            } else {
+                std::env::remove_var("XDG_CONFIG_HOME");
+            }
+        }
 
         // Cleanup
         std::fs::remove_dir_all(&temp_dir).unwrap();
