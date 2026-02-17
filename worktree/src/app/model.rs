@@ -107,7 +107,7 @@ pub struct DashboardState {
 }
 
 /// The possible states of the TUI application.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum AppState {
     /// The starting state when no project is detected.
     Welcome,

@@ -67,7 +67,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
             Intent::Initialize { url, name, warp } => {
                 let project_name = get_project_name(url.as_ref(), name);
                 if !json_mode && !quiet_mode {
-                    self.view.render(AppState::Initializing {
+                    View::render(AppState::Initializing {
                         project_name: project_name.clone(),
                     });
                 }
@@ -122,14 +122,14 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
                         info!(%project_name, "Repository initialized successfully");
                         if json_mode {
-                            self.view.render_json(&serde_json::json!({
+                            View::render_json(&serde_json::json!({
                                 "status": "success",
                                 "project": project_name,
                                 "path": format!("{}/.bare", project_name)
                             }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else if !quiet_mode {
-                            self.view.render(AppState::Initialized { project_name });
+                            View::render(AppState::Initialized { project_name });
                         }
                     }
                     Err(e) => {
@@ -138,13 +138,13 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
                         error!(error = %e, "Failed to initialize repository");
                         if json_mode {
-                            self.view.render_json(&serde_json::json!({
+                            View::render_json(&serde_json::json!({
                                 "status": "error",
                                 "message": e.to_string()
                             }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            self.view.render(AppState::Error(
+                            View::render(AppState::Error(
                                 e.to_string(),
                                 Box::new(AppState::Welcome),
                             ));
@@ -155,7 +155,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
             Intent::AddWorktree { intent, branch } => {
                 let branch_name = branch.unwrap_or_else(|| intent.clone());
                 if !json_mode {
-                    self.view.render(AppState::AddingWorktree {
+                    View::render(AppState::AddingWorktree {
                         intent: intent.clone(),
                         branch: branch_name.clone(),
                     });
@@ -193,14 +193,14 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
                         info!(%intent, %branch_name, "Worktree added successfully");
                         if json_mode {
-                            self.view.render_json(&serde_json::json!({
+                            View::render_json(&serde_json::json!({
                                 "status": "success",
                                 "intent": intent,
                                 "branch": branch_name
                             }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else if !quiet_mode {
-                            self.view.render(AppState::WorktreeAdded { intent });
+                            View::render(AppState::WorktreeAdded { intent });
                         }
                     }
                     Err(e) => {
@@ -209,13 +209,13 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
                         error!(error = %e, %intent, "Failed to add worktree");
                         if json_mode {
-                            self.view.render_json(&serde_json::json!({
+                            View::render_json(&serde_json::json!({
                                 "status": "error",
                                 "message": e.to_string()
                             }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            self.view.render(AppState::Error(
+                            View::render(AppState::Error(
                                 e.to_string(),
                                 Box::new(AppState::Welcome),
                             ));
@@ -225,7 +225,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
             }
             Intent::RemoveWorktree { intent, force } => {
                 if !json_mode && !quiet_mode {
-                    self.view.render(AppState::RemovingWorktree {
+                    View::render(AppState::RemovingWorktree {
                         intent: intent.clone(),
                     });
                 }
@@ -242,23 +242,23 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     Ok(()) => {
                         info!(%intent, "Worktree removed successfully");
                         if json_mode {
-                            self.view.render_json(
+                            View::render_json(
                                 &serde_json::json!({ "status": "success", "intent": intent }),
                             )
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else if !quiet_mode {
-                            self.view.render(AppState::WorktreeRemoved);
+                            View::render(AppState::WorktreeRemoved);
                         }
                     }
                     Err(e) => {
                         error!(error = %e, %intent, "Failed to remove worktree");
                         if json_mode {
-                            self.view.render_json(
+                            View::render_json(
                                 &serde_json::json!({ "status": "error", "message": e.to_string() }),
                             )
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            self.view.render(AppState::Error(
+                            View::render(AppState::Error(
                                 e.to_string(),
                                 Box::new(AppState::Welcome),
                             ));
@@ -274,13 +274,13 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     .map_err(|e| miette::miette!("{e:?}"))?;
                 info!(count = worktrees.len(), "Worktrees listed successfully");
                 if json_mode {
-                    self.view.render_json(&worktrees).map_err(|e| miette::miette!("{e:?}"))?;
+                    View::render_json(&worktrees).map_err(|e| miette::miette!("{e:?}"))?;
                 } else {
-                    self.view.render_banner();
+                    View::render_banner();
                     if worktrees.is_empty() {
-                        self.view.render(AppState::Welcome);
+                        View::render(AppState::Welcome);
                     }
-                    self.view.render_listing_table(&worktrees);
+                    View::render_listing_table(&worktrees);
                     let tip = "Tip: Run with 'worktrees list' (no args) for interactive TUI";
                     if !quiet_mode {
                         println!("\n{}", tip.if_supports_color(Stdout, |t| t.dimmed()));
@@ -289,7 +289,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
             }
             Intent::SetupDefaults => {
                 if !json_mode && !quiet_mode {
-                    self.view.render(AppState::SettingUpDefaults);
+                    View::render(AppState::SettingUpDefaults);
                 }
 
                 let mut results = Vec::new();
@@ -342,9 +342,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 results.push(dev_res);
 
                 if json_mode {
-                    self.view.render_json(&results).map_err(|e| miette::miette!("{e:?}"))?;
+                    View::render_json(&results).map_err(|e| miette::miette!("{e:?}"))?;
                 } else if !quiet_mode {
-                    self.view.render(AppState::SetupComplete);
+                    View::render(AppState::SetupComplete);
                 }
             }
             Intent::RunCommand {
@@ -417,7 +417,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 if !json_mode && !quiet_mode {
                     println!("{} Done.", "✔".green().bold());
                 } else if json_mode {
-                    self.view.render_json(
+                    View::render_json(
                         &serde_json::json!({ "status": "success", "exit_code": status.code() }),
                     )
                     .map_err(|e| miette::miette!("{e:?}"))?;
@@ -469,7 +469,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
 
                 if json_mode {
-                    self.view.render_json(&serde_json::json!({ "status": "success" }))
+                    View::render_json(&serde_json::json!({ "status": "success" }))
                         .map_err(|e| miette::miette!("{e:?}"))?;
                 }
             }
@@ -511,7 +511,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                                 println!("   {} Push complete.", "✔".green());
                             }
                             if json_mode {
-                                self.view.render_json(&serde_json::json!({ "status": "success", "branch": wt.branch }))
+                                View::render_json(&serde_json::json!({ "status": "success", "branch": wt.branch }))
                                     .map_err(|e| miette::miette!("{e:?}"))?;
                             }
                         }
@@ -566,7 +566,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                                 println!("   {} Pull complete.", "✔".green());
                             }
                             if json_mode {
-                                self.view.render_json(&serde_json::json!({ "status": "success", "branch": wt.branch }))
+                                View::render_json(&serde_json::json!({ "status": "success", "branch": wt.branch }))
                                     .map_err(|e| miette::miette!("{e:?}"))?;
                             }
                         }
@@ -594,7 +594,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     if !json_mode && !quiet_mode {
                         println!("{} Gemini API key set successfully.", "✔".green().bold());
                     } else if json_mode {
-                        self.view.render_json(
+                        View::render_json(
                             &serde_json::json!({ "status": "success", "action": "set_key" }),
                         )
                         .map_err(|e| miette::miette!("{e:?}"))?;
@@ -606,7 +606,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         .into_diagnostic()?
                         .map_err(|e| miette::miette!("Failed to get API key: {}", e))?;
                     if json_mode {
-                        self.view.render_json(&serde_json::json!({ "status": "success", "key": k }))
+                        View::render_json(&serde_json::json!({ "status": "success", "key": k }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
                     } else if let Some(val) = k {
                         println!("{} Current API key: {}", "➜".cyan().bold(), val);
@@ -651,7 +651,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     if !json_mode && !quiet_mode {
                         println!("{} No stale worktrees found.", "✔".green().bold());
                     } else if json_mode {
-                        self.view.render_json(&serde_json::json!({
+                        View::render_json(&serde_json::json!({
                             "status": "success",
                             "stale_count": 0,
                             "stale_worktrees": []
@@ -682,7 +682,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         );
                     }
                 } else {
-                    self.view.render_json(&serde_json::json!({
+                    View::render_json(&serde_json::json!({
                         "status": "success",
                         "dry_run": dry_run,
                         "stale_count": stale_worktrees.len(),
@@ -753,7 +753,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
 
                         if json_mode {
-                            self.view.render_json(&serde_json::json!({
+                            View::render_json(&serde_json::json!({
                                 "status": "success",
                                 "path": wt.path,
                                 "branch": wt.branch,
@@ -813,7 +813,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
                         info!(path = ?hub_path, "Repository converted successfully");
                         if json_mode {
-                            self.view.render_json(&serde_json::json!({
+                            View::render_json(&serde_json::json!({
                                 "status": "success",
                                 "hub_path": hub_path.to_string_lossy()
                             }))
@@ -838,13 +838,13 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
                         error!(error = %e, "Failed to convert repository");
                         if json_mode {
-                            self.view.render_json(&serde_json::json!({
+                            View::render_json(&serde_json::json!({
                                 "status": "error",
                                 "message": e.to_string()
                             }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            self.view.render(AppState::Error(
+                            View::render(AppState::Error(
                                 e.to_string(),
                                 Box::new(AppState::Welcome),
                             ));
@@ -899,7 +899,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                                     path.display()
                                 );
                             } else {
-                                self.view.render_json(&serde_json::json!({
+                                View::render_json(&serde_json::json!({
                                     "status": "success",
                                     "dry_run": true,
                                     "would_create": path
@@ -909,7 +909,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         } else {
                             info!("Repository migrated successfully");
                             if json_mode {
-                                self.view.render_json(&serde_json::json!({
+                                View::render_json(&serde_json::json!({
                                     "status": "success",
                                     "path": path,
                                     "message": "Repository migrated to Bare Hub structure."
@@ -928,7 +928,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     Err(e) => {
                         error!(error = %e, "Failed to migrate repository");
                         if json_mode {
-                            self.view.render_json(
+                            View::render_json(
                                 &serde_json::json!({ "status": "error", "message": e.to_string() }),
                             )
                             .map_err(|e| miette::miette!("{e:?}"))?;
@@ -974,7 +974,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     Ok(()) => {
                         info!(%intent, %branch, "Worktree branch switched successfully");
                         if json_mode {
-                            self.view.render_json(&serde_json::json!({
+                            View::render_json(&serde_json::json!({
                                 "status": "success",
                                 "intent": intent,
                                 "branch": branch
@@ -992,13 +992,13 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     Err(e) => {
                         error!(error = %e, %intent, %branch, "Failed to switch worktree branch");
                         if json_mode {
-                            self.view.render_json(&serde_json::json!({
+                            View::render_json(&serde_json::json!({
                                 "status": "error",
                                 "message": e.to_string()
                             }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            self.view.render(AppState::Error(
+                            View::render(AppState::Error(
                                 e.to_string(),
                                 Box::new(AppState::Welcome),
                             ));
@@ -1030,7 +1030,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 let yaml = crate::app::warp::generate_config(project_name, &worktrees);
 
                 if json_mode {
-                    self.view.render_json(&serde_json::json!({
+                    View::render_json(&serde_json::json!({
                         "status": "success",
                         "config": yaml
                     }))
@@ -1077,7 +1077,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                             println!("{} Rebase complete.", "✔".green().bold());
                         }
                         if json_mode {
-                            self.view.render_json(&serde_json::json!({
+                            View::render_json(&serde_json::json!({
                                 "status": "success",
                                 "upstream": upstream_branch
                             }))
@@ -1112,7 +1112,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                                 }
                             }
                         } else {
-                            self.view.render_json(&serde_json::json!({
+                            View::render_json(&serde_json::json!({
                                 "status": "error",
                                 "message": e.to_string()
                             }))
