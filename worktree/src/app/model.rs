@@ -1,5 +1,6 @@
 use crate::app::intent::Intent;
 use crate::domain::repository::Worktree;
+use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use ratatui::widgets::TableState;
 use std::time::{Duration, Instant};
 
@@ -317,14 +318,28 @@ pub fn filter_worktrees(worktrees: &[Worktree], query: &str) -> Vec<Worktree> {
     if query.is_empty() {
         return worktrees.to_vec();
     }
+
+    let matcher = SkimMatcherV2::default();
     let query = query.to_lowercase();
-    worktrees
+    let mut scored_worktrees: Vec<(i64, Worktree)> = worktrees
         .iter()
-        .filter(|wt| {
-            wt.branch.to_lowercase().contains(&query) || wt.path.to_lowercase().contains(&query)
+        .filter_map(|wt| {
+            // Match against both branch and path, take the best score
+            let branch_score = matcher.fuzzy_match(&wt.branch, &query);
+            let path_score = matcher.fuzzy_match(&wt.path, &query);
+
+            match (branch_score, path_score) {
+                (Some(s1), Some(s2)) => Some((s1.max(s2), wt.clone())),
+                (Some(s), None) | (None, Some(s)) => Some((s, wt.clone())),
+                (None, None) => None,
+            }
         })
-        .cloned()
-        .collect()
+        .collect();
+
+    // Sort by score descending
+    scored_worktrees.sort_by(|a, b| b.0.cmp(&a.0));
+
+    scored_worktrees.into_iter().map(|(_, wt)| wt).collect()
 }
 
 #[cfg(test)]
@@ -332,7 +347,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_filter_worktrees() {
+    fn test_filter_worktrees_fuzzy() {
         let worktrees = vec![
             Worktree {
                 path: "/path/to/main".to_string(),
@@ -370,22 +385,22 @@ mod tests {
         let filtered = filter_worktrees(&worktrees, "");
         assert_eq!(filtered.len(), 3);
 
-        // Exact match branch
-        let filtered = filter_worktrees(&worktrees, "main");
+        // Fuzzy match branch
+        let filtered = filter_worktrees(&worktrees, "mn");
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].branch, "main");
 
-        // Partial match branch
-        let filtered = filter_worktrees(&worktrees, "login");
+        // Partial match
+        let filtered = filter_worktrees(&worktrees, "log");
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].branch, "feature/login");
 
-        // Match path
-        let filtered = filter_worktrees(&worktrees, "feature-login");
+        // Fuzzy match across path/branch
+        let filtered = filter_worktrees(&worktrees, "featlog");
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].branch, "feature/login");
 
-        // Case insensitive
+        // Case insensitive (handled by skim matcher)
         let filtered = filter_worktrees(&worktrees, "MAIN");
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].branch, "main");
