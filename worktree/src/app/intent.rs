@@ -1,3 +1,5 @@
+use crate::app::model::AppMode;
+
 #[derive(Clone, Debug)]
 pub enum Intent {
     Initialize {
@@ -81,5 +83,5 @@ pub enum Intent {
         path: String,
         message: Option<String>,
     },
-    ChangeMode(crate::app::model::AppMode),
+    ChangeMode(AppMode),
 }

@@ -1,6 +1,6 @@
 use crate::app::intent::Intent;
 use crate::domain::repository::Worktree;
-use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use ratatui::widgets::TableState;
 use std::time::{Duration, Instant};
 

@@ -8,8 +8,8 @@ pub mod history;
 pub mod listing;
 pub mod picking;
 pub mod prompt;
-pub mod status;
 pub mod stash;
+pub mod status;
 
 pub use branch::handle_branch_events;
 pub use committing::handle_committing_events;

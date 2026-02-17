@@ -1,15 +1,15 @@
-use worktree::app::intent::Intent;
-use worktree::app::model::{AppState, RefreshType};
-use worktree::app::reducer::Reducer;
-use worktree::app::view::View;
 use clap::Parser;
-use worktree::cli::{self, Cli, Commands};
-use worktree::domain::repository::{ProjectRepository, RepoStatus};
-use worktree::infrastructure::git_repo::GitProjectRepository;
 use miette::Result;
 use ratatui::widgets::TableState;
 use std::io::{self, Write};
 use tracing::{error, info};
+use worktree::app::intent::Intent;
+use worktree::app::model::{AppState, RefreshType};
+use worktree::app::reducer::Reducer;
+use worktree::app::view::View;
+use worktree::cli::{self, Cli, Commands};
+use worktree::domain::repository::{ProjectRepository, RepoStatus};
+use worktree::infrastructure::git_repo::GitProjectRepository;
 
 fn setup_logging(json_mode: bool) {
     if json_mode {

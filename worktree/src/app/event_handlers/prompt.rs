@@ -1,9 +1,6 @@
 use crate::app::model::{AppState, PromptType, RefreshType};
 use crate::domain::repository::ProjectRepository;
-use anyhow::Result;
-use ratatui::{Terminal, backend::CrosstermBackend, widgets::TableState};
-use std::io;
-use crate::app::intent::Intent;
+use ratatui::widgets::TableState;
 
 pub fn handle_prompt_events<R: ProjectRepository>(
     event: &crossterm::event::Event,
@@ -120,11 +117,7 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                     }
                 }
                 PromptType::StashMessage => {
-                   let msg = if val.is_empty() {
-                        None
-                    } else {
-                        Some(val)
-                    };
+                    let msg = if val.is_empty() { None } else { Some(val) };
                     if let AppState::ViewingStashes { path, .. } = prev_state {
                         let _ = repo.stash_save(path, msg.as_deref());
                         if let Ok(stashes) = repo.list_stashes(path) {

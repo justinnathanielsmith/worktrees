@@ -45,12 +45,5 @@ The agent must embody a "Senior Git Infrastructure Engineer" persona—direct, c
 - **Astro 4.x+**: Modern static site generator for the guide.
 - **Tailwind CSS & TypeScript**: Frontend styling and logic.
 
-### Rust Coding Standards (Clippy)
-- **Collapsible If**: Prefer `&&` (let-chains) to collapse nested `if let` blocks.
-- **Pattern Matching**: Use `.is_some()` / `.is_none()` instead of `if let Some(_)` where possible.
-- **Boxing**: Avoid `&Box<T>`, use `&T` instead.
-- **Consistency**: Run `cargo fmt --all` before declaring a task complete.
+*Note: For detailed Technical Constraints and Rust Safety Rules, refer to `ARCHITECTURE.md`.*
 
-## Project Context
-- **Bare Hub Architecture**: Prioritize the "Bare" repository as the source of truth with a "Flat Peer Structure" for worktrees.
-- **Performance**: Maintain high performance in both the CLI tool and the Astro web app.

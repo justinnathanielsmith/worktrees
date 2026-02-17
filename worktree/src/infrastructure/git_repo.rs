@@ -711,33 +711,7 @@ impl ProjectRepository for GitProjectRepository {
 
     fn list_stashes(&self, path: &str) -> Result<Vec<crate::domain::repository::StashEntry>> {
         let output = Self::run_git(&["-C", path, "stash", "list", "--pretty=format:%gd|%gs|%sb"])?;
-        let mut stashes = Vec::new();
-
-        for line in output.lines() {
-            let parts: Vec<&str> = line.split('|').collect();
-            if parts.len() < 2 {
-                continue;
-            }
-
-            // Extract index from "stash@{0}"
-            let index_part = parts[0];
-            let index = index_part
-                .trim_start_matches("stash@{")
-                .trim_end_matches('}')
-                .parse::<usize>()
-                .unwrap_or(0);
-
-            let message = parts[1].to_string();
-            let branch = parts.get(2).map(|s| s.to_string()).unwrap_or_default();
-
-            stashes.push(crate::domain::repository::StashEntry {
-                index,
-                message,
-                branch,
-            });
-        }
-
-        Ok(stashes)
+        Ok(Self::parse_stash_list(&output))
     }
 
     fn apply_stash(&self, path: &str, index: usize) -> Result<()> {

@@ -73,13 +73,13 @@ fn test_list_worktrees() {
         .expect("Failed to checkout main worktree");
 
     let worktrees = repo.list_worktrees().expect("Failed to list worktrees");
-    
+
     // We expect 2 worktrees: the bare repo itself and the 'main' worktree we just added.
     // Use println! to debug if needed, use --nocapture to see it.
     println!("Worktrees found: {:?}", worktrees);
-    
+
     assert_eq!(worktrees.len(), 2, "Expected bare repo + 1 worktree");
-    
+
     let main_wt = worktrees.iter().find(|wt| wt.branch == "main");
     assert!(main_wt.is_some(), "Main worktree not found");
     assert!(main_wt.unwrap().path.ends_with("main"));

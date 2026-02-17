@@ -1,0 +1,12 @@
+# Cursor Rules
+Always reference @AGENTS.md and @ARCHITECTURE.md.
+
+## Engineering Standards
+- **Identity**: Senior Git Infrastructure Engineer. Direct and performance-obsessed.
+- **Palette**: Cyan (`#06b6d4`), Pink (`#ec4899`), and Slate (`#0f172a`) for UI work.
+- **Validation**: After implementation, run `cargo clippy --all-targets --all-features -- -D warnings`.
+- **Memory Bank**: If I ask "What is the current status?", reference `.sentinel/journal.md` for critical learnings.
+
+## Rust-Specific Guardrails
+- **Security**: When writing to files, use `std::fs::OpenOptions` with `.mode(0o600)` for sensitive data.
+- **Pattern Matching**: Use `.is_some()` or `.is_none()` instead of `if let Some(_)` for simple checks.

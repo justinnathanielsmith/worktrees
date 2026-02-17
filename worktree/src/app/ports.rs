@@ -1,7 +1,6 @@
 use crate::app::model::AppState;
 use crate::domain::repository::Worktree;
 use miette::Result;
-use serde_json::Value;
 
 /// Abstract interface for the UI, allowing us to swap Real UI for a Test Spy.
 pub trait ViewPort: Send + Sync + 'static {

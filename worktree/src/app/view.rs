@@ -330,6 +330,24 @@ impl View {
                             &current_state_clone,
                         );
                     }
+                    AppState::ViewingStashes {
+                        path,
+                        branch,
+                        stashes,
+                        selected_index,
+                        prev_state,
+                    } => {
+                        new_state = handle_stash_events(
+                            &event,
+                            repo,
+                            path,
+                            branch,
+                            stashes,
+                            selected_index,
+                            prev_state,
+                            &current_state_clone,
+                        );
+                    }
                     // Handle global exit if not handled by detailed handlers (or for states without handlers)
                     _ => {
                         if let Event::Key(key) = event
@@ -691,7 +709,10 @@ mod tests {
             Ok(rx)
         }
 
-        fn list_stashes(&self, _path: &str) -> anyhow::Result<Vec<crate::domain::repository::StashEntry>> {
+        fn list_stashes(
+            &self,
+            _path: &str,
+        ) -> anyhow::Result<Vec<crate::domain::repository::StashEntry>> {
             Ok(vec![])
         }
 
