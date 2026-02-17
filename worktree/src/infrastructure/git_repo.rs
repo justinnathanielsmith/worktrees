@@ -639,6 +639,53 @@ impl ProjectRepository for GitProjectRepository {
         Ok(())
     }
 
+    fn rebase(&self, path: &str, upstream: &str) -> Result<()> {
+        Self::run_git(&["-C", path, "rebase", upstream])?;
+        Ok(())
+    }
+
+    fn get_conflict_diff(&self, path: &str) -> Result<String> {
+        // Find unmerged files
+        let output = Self::run_git(&["-C", path, "diff", "--name-only", "--diff-filter=U"])?;
+        let mut full_diff = String::new();
+
+        for file in output.lines() {
+            if file.is_empty() {
+                continue;
+            }
+            let diff = Self::run_git(&["-C", path, "diff", file])?;
+            full_diff.push_str(&diff);
+            full_diff.push('\n');
+        }
+
+        if full_diff.is_empty() {
+            // Fallback: just try a generic diff if no unmerged files found but we are in conflict
+            full_diff = Self::run_git(&["-C", path, "diff"])?;
+        }
+
+        Ok(full_diff)
+    }
+
+    fn explain_rebase_conflict(&self, diff: &str) -> Result<String> {
+        debug!("Retrieving API key for conflict explanation...");
+        let api_key = match self.get_api_key() {
+            Ok(Some(key)) => key,
+            _ => {
+                return Ok("Rebase failed due to conflicts. Please resolve the conflicts manually by searching for conflict markers (<<<<<<<, =======, >>>>>>>) in the files listed above.".to_string());
+            }
+        };
+
+        let client = super::gemini_client::GeminiClient::new(api_key);
+
+        tokio::task::block_in_place(|| {
+            let rt = tokio::runtime::Handle::current();
+            rt.block_on(async { client.explain_rebase_conflict(diff).await })
+        }).or_else(|e| {
+            debug!(error = %e, "Gemini explanation failed, using fallback.");
+            Ok("Rebase failed due to conflicts. Please resolve them manually. (AI explanation unavailable)".to_string())
+        })
+    }
+
     fn get_api_key(&self) -> Result<Option<String>> {
         // 1. Check Environment
         if let Ok(key) = std::env::var("GEMINI_API_KEY")

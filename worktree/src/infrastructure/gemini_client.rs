@@ -72,6 +72,24 @@ impl GeminiClient {
 {diff}"
         );
 
+        self.generate_content(prompt, 100).await
+    }
+
+    pub async fn explain_rebase_conflict(&self, diff: &str) -> Result<String> {
+        let prompt = format!(
+            "You are an expert developer. A git rebase has failed due to conflicts. 
+            Analyze the following diff which contains conflict markers (<<<<<<<, =======, >>>>>>>).
+            Explain in plain English why the conflict happened and suggest how to resolve it.
+            Be concise and professional. Do not used markdown formatting in your response.
+
+            Conflict Diff:
+{diff}"
+        );
+
+        self.generate_content(prompt, 500).await
+    }
+
+    async fn generate_content(&self, prompt: String, max_tokens: i32) -> Result<String> {
         let url = format!(
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={}",
             self.api_key
@@ -85,7 +103,7 @@ impl GeminiClient {
                 temperature: 0.2,
                 top_p: 0.8,
                 top_k: 40,
-                max_output_tokens: 100,
+                max_output_tokens: max_tokens,
             }),
         };
 

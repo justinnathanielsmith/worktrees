@@ -58,4 +58,7 @@ pub enum Intent {
         force: bool,
         dry_run: bool,
     },
+    Rebase {
+        upstream: Option<String>,
+    },
 }

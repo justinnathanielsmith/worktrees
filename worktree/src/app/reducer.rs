@@ -1038,6 +1038,76 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                     println!("3. Or copy/paste into Warp's Launch Configuration editor.");
                 }
             }
+            Intent::Rebase { upstream } => {
+                let upstream_branch = upstream.unwrap_or_else(|| "main".to_string());
+                let current_dir = std::env::current_dir().into_diagnostic()?;
+                let path = current_dir.to_string_lossy().to_string();
+
+                if !json_mode && !quiet_mode {
+                    println!(
+                        "{} Rebasing current worktree onto '{}'...",
+                        "➜".cyan().bold(),
+                        upstream_branch.bold()
+                    );
+                }
+
+                let repo_clone = repo.clone();
+                let upstream_clone = upstream_branch.clone();
+                let path_clone = path.clone();
+
+                let res = tokio::task::spawn_blocking(move || {
+                    repo_clone.rebase(&path_clone, &upstream_clone)
+                })
+                .await
+                .into_diagnostic()?;
+
+                match res {
+                    Ok(()) => {
+                        if !json_mode && !quiet_mode {
+                            println!("{} Rebase complete.", "✔".green().bold());
+                        }
+                        if json_mode {
+                            View::render_json(&serde_json::json!({
+                                "status": "success",
+                                "upstream": upstream_branch
+                            }))
+                            .map_err(|e| miette::miette!("{e:?}"))?;
+                        }
+                    }
+                    Err(e) => {
+                        error!(error = %e, "Rebase failed");
+                        if !json_mode {
+                            println!("\n{} Rebase failed: {}", "❌".red().bold(), e);
+                            println!("{} Analyzing conflicts with Gemini AI...", "➜".cyan().bold());
+
+                            let repo_clone = repo.clone();
+                            let path_clone = path;
+                            let explanation_res = tokio::task::spawn_blocking(move || {
+                                let diff = repo_clone.get_conflict_diff(&path_clone)?;
+                                repo_clone.explain_rebase_conflict(&diff)
+                            })
+                            .await
+                            .into_diagnostic()?;
+
+                            match explanation_res {
+                                Ok(explanation) => {
+                                    println!("\n{}", "AI Conflict Explanation:".yellow().bold());
+                                    println!("{}", explanation);
+                                }
+                                Err(qe) => {
+                                    error!(error = %qe, "Gemini explanation failed");
+                                }
+                            }
+                        } else {
+                            View::render_json(&serde_json::json!({
+                                "status": "error",
+                                "message": e.to_string()
+                            }))
+                            .map_err(|e| miette::miette!("{e:?}"))?;
+                        }
+                    }
+                }
+            }
         }
 
         Ok(())
@@ -1255,6 +1325,18 @@ mod tests {
 
         fn check_status(&self, _path: &Path) -> crate::domain::repository::RepoStatus {
             crate::domain::repository::RepoStatus::BareHub
+        }
+
+        fn rebase(&self, _path: &str, _upstream: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn get_conflict_diff(&self, _path: &str) -> anyhow::Result<String> {
+            Ok("conflict diff".to_string())
+        }
+
+        fn explain_rebase_conflict(&self, _diff: &str) -> anyhow::Result<String> {
+            Ok("AI explanation".to_string())
         }
 
         fn watch(&self) -> Result<Receiver<RepositoryEvent>> {

@@ -110,6 +110,12 @@ pub trait ProjectRepository {
     fn list_branches(&self) -> Result<Vec<String>>;
     /// Switches the worktree to a different branch.
     fn switch_branch(&self, path: &str, branch: &str) -> Result<()>;
+    /// Rebases the worktree onto the specified upstream branch.
+    fn rebase(&self, path: &str, upstream: &str) -> Result<()>;
+    /// Retrieves the diff of files with conflicts.
+    fn get_conflict_diff(&self, path: &str) -> Result<String>;
+    /// Explains a git conflict using AI.
+    fn explain_rebase_conflict(&self, diff: &str) -> Result<String>;
 
     // --- AI Configuration ---
 
