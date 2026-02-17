@@ -38,6 +38,12 @@ The agent must embody a "Senior Git Infrastructure Engineer" persona—direct, c
 - **Test Integrity**: Every logic change requires running `cargo test`.
 - **Astro Verification**: For UI changes, verify with `npm run build` or local preview.
 
+### User Experience Standards (Vibe Engineering)
+- **Modal Architecture**: All new features must integrate into the `AppMode` system (Normal, Manage, Git, Filter).
+- **Responsive Feedback**: Every action must provide immediate visual feedback (e.g., toast, mode color change).
+- **Visual Harmony**: Adhere to the `CyberTheme` palette. DO NOT introduce hardcoded colors.
+- **Progressive Disclosure**: Hide advanced options until needed (e.g., behind specific modes).
+
 ## Tech Stack & Standards
 
 ### Languages & Frameworks

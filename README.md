@@ -65,45 +65,80 @@ worktree
 
 ---
 
-## 📖 Documentation & Architecture
+## 🏗 Bare Hub Architecture: The Flat Peer Structure
 
-For a deep dive into the **Bare Hub Architecture** and how it transforms your development speed, visit our interactive guide:
+Unlike standard Git setups where worktrees are nested inside a main repo, **Worktree Manager** enforces a **Flat Peer Structure**. This keeps your root directory clean and prevents "nested repo" confusion.
 
-👉 **[Live Documentation Guide](https://justinnathanielsmith.github.io/worktrees/)**
+```text
+my-project/              <-- Project Root
+├── .bare/               <-- The Git Engine (Metadata & Objects)
+├── main/                <-- Primary Worktree (Active Branch)
+├── develop/             <-- Secondary Worktree
+└── feature-auth/        <-- Ephemeral Feature Branch
+```
 
-The documentation site explains:
-- **The 'Engine' (.bare)**: How the bare repository centralizes history.
-- **The 'Hub' (.git)**: How the pointer system keeps tools compatible.
-- **Worktree Lifecycles**: Best practices for ephemeral vs. persistent environments.
+### Why It Works
+1.  **Zero Clutter**: No `.git` folder in your worktrees (just a `.git` file pointer).
+2.  **Instant Context Switching**: Jump between branches without stashing or rewriting files.
+3.  **Parallel Workflows**: Run tests on `develop` while coding on `feature-auth`.
 
 ---
 
 ## ⌨️ CLI Command Reference
 
-| Command | Description |
-| :--- | :--- |
-| 'init <url>' | Initialize a new bare repository (clones if provided). |
-| 'setup' | Automatically create 'main' and 'dev' worktrees. |
-| 'add <name>' | Create a new worktree tracking a branch or commit. |
-| 'switch <name>' | Quick jump to a worktree (prints path for shell). |
-| 'list' | Enter the interactive TUI (default command). |
-| 'clean' | Purge build artifacts ('node_modules', 'target', etc.) from inactive worktrees. |
-| 'migrate' | **In-place** conversion of a standard repo to Bare Hub. |
-| 'open' | Generate Warp Launch Configurations for the project. |
-| 'run <name>' | Execute a command in an isolated temporary sandbox. |
+| Command         | Description                                                                     |
+| :-------------- | :------------------------------------------------------------------------------ |
+| `init <url>`    | Initialize a new bare repository (clones if provided).                          |
+| `setup`         | Automatically create `main` and `dev` worktrees.                                |
+| `add <name>`    | Create a new worktree tracking a branch or commit.                              |
+| `switch <name>` | Quick jump to a worktree (prints path for shell).                               |
+| `list`          | Enter the interactive TUI (default command).                                    |
+| `clean`         | Purge build artifacts (`node_modules`, `target`, etc.) from inactive worktrees. |
+| `migrate`       | **In-place** conversion of a standard repo to Bare Hub.                         |
+| `open`          | Generate Warp Launch Configurations for the project.                            |
+| `run <name>`    | Execute a command in an isolated temporary sandbox.                             |
+| `config`        | Securely store your Gemini API key (mode 0o600).                                |
 
 ---
 
-## 🎨 Interactive TUI Hotkeys
+## 🎨 Interactive TUI: Vibe Engineering
 
-While in the 'worktree' list view:
-- **'G'**: Open the Git Status pane.
-- **'Space'**: Toggle file staging.
-- **'C'**: Open the Commit Menu (Manual or **AI Generated**).
-- **'L'**: View Git history/log.
-- **'B'**: Switch branches.
-- **'O'**: Open current worktree in your default editor.
-- **'Shift+C'**: Clean build artifacts from all inactive worktrees.
+The TUI uses a **Modal System** to keep the interface clean and powerful.
+
+### Normal Mode (Cyan)
+* Default navigation and viewing mode.
+- **`j` / `k`**: Navigate the list.
+- **`Enter`**: Open selected worktree in editor.
+- **`v`**: View detailed Git Status & Diff.
+- **`l`**: View Commit History.
+- **`m`**: Enter **Manage Mode**.
+- **`g`**: Enter **Git Mode**.
+- **`/`**: Enter **Filter Mode**.
+- **`q`**: Quit.
+
+### Manage Mode (Magenta)
+* Operations on worktrees themselves.
+- **`a`**: Add a new worktree.
+- **`d`**: Delete selected worktree.
+- **`D`**: Force delete selected worktree.
+- **`c`**: Clean stale worktrees.
+- **`C`**: Clean build artifacts from inactive worktrees.
+- **`Esc`**: Return to Normal Mode.
+
+### Git Mode (Green)
+* Git operations on the selected worktree.
+- **`p`**: Pull changes from remote.
+- **`P`**: Push changes to remote.
+- **`s`**: Sync configuration files.
+- **`f`**: Fetch from remote.
+- **`R`**: Rebase onto upstream.
+- **`Esc`**: Return to Normal Mode.
+
+### Filter Mode (Yellow)
+* Rapidly find worktrees.
+- **Type**: Filter by branch name or path.
+- **`Enter`**: Select and return to Normal Mode.
+- **`Esc`**: Clear filter and return to Normal Mode.
 
 ---
 

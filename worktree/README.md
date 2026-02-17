@@ -77,7 +77,7 @@ worktree-switch feature-login
 - `sync [name]`: Push configuration files to all or specific worktrees.
 - `push [name]`: Push changes from a workspace to origin.
 - `clean [--artifacts] [--dry-run]`: Reclaim disk space by purging build artifacts.
-- `config set-key <key>`: Store your Gemini API key in the system keyring.
+- `config set-key <key>`: Store your Gemini API key in the system keyring (mode 0o600).
 - `config get-key`: View your current Gemini API key.
 - `convert [--name <name>] [--branch <branch>]`: Migrate a standard repo to Bare Hub.
 - `completions <shell>`: Generate command-line completion scripts.
@@ -103,21 +103,20 @@ source <(worktree completions bash)
 worktree completions fish > ~/.config/fish/completions/worktree.fish
 ```
 
-### Interactive TUI Features
+### Interactive TUI Features (Modal System)
 
-The `list` command (and running without arguments) opens a high-performance interactive interface:
+The TUI now uses a **Modal System** for enhanced control. Modes are color-coded:
 
-- **Git Status**: Press `G` to view a detailed status pane.
-- **Staging**: In Status view, use `Space` to toggle files or `A` to stage all.
-- **Commit Menu**: Press `C` in Status view to open the commit menu.
-    - **Manual**: Enter your own commit message.
-    - **AI Generation**: Automatically generate a conventional commit message using Gemini 1.5 Flash based on your staged changes.
-- **Commit Log**: Press `L` to view the worktree's commit history.
-- **Branch Switching**: Press `B` to switch branches.
-- **Remote Fetch**: Press `F` to fetch updates from origin.
-- **API Key**: Press `P` in the main list to securely set your Gemini API key.
-- **Configuration Sync**: Press `S` to sync configuration files.
-- **Editor Integration**: Press `O` to open the worktree in your preferred editor.
+- **Normal Mode (Cyan)**: Navigation.
+    - `j`/`k`: Navigate. `Enter`: Open editor.
+    - `v`: View Status. `l`: View History.
+    - `m`: Manage Mode. `g`: Git Mode. `/`: Filter Mode.
+- **Manage Mode (Magenta)**: Worktree operations.
+    - `a`: Add. `d`: Delete. `c`: Clean Stale. `C`: Clean Artifacts.
+- **Git Mode (Green)**: Git operations.
+    - `p`/`P`: Pull/Push. `s`: Sync Configs. `f`: Fetch. `R`: Rebase.
+- **Filter Mode (Yellow)**: Search.
+    - Type to fuzzy-match. `Enter` to select.
 
 ## Architecture
 
@@ -172,3 +171,9 @@ The project uses several tools to ensure high-performance code quality:
 
 ### Continuous Integration
 A GitHub Action is configured to run these checks on every push and pull request.
+
+### Release Workflow
+To release a new version, use the **Release Manager** skill.
+1.  Ensure `AGENTS.md` and `SKILLS.md` are up to date.
+2.  Enable the Release Manager skill.
+3.  Follow the automated protocol for versioning and publishing to GitHub Releases.

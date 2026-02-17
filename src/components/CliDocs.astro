@@ -149,6 +149,11 @@ import CodeBlock from './CodeBlock.astro';
                             <td class="px-6 py-4">&lt;shell&gt;</td>
                             <td class="px-6 py-4">Generate shell completion scripts (support for zsh, bash, fish, powershell).</td>
                         </tr>
+                        <tr>
+                            <td class="px-6 py-4 text-blue-400">config</td>
+                            <td class="px-6 py-4">set-key &lt;key&gt;</td>
+                            <td class="px-6 py-4">Securely store your Gemini API key (mode 0o600).</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -163,109 +168,75 @@ import CodeBlock from './CodeBlock.astro';
         </div>
 
         <p class="text-slate-300 leading-relaxed">
-            Running <code>worktree list</code> (or just <code>worktree</code>) opens the interactive manager. 
-            Use these key bindings to navigate and control your workspaces.
+            The TUI uses a <strong>Modal System</strong> (Vibe Engineering) to keep the interface clean and context-aware. 
+            Modes are indicated by distinct border colors.
         </p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Navigation & Global -->
-             <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                <h3 class="text-xl font-bold text-white mb-6 border-b border-slate-800 pb-2">Global Navigation</h3>
+            <!-- Normal Mode -->
+             <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-cyan-500/50 transition-colors duration-300">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <span class="text-6xl text-cyan-500 font-black">N</span>
+                </div>
+                <h3 class="text-xl font-bold text-cyan-400 mb-6 border-b border-slate-800 pb-2">Normal Mode (Cyan)</h3>
                 <ul class="space-y-4 text-sm font-mono text-slate-400">
-                    <li class="flex justify-between">
-                        <span>Navigate Up/Down</span>
-                        <span class="text-blue-400">j / k / Arrow Keys</span>
-                    </li>
-                    <li class="flex justify-between">
-                        <span>Quit</span>
-                        <span class="text-pink-500">q / Esc</span>
-                    </li>
-                     <li class="flex justify-between">
-                        <span>Help</span>
-                        <span class="text-blue-400">? / h</span>
-                    </li>
+                    <li class="flex justify-between"><span>Navigate</span> <span class="text-white">j / k</span></li>
+                    <li class="flex justify-between"><span>Open Editor</span> <span class="text-white">Enter</span></li>
+                    <li class="flex justify-between"><span>View Status</span> <span class="text-white">v</span></li>
+                    <li class="flex justify-between"><span>View History</span> <span class="text-white">l</span></li>
+                    <li class="flex justify-between"><span>Manage Mode</span> <span class="text-magenta-400">m</span></li>
+                    <li class="flex justify-between"><span>Git Mode</span> <span class="text-green-400">g</span></li>
+                    <li class="flex justify-between"><span>Filter Mode</span> <span class="text-yellow-400">/</span></li>
+                    <li class="flex justify-between"><span>Quit</span> <span class="text-pink-500">q</span></li>
                 </ul>
             </div>
 
-            <!-- List View Actions -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                <h3 class="text-xl font-bold text-white mb-6 border-b border-slate-800 pb-2">List View</h3>
+            <!-- Manage Mode -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-fuchsia-500/50 transition-colors duration-300">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <span class="text-6xl text-fuchsia-500 font-black">M</span>
+                </div>
+                <h3 class="text-xl font-bold text-fuchsia-400 mb-6 border-b border-slate-800 pb-2">Manage Mode (Magenta)</h3>
                 <ul class="space-y-4 text-sm font-mono text-slate-400">
-                    <li class="flex justify-between">
-                        <span>Add Worktree</span>
-                        <span class="text-blue-400">a</span>
-                    </li>
-                     <li class="flex justify-between">
-                        <span>Remove Worktree</span>
-                        <span class="text-pink-500">d / x</span>
-                    </li>
-                     <li class="flex justify-between">
-                        <span>Open Status View</span>
-                        <span class="text-blue-400">v</span>
-                    </li>
-                    <li class="flex justify-between">
-                        <span>Open Commit Log</span>
-                        <span class="text-blue-400">l</span>
-                    </li>
-                    <li class="flex justify-between">
-                        <span>Switch Branch</span>
-                        <span class="text-blue-400">b</span>
-                    </li>
-                     <li class="flex justify-between">
-                        <span>Open in Editor</span>
-                        <span class="text-blue-400">o</span>
-                    </li>
-                    <li class="flex justify-between">
-                        <span>Push to Remote</span>
-                        <span class="text-blue-400">p</span>
-                    </li>
-                    <li class="flex justify-between">
-                        <span>Pull from Remote</span>
-                        <span class="text-blue-400">Shift+P</span>
-                    </li>
-                    <li class="flex justify-between">
-                        <span>Clean Artifacts</span>
-                        <span class="text-pink-500">Shift+C</span>
-                    </li>
-                    <li class="flex justify-between">
-                        <span>Prune Metadata</span>
-                        <span class="text-blue-400">c</span>
-                    </li>
+                    <li class="flex justify-between"><span>Add Worktree</span> <span class="text-white">a</span></li>
+                    <li class="flex justify-between"><span>Delete</span> <span class="text-pink-500">d</span></li>
+                    <li class="flex justify-between"><span>Force Delete</span> <span class="text-pink-500 font-bold">D</span></li>
+                    <li class="flex justify-between"><span>Clean Stale</span> <span class="text-white">c</span></li>
+                    <li class="flex justify-between"><span>Clean Artifacts</span> <span class="text-pink-500">C</span></li>
+                    <li class="flex justify-between"><span>Back</span> <span class="text-slate-500">Esc</span></li>
                 </ul>
             </div>
 
-             <!-- Status View Actions -->
-             <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                <h3 class="text-xl font-bold text-white mb-6 border-b border-slate-800 pb-2">Status View</h3>
+             <!-- Git Mode -->
+             <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-green-500/50 transition-colors duration-300">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <span class="text-6xl text-green-500 font-black">G</span>
+                </div>
+                <h3 class="text-xl font-bold text-green-400 mb-6 border-b border-slate-800 pb-2">Git Mode (Green)</h3>
                 <ul class="space-y-4 text-sm font-mono text-slate-400">
-                    <li class="flex justify-between">
-                        <span>Stage/Unstage File</span>
-                        <span class="text-blue-400">Space</span>
-                    </li>
-                    <li class="flex justify-between">
-                        <span>Stage All</span>
-                        <span class="text-blue-400">a</span>
-                    </li>
-                     <li class="flex justify-between">
-                        <span>Unstage All</span>
-                        <span class="text-blue-400">u</span>
-                    </li>
-                    <li class="flex justify-between">
-                        <span>Open Commit Menu</span>
-                        <span class="text-blue-400">c</span>
-                    </li>
+                    <li class="flex justify-between"><span>Pull Remote</span> <span class="text-white">p</span></li>
+                    <li class="flex justify-between"><span>Push Remote</span> <span class="text-white">P</span></li>
+                    <li class="flex justify-between"><span>Sync Configs</span> <span class="text-white">s</span></li>
+                    <li class="flex justify-between"><span>Fetch</span> <span class="text-white">f</span></li>
+                    <li class="flex justify-between"><span>Rebase</span> <span class="text-white">R</span></li>
+                    <li class="flex justify-between"><span>Back</span> <span class="text-slate-500">Esc</span></li>
                 </ul>
             </div>
-             <!-- Dependencies -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                <h3 class="text-xl font-bold text-white mb-6 border-b border-slate-800 pb-2">AI & Features</h3>
+
+             <!-- Filter Mode -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-yellow-500/50 transition-colors duration-300">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <span class="text-6xl text-yellow-500 font-black">F</span>
+                </div>
+                <h3 class="text-xl font-bold text-yellow-400 mb-6 border-b border-slate-800 pb-2">Filter Mode (Yellow)</h3>
                 <div class="space-y-4 text-sm text-slate-400">
                     <p>
-                        <strong class="text-white">AI Commit Generation:</strong> Inside the Commit Menu (<code>c</code>), select "AI Commit" to generate a conventional commit message based on your staged changes using Gemini 1.5 Flash.
+                        Type instantly to fuzzy-match worktrees by branch name or path.
                     </p>
-                    <p>
-                         <strong class="text-white">Editor Detection:</strong> The tool automatically detects VS Code, Cursor, Zed, IntelliJ, Neovim, and others. Use <code>o</code> to open the selected worktree directly.
-                    </p>
+                    <ul class="space-y-4 text-sm font-mono text-slate-400 mt-4">
+                        <li class="flex justify-between"><span>Select</span> <span class="text-white">Enter</span></li>
+                        <li class="flex justify-between"><span>Clear/Back</span> <span class="text-slate-500">Esc</span></li>
+                    </ul>
                 </div>
             </div>
         </div>
