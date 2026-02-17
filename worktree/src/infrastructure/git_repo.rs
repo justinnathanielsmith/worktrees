@@ -1429,8 +1429,10 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
 
         // Setup temp dir
-        let temp_dir =
-            std::env::temp_dir().join(format!("worktrees_test_editor_perms_{}", std::process::id()));
+        let temp_dir = std::env::temp_dir().join(format!(
+            "worktrees_test_editor_perms_{}",
+            std::process::id()
+        ));
         if temp_dir.exists() {
             std::fs::remove_dir_all(&temp_dir).unwrap();
         }

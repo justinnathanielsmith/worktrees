@@ -5,17 +5,14 @@ use crate::app::model::{
 };
 use crate::domain::repository::{ProjectRepository, Worktree};
 use anyhow::Result;
-use ratatui::{backend::Backend, widgets::TableState, Terminal};
+use ratatui::{Terminal, backend::Backend, widgets::TableState};
 use std::process::Command;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::helpers::{create_timed_state, move_selection};
 
 #[allow(clippy::too_many_arguments)]
-pub fn handle_listing_events<
-    R: ProjectRepository + Clone + Send + Sync + 'static,
-    B: Backend,
->(
+pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'static, B: Backend>(
     event: &crossterm::event::Event,
     repo: &R,
     terminal: &mut Terminal<B>,
@@ -684,13 +681,13 @@ mod tests {
         let repo = MockRepoBuilder::default()
             .with_worktrees(worktrees.clone())
             .build();
-        
+
         let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
         let mut table_state = TableState::default();
         table_state.select(Some(0));
-        
+
         let (async_tx, _async_rx) = mpsc::unbounded_channel();
-        
+
         let current_state = AppState::ListingWorktrees {
             worktrees: worktrees.clone(),
             table_state: table_state.clone(),
@@ -718,7 +715,8 @@ mod tests {
             &current_state,
             &0,
             &async_tx,
-        ).unwrap();
+        )
+        .unwrap();
 
         match res {
             Some(AppState::Fetching { branch, .. }) => assert_eq!(branch, "main"),
@@ -736,7 +734,8 @@ mod tests {
             &current_state,
             &0,
             &async_tx,
-        ).unwrap();
+        )
+        .unwrap();
 
         match res {
             Some(AppState::Confirming { title, .. }) => assert_eq!(title, " PRUNE "),
@@ -754,7 +753,8 @@ mod tests {
             &current_state,
             &0,
             &async_tx,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert!(res.is_none());
     }
