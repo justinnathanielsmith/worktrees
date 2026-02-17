@@ -1,3 +1,4 @@
+use crate::app::async_tasks::AsyncResult;
 use crate::app::intent::Intent;
 use crate::app::model::{
     AppMode, AppState, DashboardState, DashboardTab, EditorConfig, RefreshType, filter_worktrees,
@@ -7,11 +8,12 @@ use anyhow::Result;
 use ratatui::{Terminal, backend::CrosstermBackend, widgets::TableState};
 use std::io;
 use std::process::Command;
+use tokio::sync::mpsc::UnboundedSender;
 
 use super::helpers::{create_timed_state, move_selection};
 
 #[allow(clippy::too_many_arguments)]
-pub fn handle_listing_events<R: ProjectRepository>(
+pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'static>(
     event: &crossterm::event::Event,
     repo: &R,
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
@@ -19,6 +21,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
     table_state: &mut TableState,
     current_state: &AppState,
     _spinner_tick: &usize,
+    async_tx: &UnboundedSender<AsyncResult>,
 ) -> Result<Option<AppState>> {
     use crossterm::event::{Event, KeyCode, MouseButton, MouseEventKind};
 
@@ -259,6 +262,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                                     active_tab,
                                     cached_status: dashboard.cached_status.clone(),
                                     cached_history: dashboard.cached_history.clone(),
+                                    loading: false,
                                 },
                                 filter_query: filter_query.clone(),
                                 is_filtering: *is_filtering,
@@ -356,15 +360,23 @@ pub fn handle_listing_events<R: ProjectRepository>(
                             let branch = wt.branch.clone();
                             let path = wt.path.clone();
                             let prev = Box::new(current_state.clone());
-                            let _ = repo.sync_configs(&path);
-                            return Ok(Some(create_timed_state(
-                                AppState::SyncComplete {
-                                    branch,
-                                    prev_state: prev.clone(),
-                                },
-                                *prev,
-                                800,
-                            )));
+                            let repo_clone = repo.clone();
+                            let path_clone = path.clone();
+                            let branch_clone = branch.clone();
+                            let tx = async_tx.clone();
+
+                            tokio::task::spawn_blocking(move || {
+                                let result = repo_clone.sync_configs(&path_clone);
+                                let _ = tx.send(AsyncResult::SyncCompleted {
+                                    branch: branch_clone,
+                                    result,
+                                });
+                            });
+
+                            return Ok(Some(AppState::Syncing {
+                                branch,
+                                prev_state: prev,
+                            }));
                         }
                     }
                     KeyCode::Char('p') => {
@@ -374,20 +386,23 @@ pub fn handle_listing_events<R: ProjectRepository>(
                             let branch = wt.branch.clone();
                             let path = wt.path.clone();
                             let prev = Box::new(current_state.clone());
-                            if let Err(e) = repo.pull(&path) {
-                                return Ok(Some(AppState::Error(
-                                    format!("Pull failed: {e}"),
-                                    prev,
-                                )));
-                            }
-                            return Ok(Some(create_timed_state(
-                                AppState::PullComplete {
-                                    branch,
-                                    prev_state: prev.clone(),
-                                },
-                                *prev,
-                                800,
-                            )));
+                            let repo_clone = repo.clone();
+                            let path_clone = path.clone();
+                            let branch_clone = branch.clone();
+                            let tx = async_tx.clone();
+
+                            tokio::task::spawn_blocking(move || {
+                                let result = repo_clone.pull(&path_clone);
+                                let _ = tx.send(AsyncResult::PullCompleted {
+                                    branch: branch_clone,
+                                    result,
+                                });
+                            });
+
+                            return Ok(Some(AppState::Pulling {
+                                branch,
+                                prev_state: prev,
+                            }));
                         }
                     }
                     KeyCode::Char('P') => {
@@ -397,20 +412,23 @@ pub fn handle_listing_events<R: ProjectRepository>(
                             let branch = wt.branch.clone();
                             let path = wt.path.clone();
                             let prev = Box::new(current_state.clone());
-                            if let Err(e) = repo.push(&path) {
-                                return Ok(Some(AppState::Error(
-                                    format!("Push failed: {e}"),
-                                    prev,
-                                )));
-                            }
-                            return Ok(Some(create_timed_state(
-                                AppState::PushComplete {
-                                    branch,
-                                    prev_state: prev.clone(),
-                                },
-                                *prev,
-                                800,
-                            )));
+                            let repo_clone = repo.clone();
+                            let path_clone = path.clone();
+                            let branch_clone = branch.clone();
+                            let tx = async_tx.clone();
+
+                            tokio::task::spawn_blocking(move || {
+                                let result = repo_clone.push(&path_clone);
+                                let _ = tx.send(AsyncResult::PushCompleted {
+                                    branch: branch_clone,
+                                    result,
+                                });
+                            });
+
+                            return Ok(Some(AppState::Pushing {
+                                branch,
+                                prev_state: prev,
+                            }));
                         }
                     }
                     KeyCode::Char('R') => {
@@ -430,8 +448,23 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         if let Some(i) = table_state.selected()
                             && let Some(wt) = filtered_worktrees.get(i)
                         {
-                            let _ = repo.fetch(&wt.path);
-                            return Ok(Some(current_state.clone()));
+                            let repo_clone = repo.clone();
+                            let path_clone = wt.path.clone();
+                            let branch_clone = wt.branch.clone();
+                            let tx = async_tx.clone();
+
+                            tokio::task::spawn_blocking(move || {
+                                let result = repo_clone.fetch(&path_clone);
+                                let _ = tx.send(AsyncResult::FetchCompleted {
+                                    branch: branch_clone,
+                                    result,
+                                });
+                            });
+
+                            return Ok(Some(AppState::Fetching {
+                                branch: wt.branch.clone(),
+                                prev_state: Box::new(current_state.clone()),
+                            }));
                         }
                     }
                     _ => {}
@@ -503,6 +536,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                                     active_tab: tab,
                                     cached_status: dashboard.cached_status.clone(),
                                     cached_history: dashboard.cached_history.clone(),
+                                    loading: false,
                                 },
                                 filter_query: filter_query.clone(),
                                 is_filtering: *is_filtering,

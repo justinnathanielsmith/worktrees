@@ -114,6 +114,7 @@ pub struct DashboardState {
     pub active_tab: DashboardTab,
     pub cached_status: Option<crate::domain::repository::GitStatus>,
     pub cached_history: Option<Vec<crate::domain::repository::GitCommit>>,
+    pub loading: bool,
 }
 
 /// The possible states of the TUI application.

@@ -1,9 +1,11 @@
 use crate::app::cli_renderer::CliRenderer;
+use crate::app::event_handlers::helpers::create_timed_state;
 use crate::app::event_handlers::{
     handle_branch_events, handle_committing_events, handle_confirm_events, handle_editor_events,
     handle_history_events, handle_listing_events, handle_picking_ref_events, handle_prompt_events,
     handle_stash_events, handle_status_events,
 };
+use crate::app::async_tasks::AsyncResult;
 use crate::app::model::{AppState, RefreshType};
 use crate::app::renderers::{
     render_branch_selection, render_commit_menu, render_editor_selection, render_history,
@@ -13,6 +15,7 @@ use crate::domain::repository::{ProjectRepository, RepositoryEvent, Worktree};
 use crate::ui::widgets::{footer::FooterWidget, header::HeaderWidget, stash_list::StashListWidget};
 use anyhow::Result;
 use crossbeam_channel::Receiver;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
@@ -85,7 +88,7 @@ impl View {
         }
     }
 
-    pub fn render_tui<R: ProjectRepository>(
+    pub fn render_tui<R: ProjectRepository + Clone + Send + Sync + 'static>(
         repo: &R,
         mut state: AppState,
     ) -> Result<Option<String>> {
@@ -97,7 +100,17 @@ impl View {
 
         let mut spinner_tick: usize = 0;
         let rx = repo.watch().ok();
-        let res = Self::run_loop(&mut terminal, repo, &mut state, &mut spinner_tick, rx);
+        let (async_tx, async_rx) = unbounded_channel();
+
+        let res = Self::run_loop(
+            &mut terminal,
+            repo,
+            &mut state,
+            &mut spinner_tick,
+            rx,
+            async_tx,
+            async_rx,
+        );
 
         disable_raw_mode()?;
         execute!(
@@ -110,12 +123,15 @@ impl View {
         res
     }
 
-    fn run_loop<R: ProjectRepository>(
+    #[allow(clippy::too_many_arguments)]
+    fn run_loop<R: ProjectRepository + Clone + Send + Sync + 'static>(
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
         repo: &R,
         state: &mut AppState,
         spinner_tick: &mut usize,
         rx: Option<Receiver<RepositoryEvent>>,
+        async_tx: UnboundedSender<AsyncResult>,
+        mut async_rx: UnboundedReceiver<AsyncResult>,
     ) -> Result<Option<String>> {
         loop {
             // Handle repository events
@@ -131,6 +147,110 @@ impl View {
                     }
                 }
             }
+
+            // Handle async results
+            while let Ok(result) = async_rx.try_recv() {
+                match result {
+                    AsyncResult::StatusFetched { path, result } => {
+                        if let AppState::ListingWorktrees {
+                            dashboard,
+                            table_state,
+                            worktrees,
+                            ..
+                        } = state
+                        {
+                            if let Some(selected_idx) = table_state.selected() {
+                                if let Some(wt) = worktrees.get(selected_idx) {
+                                    if wt.path == path {
+                                        dashboard.loading = false;
+                                        dashboard.cached_status = result.ok();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    AsyncResult::HistoryFetched { path, result } => {
+                        if let AppState::ListingWorktrees {
+                            dashboard,
+                            table_state,
+                            worktrees,
+                            ..
+                        } = state
+                        {
+                            if let Some(selected_idx) = table_state.selected() {
+                                if let Some(wt) = worktrees.get(selected_idx) {
+                                    if wt.path == path {
+                                        dashboard.loading = false;
+                                        dashboard.cached_history = result.ok();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    AsyncResult::FetchCompleted { branch: _branch, result } => {
+                        if let AppState::Fetching { prev_state, .. } = state {
+                            if let Err(e) = result {
+                                *state = AppState::Error(format!("Fetch failed: {e}"), prev_state.clone());
+                            } else {
+                                *state = *prev_state.clone();
+                            }
+                            state.request_refresh();
+                        }
+                    }
+                    AsyncResult::PullCompleted { branch, result } => {
+                        if let AppState::Pulling { prev_state, .. } = state {
+                            if let Err(e) = result {
+                                *state = AppState::Error(format!("Pull failed: {e}"), prev_state.clone());
+                            } else {
+                                *state = create_timed_state(
+                                    AppState::PullComplete {
+                                        branch: branch.clone(),
+                                        prev_state: prev_state.clone(),
+                                    },
+                                    *prev_state.clone(),
+                                    800,
+                                );
+                            }
+                            state.request_refresh();
+                        }
+                    }
+                    AsyncResult::PushCompleted { branch, result } => {
+                        if let AppState::Pushing { prev_state, .. } = state {
+                            if let Err(e) = result {
+                                *state = AppState::Error(format!("Push failed: {e}"), prev_state.clone());
+                            } else {
+                                *state = create_timed_state(
+                                    AppState::PushComplete {
+                                        branch: branch.clone(),
+                                        prev_state: prev_state.clone(),
+                                    },
+                                    *prev_state.clone(),
+                                    800,
+                                );
+                            }
+                            state.request_refresh();
+                        }
+                    }
+                    AsyncResult::SyncCompleted { branch, result } => {
+                        if let AppState::Syncing { prev_state, .. } = state {
+                            if let Err(e) = result {
+                                *state = AppState::Error(format!("Sync failed: {e}"), prev_state.clone());
+                            } else {
+                                *state = create_timed_state(
+                                    AppState::SyncComplete {
+                                        branch: branch.clone(),
+                                        prev_state: prev_state.clone(),
+                                    },
+                                    *prev_state.clone(),
+                                    800,
+                                );
+                            }
+                            state.request_refresh();
+                        }
+                    }
+                }
+            }
+
             if let AppState::Timed {
                 target_state,
                 start_time,
@@ -163,29 +283,39 @@ impl View {
                         ts.select(Some(0));
                     }
 
-                    let (status, history) =
-                        Self::fetch_dashboard_data(repo, &new_worktrees, ts.selected(), dashboard);
+                    // Reset dashboard cache on full refresh or selection change
+                    let mut new_dashboard = crate::app::model::DashboardState {
+                        active_tab: dashboard.active_tab,
+                        cached_status: None,
+                        cached_history: None,
+                        loading: false,
+                    };
+
+                    Self::fetch_dashboard_data(
+                        repo,
+                        &new_worktrees,
+                        ts.selected(),
+                        &mut new_dashboard,
+                        &async_tx,
+                    );
 
                     *state = AppState::ListingWorktrees {
                         worktrees: new_worktrees,
                         table_state: ts,
                         refresh_needed: RefreshType::None,
                         selection_mode: *selection_mode,
-                        dashboard: crate::app::model::DashboardState {
-                            active_tab: dashboard.active_tab,
-                            cached_status: status,
-                            cached_history: history,
-                        },
+                        dashboard: new_dashboard,
                         filter_query: filter_query.clone(),
                         is_filtering: *is_filtering,
                         mode: *mode,
                     };
                 } else if *refresh_needed == RefreshType::Dashboard {
-                    let (status, history) = Self::fetch_dashboard_data(
+                    Self::fetch_dashboard_data(
                         repo,
                         worktrees,
                         table_state.selected(),
                         dashboard,
+                        &async_tx,
                     );
 
                     *state = AppState::ListingWorktrees {
@@ -193,11 +323,7 @@ impl View {
                         table_state: table_state.clone(),
                         refresh_needed: RefreshType::None,
                         selection_mode: *selection_mode,
-                        dashboard: crate::app::model::DashboardState {
-                            active_tab: dashboard.active_tab,
-                            cached_status: status,
-                            cached_history: history,
-                        },
+                        dashboard: dashboard.clone(),
                         filter_query: filter_query.clone(),
                         is_filtering: *is_filtering,
                         mode: *mode,
@@ -227,6 +353,7 @@ impl View {
                             table_state,
                             &current_state_clone,
                             spinner_tick,
+                            &async_tx,
                         )?;
                     }
                     AppState::ViewingStatus {
@@ -369,33 +496,46 @@ impl View {
         }
     }
 
-    fn fetch_dashboard_data<R: ProjectRepository>(
+    fn fetch_dashboard_data<R: ProjectRepository + Clone + Send + Sync + 'static>(
         repo: &R,
         worktrees: &[Worktree],
         selected_index: Option<usize>,
-        dashboard: &crate::app::model::DashboardState,
-    ) -> (
-        Option<crate::domain::repository::GitStatus>,
-        Option<Vec<crate::domain::repository::GitCommit>>,
+        dashboard: &mut crate::app::model::DashboardState,
+        async_tx: &UnboundedSender<AsyncResult>,
     ) {
-        let mut status = None;
-        let mut history = None;
-
         if let Some(i) = selected_index
             && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
         {
+            // If we already have data or are loading, don't fetch again
+            // But if we switched tabs, we might need different data
             match dashboard.active_tab {
                 crate::app::model::DashboardTab::Status => {
-                    status = repo.get_status(&wt.path).ok();
+                    if dashboard.cached_status.is_none() && !dashboard.loading {
+                        dashboard.loading = true;
+                        let repo_clone = repo.clone();
+                        let path = wt.path.clone();
+                        let tx = async_tx.clone();
+                        tokio::task::spawn_blocking(move || {
+                            let result = repo_clone.get_status(&path);
+                            let _ = tx.send(AsyncResult::StatusFetched { path, result });
+                        });
+                    }
                 }
                 crate::app::model::DashboardTab::Log => {
-                    history = repo.get_history(&wt.path, 10).ok();
+                    if dashboard.cached_history.is_none() && !dashboard.loading {
+                        dashboard.loading = true;
+                        let repo_clone = repo.clone();
+                        let path = wt.path.clone();
+                        let tx = async_tx.clone();
+                        tokio::task::spawn_blocking(move || {
+                            let result = repo_clone.get_history(&path, 10);
+                            let _ = tx.send(AsyncResult::HistoryFetched { path, result });
+                        });
+                    }
                 }
                 _ => {}
             }
         }
-
-        (status, history)
     }
 
     pub fn draw<R: ProjectRepository>(

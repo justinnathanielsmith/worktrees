@@ -132,6 +132,7 @@ fn render_tui_mode(
             active_tab: worktree::app::model::DashboardTab::Info,
             cached_status: None,
             cached_history: None,
+            loading: false,
         },
         filter_query: String::new(),
         is_filtering: false,
