@@ -41,7 +41,11 @@ pub fn render_history(f: &mut Frame, branch: &str, commits: &[GitCommit], select
             Style::default().fg(theme.text)
         };
 
-        let prefix = if is_selected && !commit.hash.is_empty() { " ▶" } else { "  " };
+        let prefix = if is_selected && !commit.hash.is_empty() {
+            " ▶"
+        } else {
+            "  "
+        };
 
         let mut entry = vec![
             Span::styled(format!("{:<15}", commit.graph), row_style.fg(theme.primary)),

@@ -31,7 +31,7 @@ impl Widget for FooterWidget<'_> {
                         ("[v]", "STATUS", theme.text),
                         ("[l]", "LOG", theme.text),
                         ("[q]", "EXIT", theme.error),
-                    ]
+                    ],
                 ],
                 crate::app::model::AppMode::Manage => vec![
                     vec![
@@ -41,7 +41,7 @@ impl Widget for FooterWidget<'_> {
                     vec![
                         ("[r]", "REMOVE", theme.error),
                         ("[c]", "CLEAN", theme.error), // Changed to error for safety
-                    ]
+                    ],
                 ],
                 crate::app::model::AppMode::Git => vec![
                     vec![
@@ -50,18 +50,14 @@ impl Widget for FooterWidget<'_> {
                         ("[s]", "SYNC", theme.success),
                         ("[R]", "REBASE", theme.success),
                     ],
-                    vec![
-                        ("[ESC]", "BACK", theme.accent),
-                    ]
+                    vec![("[ESC]", "BACK", theme.accent)],
                 ],
                 crate::app::model::AppMode::Filter => vec![
                     vec![
                         ("[Typing...]", "SEARCH", theme.primary),
                         ("[ENT]", "DONE", theme.success),
                     ],
-                    vec![
-                        ("[ESC]", "CLEAR", theme.error),
-                    ]
+                    vec![("[ESC]", "CLEAR", theme.error)],
                 ],
             },
             AppState::ViewingStatus { .. } => vec![
@@ -70,16 +66,12 @@ impl Widget for FooterWidget<'_> {
                     ("[TAB]", "STAGE", theme.success),
                     ("[C]", "COMMIT", theme.success),
                 ],
-                vec![
-                    ("[ESC]", "BACK", theme.accent),
-                ]
+                vec![("[ESC]", "BACK", theme.accent)],
             ],
-            AppState::ViewingHistory { .. } => vec![
-                vec![
-                    ("[j/k]", "NAV", theme.primary),
-                    ("[ESC]", "BACK", theme.accent),
-                ]
-            ],
+            AppState::ViewingHistory { .. } => vec![vec![
+                ("[j/k]", "NAV", theme.primary),
+                ("[ESC]", "BACK", theme.accent),
+            ]],
             AppState::SwitchingBranch { .. }
             | AppState::PickingBaseRef { .. }
             | AppState::Committing { .. } => vec![
@@ -87,59 +79,54 @@ impl Widget for FooterWidget<'_> {
                     ("[j/k]", "NAV", theme.primary),
                     ("[ENT]", "SELECT", theme.success),
                 ],
-                vec![
-                    ("[ESC]", "BACK", theme.accent),
-                ]
+                vec![("[ESC]", "BACK", theme.accent)],
             ],
             AppState::SelectingEditor { .. } => vec![
                 vec![
                     ("[j/k]", "NAV", theme.primary),
                     ("[ENT]", "OPEN", theme.success),
                 ],
-                vec![
-                    ("[ESC]", "BACK", theme.accent),
-                ]
+                vec![("[ESC]", "BACK", theme.accent)],
             ],
-            AppState::Prompting { .. } => vec![
-                vec![
-                    ("[ENT]", "SUBMIT", theme.success),
-                    ("[ESC]", "CANCEL", theme.error),
-                ]
-            ],
+            AppState::Prompting { .. } => vec![vec![
+                ("[ENT]", "SUBMIT", theme.success),
+                ("[ESC]", "CANCEL", theme.error),
+            ]],
             AppState::Confirming { .. } => vec![
-                vec![
-                    ("[y]", "YES", theme.success),
-                    ("[n]", "NO", theme.error),
-                ],
-                vec![
-                    ("[ESC]", "CANCEL", theme.subtle),
-                ]
+                vec![("[y]", "YES", theme.success), ("[n]", "NO", theme.error)],
+                vec![("[ESC]", "CANCEL", theme.subtle)],
             ],
             AppState::Help { .. } => vec![vec![("[ESC]", "BACK", theme.accent)]],
-            AppState::Welcome => vec![
-                vec![
-                    ("[I]", "INIT", theme.primary),
-                    ("[C]", "CONVERT", theme.secondary),
-                    ("[Q]", "EXIT", theme.error),
-                ]
-            ],
+            AppState::Welcome => vec![vec![
+                ("[I]", "INIT", theme.primary),
+                ("[C]", "CONVERT", theme.secondary),
+                ("[Q]", "EXIT", theme.error),
+            ]],
             _ => vec![vec![("[Q]", "EXIT", theme.error)]],
         };
 
         let mut spans = Vec::new();
         for (group_idx, group) in shortcuts.into_iter().enumerate() {
             if group_idx > 0 {
-                 spans.push(Span::styled("   │   ", Style::default().fg(theme.subtle).add_modifier(Modifier::DIM)));
+                spans.push(Span::styled(
+                    "   │   ",
+                    Style::default()
+                        .fg(theme.subtle)
+                        .add_modifier(Modifier::DIM),
+                ));
             }
             for (i, (key, label, color)) in group.into_iter().enumerate() {
                 if i > 0 {
                     spans.push(Span::styled(" ", Style::default()));
                 }
                 spans.push(Span::styled(
-                    format!("{key}"),
+                    key.to_string(),
                     Style::default().fg(color).add_modifier(Modifier::BOLD),
                 ));
-                spans.push(Span::styled(format!(" {label}"), Style::default().fg(theme.subtle)));
+                spans.push(Span::styled(
+                    format!(" {label}"),
+                    Style::default().fg(theme.subtle),
+                ));
             }
         }
 

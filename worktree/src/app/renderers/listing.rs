@@ -47,7 +47,7 @@ pub fn render_listing(
     let table = WorktreeListWidget::new(&filtered_worktrees)
         .dimmed(is_dimmed)
         .tick(spinner_tick);
-        
+
     f.render_stateful_widget(table, list_area, table_state);
 
     if let Some(area) = search_area {

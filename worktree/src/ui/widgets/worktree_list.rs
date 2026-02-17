@@ -42,13 +42,17 @@ impl StatefulWidget for WorktreeListWidget<'_> {
         let theme = CyberTheme::default();
 
         let border_style = if self.is_dimmed {
-            Style::default().fg(theme.subtle).add_modifier(Modifier::DIM)
+            Style::default()
+                .fg(theme.subtle)
+                .add_modifier(Modifier::DIM)
         } else {
             Style::default().fg(theme.border)
         };
 
         let title_style = if self.is_dimmed {
-            Style::default().fg(theme.subtle).add_modifier(Modifier::DIM)
+            Style::default()
+                .fg(theme.subtle)
+                .add_modifier(Modifier::DIM)
         } else {
             Style::default()
                 .fg(theme.primary)
@@ -139,7 +143,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 };
 
                 let mut row_style = Style::default().fg(theme.text);
-                
+
                 if self.is_dimmed {
                     row_style = row_style.add_modifier(Modifier::DIM);
                 }
@@ -149,20 +153,20 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                         .bg(theme.selection_bg)
                         .fg(theme.primary)
                         .add_modifier(Modifier::BOLD);
-                        
+
                     // Remove dim modifier if selected, to make it pop even when filtering
                     if self.is_dimmed {
-                         row_style = row_style.remove_modifier(Modifier::DIM);   
+                        row_style = row_style.remove_modifier(Modifier::DIM);
                     }
                 } else if is_dirty && !self.is_dimmed {
-                     // Subtle warning tint for dirty rows if not selected and not dimmed
-                     // We don't have a background color for warning in theme, so let's use subtle or just text color
-                     // The user requested: "row background has a subtle warning (Yellow) tint"
-                     // Since we don't have a 'tint', we can maybe change the text color or just keep it simple.
-                     // Making the text warning color might be too much.
-                     // The user said "row background". Ratatui doesn't support alpha blending for bg.
-                     // Best we can do is maybe use a different bg color if we had one.
-                     // Let's just color the status cell strongly.
+                    // Subtle warning tint for dirty rows if not selected and not dimmed
+                    // We don't have a background color for warning in theme, so let's use subtle or just text color
+                    // The user requested: "row background has a subtle warning (Yellow) tint"
+                    // Since we don't have a 'tint', we can maybe change the text color or just keep it simple.
+                    // Making the text warning color might be too much.
+                    // The user said "row background". Ratatui doesn't support alpha blending for bg.
+                    // Best we can do is maybe use a different bg color if we had one.
+                    // Let's just color the status cell strongly.
                 }
 
                 // Cyber-style cursor animation
@@ -170,10 +174,10 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 let spinner_chars = ["▊", "▋", "▌", "▍", "▌", "▋"];
                 let spinner_idx = (self.spinner_tick / 2) % spinner_chars.len();
                 let cursor_char = spinner_chars[spinner_idx];
-                
-                let prefix = if is_selected { 
+
+                let prefix = if is_selected {
                     format!(" {} ", cursor_char)
-                } else { 
+                } else {
                     "   ".to_string()
                 };
 
@@ -185,18 +189,17 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                         } else {
                             (theme.warning, Icons::DIRTY)
                         };
-                        
+
                         let style = if self.is_dimmed && !is_selected {
-                             Style::default().fg(theme.subtle)   
+                            Style::default().fg(theme.subtle)
                         } else {
-                             Style::default().fg(color)
+                            Style::default().fg(color)
                         };
-                        
-                        Cell::from(format!("{} {}", icon, summary.to_uppercase()))
-                            .style(style)
+
+                        Cell::from(format!("{} {}", icon, summary.to_uppercase())).style(style)
                     },
                 );
-                
+
                 let mut cell_style = Style::default();
                 if self.is_dimmed && !is_selected {
                     cell_style = cell_style.fg(theme.subtle);
@@ -204,8 +207,16 @@ impl StatefulWidget for WorktreeListWidget<'_> {
 
                 Row::new(vec![
                     Cell::from(format!("{prefix}{icon}")),
-                    Cell::from(intent_str).style(if is_selected { branch_style } else { cell_style }),
-                    Cell::from(wt.branch.clone()).style(if is_selected { Style::default().fg(theme.primary) } else { cell_style }),
+                    Cell::from(intent_str).style(if is_selected {
+                        branch_style
+                    } else {
+                        cell_style
+                    }),
+                    Cell::from(wt.branch.clone()).style(if is_selected {
+                        Style::default().fg(theme.primary)
+                    } else {
+                        cell_style
+                    }),
                     status_cell,
                     Cell::from(format_size(wt.size_bytes)).style(Style::default().fg(theme.subtle)),
                     Cell::from(wt.commit.chars().take(7).collect::<String>())
@@ -229,15 +240,15 @@ impl StatefulWidget for WorktreeListWidget<'_> {
         )
         .header(
             Row::new(vec!["", "INTENT", "BRANCH", "STATUS", "SIZE", "COMMIT"])
-                .style(
-                    if self.is_dimmed {
-                        Style::default().fg(theme.subtle).add_modifier(Modifier::DIM)
-                    } else {
-                        Style::default()
-                            .fg(theme.secondary)
-                            .add_modifier(Modifier::BOLD)
-                    }
-                )
+                .style(if self.is_dimmed {
+                    Style::default()
+                        .fg(theme.subtle)
+                        .add_modifier(Modifier::DIM)
+                } else {
+                    Style::default()
+                        .fg(theme.secondary)
+                        .add_modifier(Modifier::BOLD)
+                })
                 .bottom_margin(1),
         )
         .block(block)

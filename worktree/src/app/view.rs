@@ -1,3 +1,4 @@
+use crate::app::async_tasks::AsyncResult;
 use crate::app::cli_renderer::CliRenderer;
 use crate::app::event_handlers::helpers::create_timed_state;
 use crate::app::event_handlers::{
@@ -5,7 +6,6 @@ use crate::app::event_handlers::{
     handle_history_events, handle_listing_events, handle_picking_ref_events, handle_prompt_events,
     handle_stash_events, handle_status_events,
 };
-use crate::app::async_tasks::AsyncResult;
 use crate::app::model::{AppState, RefreshType};
 use crate::app::renderers::{
     render_branch_selection, render_commit_menu, render_editor_selection, render_history,
@@ -15,7 +15,6 @@ use crate::domain::repository::{ProjectRepository, RepositoryEvent, Worktree};
 use crate::ui::widgets::{footer::FooterWidget, header::HeaderWidget, stash_list::StashListWidget};
 use anyhow::Result;
 use crossbeam_channel::Receiver;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
@@ -28,6 +27,7 @@ use ratatui::{
 };
 use std::io;
 use std::time::Duration;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 pub struct View;
 
@@ -53,6 +53,7 @@ impl View {
         state: &AppState,
         context: crate::domain::repository::ProjectContext,
         area: ratatui::layout::Rect,
+        spinner_tick: usize,
     ) {
         match state {
             AppState::ListingWorktrees {
@@ -61,6 +62,7 @@ impl View {
                 dashboard,
                 filter_query,
                 is_filtering,
+                mode,
                 ..
             } => {
                 render_listing(
@@ -160,15 +162,12 @@ impl View {
                             worktrees,
                             ..
                         } = state
+                            && let Some(selected_idx) = table_state.selected()
+                            && let Some(wt) = worktrees.get(selected_idx)
+                            && wt.path == path
                         {
-                            if let Some(selected_idx) = table_state.selected() {
-                                if let Some(wt) = worktrees.get(selected_idx) {
-                                    if wt.path == path {
-                                        dashboard.loading = false;
-                                        dashboard.cached_status = result.ok();
-                                    }
-                                }
-                            }
+                            dashboard.loading = false;
+                            dashboard.cached_status = result.ok();
                         }
                     }
                     AsyncResult::HistoryFetched { path, result } => {
@@ -178,21 +177,24 @@ impl View {
                             worktrees,
                             ..
                         } = state
+                            && let Some(selected_idx) = table_state.selected()
+                            && let Some(wt) = worktrees.get(selected_idx)
+                            && wt.path == path
                         {
-                            if let Some(selected_idx) = table_state.selected() {
-                                if let Some(wt) = worktrees.get(selected_idx) {
-                                    if wt.path == path {
-                                        dashboard.loading = false;
-                                        dashboard.cached_history = result.ok();
-                                    }
-                                }
-                            }
+                            dashboard.loading = false;
+                            dashboard.cached_history = result.ok();
                         }
                     }
-                    AsyncResult::FetchCompleted { branch: _branch, result } => {
+                    AsyncResult::FetchCompleted {
+                        branch: _branch,
+                        result,
+                    } => {
                         if let AppState::Fetching { prev_state, .. } = state {
                             if let Err(e) = result {
-                                *state = AppState::Error(format!("Fetch failed: {e}"), prev_state.clone());
+                                *state = AppState::Error(
+                                    format!("Fetch failed: {e}"),
+                                    prev_state.clone(),
+                                );
                             } else {
                                 *state = *prev_state.clone();
                             }
@@ -202,7 +204,10 @@ impl View {
                     AsyncResult::PullCompleted { branch, result } => {
                         if let AppState::Pulling { prev_state, .. } = state {
                             if let Err(e) = result {
-                                *state = AppState::Error(format!("Pull failed: {e}"), prev_state.clone());
+                                *state = AppState::Error(
+                                    format!("Pull failed: {e}"),
+                                    prev_state.clone(),
+                                );
                             } else {
                                 *state = create_timed_state(
                                     AppState::PullComplete {
@@ -219,7 +224,10 @@ impl View {
                     AsyncResult::PushCompleted { branch, result } => {
                         if let AppState::Pushing { prev_state, .. } = state {
                             if let Err(e) = result {
-                                *state = AppState::Error(format!("Push failed: {e}"), prev_state.clone());
+                                *state = AppState::Error(
+                                    format!("Push failed: {e}"),
+                                    prev_state.clone(),
+                                );
                             } else {
                                 *state = create_timed_state(
                                     AppState::PushComplete {
@@ -236,7 +244,10 @@ impl View {
                     AsyncResult::SyncCompleted { branch, result } => {
                         if let AppState::Syncing { prev_state, .. } = state {
                             if let Err(e) = result {
-                                *state = AppState::Error(format!("Sync failed: {e}"), prev_state.clone());
+                                *state = AppState::Error(
+                                    format!("Sync failed: {e}"),
+                                    prev_state.clone(),
+                                );
                             } else {
                                 *state = create_timed_state(
                                     AppState::SyncComplete {
@@ -589,6 +600,7 @@ impl View {
                 dashboard,
                 filter_query,
                 is_filtering,
+                mode,
                 ..
             } => {
                 render_listing(
@@ -602,6 +614,8 @@ impl View {
                     dashboard.cached_history.as_deref(),
                     filter_query,
                     *is_filtering,
+                    *mode,
+                    spinner_tick,
                 );
             }
             AppState::ViewingStatus {
@@ -619,7 +633,7 @@ impl View {
                 prev_state,
                 ..
             } => {
-                Self::render_background(f, prev_state, context, chunks[1]);
+                Self::render_background(f, prev_state, context, chunks[1], spinner_tick);
                 render_history(f, branch, commits, *selected_index);
             }
             AppState::SwitchingBranch {
@@ -628,7 +642,7 @@ impl View {
                 prev_state,
                 ..
             } => {
-                Self::render_background(f, prev_state, context, chunks[1]);
+                Self::render_background(f, prev_state, context, chunks[1], spinner_tick);
                 render_branch_selection(f, branches, *selected_index, None);
             }
             AppState::PickingBaseRef {
@@ -637,7 +651,7 @@ impl View {
                 prev_state,
                 ..
             } => {
-                Self::render_background(f, prev_state, context, chunks[1]);
+                Self::render_background(f, prev_state, context, chunks[1], spinner_tick);
                 render_branch_selection(f, branches, *selected_index, Some("SELECT BASE BRANCH"));
             }
             AppState::SelectingEditor {
@@ -647,7 +661,7 @@ impl View {
                 prev_state,
                 ..
             } => {
-                Self::render_background(f, prev_state, context, chunks[1]);
+                Self::render_background(f, prev_state, context, chunks[1], spinner_tick);
                 render_editor_selection(f, branch, options, *selected);
             }
             AppState::Prompting {
@@ -656,7 +670,7 @@ impl View {
                 prev_state,
                 ..
             } => {
-                Self::render_background(f, prev_state, context, chunks[1]);
+                Self::render_background(f, prev_state, context, chunks[1], spinner_tick);
                 render_prompt(f, prompt_type, input);
             }
             AppState::Committing {
@@ -665,7 +679,7 @@ impl View {
                 prev_state,
                 ..
             } => {
-                Self::render_background(f, prev_state, context, chunks[1]);
+                Self::render_background(f, prev_state, context, chunks[1], spinner_tick);
                 render_commit_menu(f, branch, *selected_index);
             }
             AppState::ViewingStashes { .. } => {
@@ -949,6 +963,7 @@ mod tests {
                 active_tab: crate::app::model::DashboardTab::Info,
                 cached_status: None,
                 cached_history: None,
+                loading: false,
             },
             filter_query: String::new(),
             is_filtering: false,

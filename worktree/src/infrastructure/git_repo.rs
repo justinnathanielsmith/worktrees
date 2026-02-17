@@ -1296,8 +1296,7 @@ mod tests {
 
     #[test]
     fn test_parse_git_history_normal() {
-        let output =
-            "abc1234|John Doe|2023-01-01|Fix bug\ndef4567|Jane Smith|2023-01-02|Add feature";
+        let output = "* \x00abc1234\x00John Doe\x002023-01-01\x00Fix bug\n* \x00def4567\x00Jane Smith\x002023-01-02\x00Add feature";
         let commits = GitProjectRepository::parse_git_history(output);
         assert_eq!(commits.len(), 2);
         assert_eq!(commits[0].hash, "abc1234");
@@ -1312,7 +1311,7 @@ mod tests {
 
     #[test]
     fn test_parse_git_history_single() {
-        let output = "abc1234|John Doe|2023-01-01|Fix bug";
+        let output = "* \x00abc1234\x00John Doe\x002023-01-01\x00Fix bug";
         let commits = GitProjectRepository::parse_git_history(output);
         assert_eq!(commits.len(), 1);
         assert_eq!(commits[0].hash, "abc1234");
@@ -1327,11 +1326,11 @@ mod tests {
 
     #[test]
     fn test_parse_git_history_malformed() {
-        let output = "abc1234|John Doe|2023-01-01\ndef4567|Jane Smith|2023-01-02|Add feature|Extra";
+        let output = "* \x00abc1234\x00John Doe\x002023-01-01\n* \x00def4567\x00Jane Smith\x002023-01-02\x00Add feature\x00Extra";
         let commits = GitProjectRepository::parse_git_history(output);
         assert_eq!(commits.len(), 1);
         assert_eq!(commits[0].hash, "def4567");
-        assert_eq!(commits[0].message, "Add feature|Extra");
+        assert_eq!(commits[0].message, "Add feature\x00Extra");
     }
 
     #[test]
@@ -1364,7 +1363,7 @@ mod tests {
 
     #[test]
     fn test_parse_git_history_with_pipes() {
-        let output = "abc1234|John Doe|2023-01-01|Message with | pipe";
+        let output = "* \x00abc1234\x00John Doe\x002023-01-01\x00Message with | pipe";
         let commits = GitProjectRepository::parse_git_history(output);
         assert_eq!(commits.len(), 1);
         assert_eq!(commits[0].hash, "abc1234");

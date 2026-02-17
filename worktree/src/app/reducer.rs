@@ -109,7 +109,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                                     info!("Warp workflows generated successfully");
                                 }
                             } else {
-                                info!("Skipping Warp workflow generation: Not running in Warp Terminal");
+                                info!(
+                                    "Skipping Warp workflow generation: Not running in Warp Terminal"
+                                );
                                 if !json_mode && !quiet_mode {
                                     println!(
                                         "{} Skipping Warp workflow generation: Not running in Warp Terminal",
@@ -1211,22 +1213,30 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 let target_wt = match matched_target {
                     Some(wt) => wt,
                     None => {
-                        return Err(miette::miette!(
-                            "Target worktree '{}' not found.",
-                            target
-                        ));
+                        return Err(miette::miette!("Target worktree '{}' not found.", target));
                     }
                 };
 
                 if source_wt.path == target_wt.path {
-                    return Err(miette::miette!("Already in target worktree '{}'.", target_wt.branch));
+                    return Err(miette::miette!(
+                        "Already in target worktree '{}'.",
+                        target_wt.branch
+                    ));
                 }
 
                 // 3. Verify changes exist
-                let status = repo.get_status(&source_wt.path).map_err(|e| miette::miette!(e))?;
-                if status.staged.is_empty() && status.unstaged.is_empty() && status.untracked.is_empty() {
+                let status = repo
+                    .get_status(&source_wt.path)
+                    .map_err(|e| miette::miette!(e))?;
+                if status.staged.is_empty()
+                    && status.unstaged.is_empty()
+                    && status.untracked.is_empty()
+                {
                     if !json_mode && !quiet_mode {
-                        println!("{} Current worktree is clean. Nothing to teleport.", "ℹ".blue());
+                        println!(
+                            "{} Current worktree is clean. Nothing to teleport.",
+                            "ℹ".blue()
+                        );
                     }
                     return Ok(());
                 }
@@ -1274,11 +1284,13 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 if !json_mode && !quiet_mode {
                     println!("{} Teleport complete!", "✔".green().bold());
                 } else if json_mode {
-                    self.view.render_json(&serde_json::json!({
-                        "status": "success",
-                        "from": source_wt.branch,
-                        "to": target_wt.branch
-                    })).map_err(|e| miette::miette!("{e:?}"))?;
+                    self.view
+                        .render_json(&serde_json::json!({
+                            "status": "success",
+                            "from": source_wt.branch,
+                            "to": target_wt.branch
+                        }))
+                        .map_err(|e| miette::miette!("{e:?}"))?;
                 }
             }
             Intent::ApplyStash { path, index } => {

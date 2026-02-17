@@ -33,6 +33,21 @@ impl Default for CyberTheme {
     }
 }
 
+impl CyberTheme {
+    pub fn mode_color(&self, state: &AppState) -> Color {
+        match state {
+            AppState::ListingWorktrees { mode, .. } => match mode {
+                AppMode::Normal => self.primary,
+                AppMode::Manage => self.secondary,
+                AppMode::Git => self.success,
+                AppMode::Filter => self.warning,
+            },
+            AppState::Error(..) => self.error,
+            _ => self.accent,
+        }
+    }
+}
+
 pub struct Icons;
 
 impl Icons {

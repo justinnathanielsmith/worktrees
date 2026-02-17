@@ -1,3 +1,4 @@
+pub mod async_tasks;
 pub mod cli_renderer;
 pub mod event_handlers;
 pub mod intent;
@@ -11,4 +12,3 @@ pub mod renderers;
 pub mod test_utils;
 pub mod view;
 pub mod warp;
-pub mod async_tasks;
