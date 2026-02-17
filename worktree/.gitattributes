@@ -1,0 +1,17 @@
+# Handle line endings automatically for files detected as text
+# and leave files detected as binary untouched.
+* text=auto
+
+# Enforce LF for source code files
+*.rs text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.sh text eol=lf
+Makefile text eol=lf
+
+# Deny checkout of files with CRLF
+# This is safer than core.autocrlf=input because it avoids accidental
+# conversion if a file is misidentified as text.
