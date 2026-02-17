@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 pub enum PromptType {
     NameNewWorktree { base_ref: String },
     CommitMessage,
+    StashMessage,
     ApiKey,
 }
 
@@ -207,6 +208,14 @@ pub enum AppState {
         status: StatusViewState,
         prev_state: Box<Self>,
     },
+    /// Git stash view.
+    ViewingStashes {
+        path: String,
+        branch: String,
+        stashes: Vec<crate::domain::repository::StashEntry>,
+        selected_index: usize,
+        prev_state: Box<Self>,
+    },
     /// Git commit history log view.
     ViewingHistory {
         branch: String,
@@ -281,6 +290,7 @@ impl AppState {
             | Self::SelectingEditor { prev_state, .. }
             | Self::OpeningEditor { prev_state, .. }
             | Self::ViewingStatus { prev_state, .. }
+            | Self::ViewingStashes { prev_state, .. }
             | Self::ViewingHistory { prev_state, .. }
             | Self::SwitchingBranch { prev_state, .. }
             | Self::Committing { prev_state, .. }

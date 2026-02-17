@@ -232,6 +232,7 @@ impl CliRenderer {
             | AppState::Prompting { .. }
             | AppState::ViewingStatus { .. }
             | AppState::ViewingHistory { .. }
+            | AppState::ViewingStashes { .. }
             | AppState::SwitchingBranch { .. }
             | AppState::PickingBaseRef { .. }
             | AppState::Committing { .. }

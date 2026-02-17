@@ -61,4 +61,24 @@ pub enum Intent {
     Rebase {
         upstream: Option<String>,
     },
+    ViewStashes {
+        path: String,
+        branch: String,
+    },
+    ApplyStash {
+        path: String,
+        index: usize,
+    },
+    PopStash {
+        path: String,
+        index: usize,
+    },
+    DropStash {
+        path: String,
+        index: usize,
+    },
+    StashSave {
+        path: String,
+        message: Option<String>,
+    },
 }

@@ -2,7 +2,7 @@ use crate::app::cli_renderer::CliRenderer;
 use crate::app::event_handlers::{
     handle_branch_events, handle_committing_events, handle_confirm_events, handle_editor_events,
     handle_history_events, handle_listing_events, handle_picking_ref_events, handle_prompt_events,
-    handle_status_events,
+    handle_stash_events, handle_status_events,
 };
 use crate::app::model::{AppState, RefreshType};
 use crate::app::renderers::{
@@ -10,7 +10,7 @@ use crate::app::renderers::{
     render_listing, render_modals, render_prompt, render_status,
 };
 use crate::domain::repository::{ProjectRepository, RepositoryEvent, Worktree};
-use crate::ui::widgets::{footer::FooterWidget, header::HeaderWidget};
+use crate::ui::widgets::{footer::FooterWidget, header::HeaderWidget, stash_list::StashListWidget};
 use anyhow::Result;
 use crossbeam_channel::Receiver;
 use crossterm::{
@@ -505,6 +505,9 @@ impl View {
                 Self::render_background(f, prev_state, context, chunks[1]);
                 render_commit_menu(f, branch, *selected_index);
             }
+            AppState::ViewingStashes { .. } => {
+                StashListWidget::render(f, chunks[1], display_state);
+            }
             _ => {
                 // Handle modals and everything else
                 render_modals(f, repo, display_state, spinner_tick);
@@ -683,6 +686,26 @@ mod tests {
         fn watch(&self) -> anyhow::Result<Receiver<RepositoryEvent>> {
             let (_, rx) = crossbeam_channel::unbounded();
             Ok(rx)
+        }
+
+        fn list_stashes(&self, _path: &str) -> anyhow::Result<Vec<crate::domain::repository::StashEntry>> {
+            Ok(vec![])
+        }
+
+        fn apply_stash(&self, _path: &str, _index: usize) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn pop_stash(&self, _path: &str, _index: usize) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn drop_stash(&self, _path: &str, _index: usize) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn stash_save(&self, _path: &str, _message: Option<&str>) -> anyhow::Result<()> {
+            Ok(())
         }
     }
 

@@ -149,6 +149,62 @@ impl GitProjectRepository {
         }
     }
 
+    fn parse_branches(output: &str) -> Vec<String> {
+        let mut branches: Vec<String> = Vec::new();
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+        // 1. First pass: Collect local branches
+        for line in output.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.contains("origin/HEAD") {
+                continue;
+            }
+            if !line.starts_with("origin/") {
+                branches.push(line.to_string());
+                seen.insert(line.to_string());
+            }
+        }
+
+        // 2. Second pass: Add remote branches
+        for line in output.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.contains("origin/HEAD") {
+                continue;
+            }
+            if let Some(stripped) = line.strip_prefix("origin/")
+                && !seen.contains(stripped)
+            {
+                branches.push(stripped.to_string());
+                seen.insert(stripped.to_string());
+            }
+        }
+
+        branches.sort();
+        branches
+    }
+
+    pub(crate) fn parse_stash_list(output: &str) -> Vec<crate::domain::repository::StashEntry> {
+        use crate::domain::repository::StashEntry;
+        output
+            .lines()
+            .filter_map(|line| {
+                let parts: Vec<&str> = line.split('|').collect();
+                if parts.len() == 3 {
+                    // stash@{0}
+                    let index_str = parts[0].trim().strip_prefix("stash@{")?.strip_suffix("}")?;
+                    let index = index_str.parse::<usize>().ok()?;
+                    Some(StashEntry {
+                        index,
+                        message: parts[1].trim().to_string(),
+                        branch: parts[2].trim().to_string(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     fn parse_git_history(output: &str) -> Vec<GitCommit> {
         output
             .lines()
@@ -190,39 +246,6 @@ impl GitProjectRepository {
         let content = serde_json::to_string_pretty(metadata)?;
         std::fs::write(path, content)?;
         Ok(())
-    }
-    fn parse_branches(output: &str) -> Vec<String> {
-        let mut branches: Vec<String> = Vec::new();
-        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
-
-        // 1. First pass: Collect local branches
-        for line in output.lines() {
-            let line = line.trim();
-            if line.is_empty() || line.contains("origin/HEAD") {
-                continue;
-            }
-            if !line.starts_with("origin/") {
-                branches.push(line.to_string());
-                seen.insert(line.to_string());
-            }
-        }
-
-        // 2. Second pass: Add remote branches
-        for line in output.lines() {
-            let line = line.trim();
-            if line.is_empty() || line.contains("origin/HEAD") {
-                continue;
-            }
-            if let Some(stripped) = line.strip_prefix("origin/")
-                && !seen.contains(stripped)
-            {
-                branches.push(stripped.to_string());
-                seen.insert(stripped.to_string());
-            }
-        }
-
-        branches.sort();
-        branches
     }
 
     fn get_project_root_path() -> Result<PathBuf> {
@@ -684,6 +707,62 @@ impl ProjectRepository for GitProjectRepository {
             debug!(error = %e, "Gemini explanation failed, using fallback.");
             Ok("Rebase failed due to conflicts. Please resolve them manually. (AI explanation unavailable)".to_string())
         })
+    }
+
+    fn list_stashes(&self, path: &str) -> Result<Vec<crate::domain::repository::StashEntry>> {
+        let output = Self::run_git(&["-C", path, "stash", "list", "--pretty=format:%gd|%gs|%sb"])?;
+        let mut stashes = Vec::new();
+
+        for line in output.lines() {
+            let parts: Vec<&str> = line.split('|').collect();
+            if parts.len() < 2 {
+                continue;
+            }
+
+            // Extract index from "stash@{0}"
+            let index_part = parts[0];
+            let index = index_part
+                .trim_start_matches("stash@{")
+                .trim_end_matches('}')
+                .parse::<usize>()
+                .unwrap_or(0);
+
+            let message = parts[1].to_string();
+            let branch = parts.get(2).map(|s| s.to_string()).unwrap_or_default();
+
+            stashes.push(crate::domain::repository::StashEntry {
+                index,
+                message,
+                branch,
+            });
+        }
+
+        Ok(stashes)
+    }
+
+    fn apply_stash(&self, path: &str, index: usize) -> Result<()> {
+        Self::run_git(&["-C", path, "stash", "apply", &format!("stash@{{{index}}}")])?;
+        Ok(())
+    }
+
+    fn pop_stash(&self, path: &str, index: usize) -> Result<()> {
+        Self::run_git(&["-C", path, "stash", "pop", &format!("stash@{{{index}}}")])?;
+        Ok(())
+    }
+
+    fn drop_stash(&self, path: &str, index: usize) -> Result<()> {
+        Self::run_git(&["-C", path, "stash", "drop", &format!("stash@{{{index}}}")])?;
+        Ok(())
+    }
+
+    fn stash_save(&self, path: &str, message: Option<&str>) -> Result<()> {
+        let mut args = vec!["-C", path, "stash", "push"];
+        if let Some(msg) = message {
+            args.push("-m");
+            args.push(msg);
+        }
+        Self::run_git(&args)?;
+        Ok(())
     }
 
     fn get_api_key(&self) -> Result<Option<String>> {
@@ -1264,13 +1343,37 @@ mod tests {
     fn test_parse_git_history_malformed() {
         let output = "abc1234|John Doe|2023-01-01\ndef4567|Jane Smith|2023-01-02|Add feature|Extra";
         let commits = GitProjectRepository::parse_git_history(output);
-        // First line is missing a part, second line has extra part (but splitn(4) handles it)
-        // Wait, splitn(4, '|') on "def4567|Jane Smith|2023-01-02|Add feature|Extra"
-        // will give ["def4567", "Jane Smith", "2023-01-02", "Add feature|Extra"]
-        // So it will have len 4 and be included.
         assert_eq!(commits.len(), 1);
         assert_eq!(commits[0].hash, "def4567");
         assert_eq!(commits[0].message, "Add feature|Extra");
+    }
+
+    #[test]
+    fn test_parse_stash_list() {
+        let output = "stash@{0}|WIP on main: abc1234 Initial commit|main\nstash@{1}|WIP on dev: def5678 Add feature|dev";
+        let stashes = GitProjectRepository::parse_stash_list(output);
+
+        assert_eq!(stashes.len(), 2);
+        assert_eq!(stashes[0].index, 0);
+        assert_eq!(stashes[0].message, "WIP on main: abc1234 Initial commit");
+        assert_eq!(stashes[0].branch, "main");
+        assert_eq!(stashes[1].index, 1);
+        assert_eq!(stashes[1].message, "WIP on dev: def5678 Add feature");
+        assert_eq!(stashes[1].branch, "dev");
+    }
+
+    #[test]
+    fn test_parse_stash_list_empty() {
+        let output = "";
+        let stashes = GitProjectRepository::parse_stash_list(output);
+        assert!(stashes.is_empty());
+    }
+
+    #[test]
+    fn test_parse_stash_list_malformed() {
+        let output = "stash@{0}|incomplete\nstash@{x}|bad index|branch";
+        let stashes = GitProjectRepository::parse_stash_list(output);
+        assert!(stashes.is_empty());
     }
 
     #[test]

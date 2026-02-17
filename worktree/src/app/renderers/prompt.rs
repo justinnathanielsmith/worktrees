@@ -18,6 +18,7 @@ pub fn render_prompt(f: &mut Frame, prompt_type: &PromptType, input: &str) {
     let title = match prompt_type {
         PromptType::CommitMessage => " COMMIT MESSAGE ",
         PromptType::ApiKey => " GEMINI API KEY ",
+        PromptType::StashMessage => " STASH MESSAGE ",
         PromptType::NameNewWorktree { base_ref } => {
             &format!(" NAME NEW WORKTREE (FROM {base_ref}) ")
         }

@@ -59,6 +59,14 @@ pub enum ProjectContext {
     KmpAndroid,
 }
 
+/// Represents a Git stash entry.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct StashEntry {
+    pub index: usize,
+    pub message: String,
+    pub branch: String,
+}
+
 /// The core abstraction for interacting with Git and project-specific configurations.
 pub trait ProjectRepository {
     /// Initializes a new bare repository at the specified project name directory.
@@ -116,6 +124,18 @@ pub trait ProjectRepository {
     fn get_conflict_diff(&self, path: &str) -> Result<String>;
     /// Explains a git conflict using AI.
     fn explain_rebase_conflict(&self, diff: &str) -> Result<String>;
+
+    // --- Stash Operations ---
+    /// Lists all stashes.
+    fn list_stashes(&self, path: &str) -> Result<Vec<StashEntry>>;
+    /// Applies the stash at the given index.
+    fn apply_stash(&self, path: &str, index: usize) -> Result<()>;
+    /// Pops the stash at the given index.
+    fn pop_stash(&self, path: &str, index: usize) -> Result<()>;
+    /// Drops the stash at the given index.
+    fn drop_stash(&self, path: &str, index: usize) -> Result<()>;
+    /// Pushes current changes to a new stash.
+    fn stash_save(&self, path: &str, message: Option<&str>) -> Result<()>;
 
     // --- AI Configuration ---
 

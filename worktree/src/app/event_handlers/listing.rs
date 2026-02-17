@@ -198,6 +198,20 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         prev_state: Box::new(current_state.clone()),
                     }));
                 }
+                KeyCode::Char('S') => {
+                    if let Some(i) = table_state.selected()
+                        && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
+                        && let Ok(stashes) = repo.list_stashes(&wt.path)
+                    {
+                        return Ok(Some(AppState::ViewingStashes {
+                            path: wt.path.clone(),
+                            branch: wt.branch.clone(),
+                            stashes,
+                            selected_index: 0,
+                            prev_state: Box::new(current_state.clone()),
+                        }));
+                    }
+                }
                 _ => {}
             }
 

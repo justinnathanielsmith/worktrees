@@ -1106,6 +1106,41 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                     }
                 }
             }
+            Intent::ApplyStash { path, index } => {
+                let repo_clone = repo.clone();
+                let path_clone = path;
+                tokio::task::spawn_blocking(move || repo_clone.apply_stash(&path_clone, index))
+                    .await
+                    .into_diagnostic()?
+                    .map_err(|e| miette::miette!(e.to_string()))?;
+            }
+            Intent::PopStash { path, index } => {
+                let repo_clone = repo.clone();
+                let path_clone = path;
+                tokio::task::spawn_blocking(move || repo_clone.pop_stash(&path_clone, index))
+                    .await
+                    .into_diagnostic()?
+                    .map_err(|e| miette::miette!(e.to_string()))?;
+            }
+            Intent::DropStash { path, index } => {
+                let repo_clone = repo.clone();
+                let path_clone = path;
+                tokio::task::spawn_blocking(move || repo_clone.drop_stash(&path_clone, index))
+                    .await
+                    .into_diagnostic()?
+                    .map_err(|e| miette::miette!(e.to_string()))?;
+            }
+            Intent::StashSave { path, message } => {
+                let repo_clone = repo.clone();
+                let path_clone = path;
+                tokio::task::spawn_blocking(move || {
+                    repo_clone.stash_save(&path_clone, message.as_deref())
+                })
+                .await
+                .into_diagnostic()?
+                .map_err(|e| miette::miette!(e.to_string()))?;
+            }
+            Intent::ViewStashes { .. } => {}
         }
 
         Ok(())
@@ -1340,6 +1375,26 @@ mod tests {
         fn watch(&self) -> Result<Receiver<RepositoryEvent>> {
             let (_, rx) = crossbeam_channel::unbounded();
             Ok(rx)
+        }
+
+        fn list_stashes(&self, _path: &str) -> anyhow::Result<Vec<crate::domain::repository::StashEntry>> {
+            Ok(vec![])
+        }
+
+        fn apply_stash(&self, _path: &str, _index: usize) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn pop_stash(&self, _path: &str, _index: usize) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn drop_stash(&self, _path: &str, _index: usize) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn stash_save(&self, _path: &str, _message: Option<&str>) -> anyhow::Result<()> {
+            Ok(())
         }
     }
 

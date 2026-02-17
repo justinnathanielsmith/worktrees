@@ -136,6 +136,19 @@ pub fn handle_status_events<R: ProjectRepository>(
                         }
                     }
                 }
+                KeyCode::Char('s') => {
+                    if key.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
+                        if let Ok(stashes) = repo.list_stashes(path) {
+                            return Some(AppState::ViewingStashes {
+                                path: path.to_string(),
+                                branch: branch.to_string(),
+                                stashes,
+                                selected_index: 0,
+                                prev_state: Box::new(current_state.clone()),
+                            });
+                        }
+                    }
+                }
                 _ => {}
             }
 

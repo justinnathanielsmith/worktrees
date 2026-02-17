@@ -3,16 +3,17 @@ use crate::domain::repository::ProjectRepository;
 use anyhow::Result;
 use ratatui::{Terminal, backend::CrosstermBackend, widgets::TableState};
 use std::io;
+use crate::app::intent::Intent;
 
 pub fn handle_prompt_events<R: ProjectRepository>(
     event: &crossterm::event::Event,
     repo: &R,
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    terminal: &mut ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
     prompt_type: &PromptType,
     input: &mut String,
     prev_state: &AppState,
     spinner_tick: &usize,
-) -> Result<Option<AppState>> {
+) -> anyhow::Result<Option<AppState>> {
     use crossterm::event::{Event, KeyCode};
     let key_code = if let Event::Key(key) = event {
         key.code
@@ -23,71 +24,68 @@ pub fn handle_prompt_events<R: ProjectRepository>(
     match key_code {
         KeyCode::Enter => {
             let val = input.trim().to_string();
-            if !val.is_empty() {
-                match prompt_type {
-                    PromptType::NameNewWorktree { base_ref } => {
-                        let val = input.trim();
-                        if !val.is_empty() {
-                            let mut adding_state = AppState::AddingWorktree {
-                                intent: val.to_string(),
-                                branch: if val == base_ref {
-                                    base_ref.clone()
-                                } else {
-                                    val.to_string()
-                                },
-                            };
-                            terminal.draw(|f| {
-                                super::super::view::View::draw(
-                                    f,
-                                    repo,
-                                    &mut adding_state,
-                                    *spinner_tick,
-                                );
-                            })?;
-
-                            // Smart Add Logic
-                            let res = if val == base_ref {
-                                repo.add_worktree(val, base_ref)
+            match prompt_type {
+                PromptType::NameNewWorktree { base_ref } => {
+                    if !val.is_empty() {
+                        let mut adding_state = AppState::AddingWorktree {
+                            intent: val.clone(),
+                            branch: if val == *base_ref {
+                                base_ref.clone()
                             } else {
-                                repo.add_new_worktree(val, val, base_ref)
-                            };
+                                val.clone()
+                            },
+                        };
+                        terminal.draw(|f| {
+                            super::super::view::View::draw(
+                                f,
+                                repo,
+                                &mut adding_state,
+                                *spinner_tick,
+                            );
+                        })?;
 
-                            if let Err(e) = res {
-                                return Ok(Some(AppState::Error(
-                                    e.to_string(),
-                                    Box::new(AppState::ListingWorktrees {
-                                        worktrees: Vec::new(),
-                                        table_state: TableState::default(),
-                                        refresh_needed: RefreshType::Full,
-                                        selection_mode: false,
-                                        dashboard: crate::app::model::DashboardState {
-                                            active_tab: crate::app::model::DashboardTab::Info,
-                                            cached_status: None,
-                                            cached_history: None,
-                                        },
-                                        filter_query: String::new(),
-                                        is_filtering: false,
-                                    }),
-                                )));
-                            }
+                        let res = if val == *base_ref {
+                            repo.add_worktree(&val, base_ref)
+                        } else {
+                            repo.add_new_worktree(&val, &val, base_ref)
+                        };
 
-                            return Ok(Some(AppState::ListingWorktrees {
-                                worktrees: Vec::new(),
-                                table_state: TableState::default(),
-                                refresh_needed: RefreshType::Full,
-                                selection_mode: false,
-                                dashboard: crate::app::model::DashboardState {
-                                    active_tab: crate::app::model::DashboardTab::Info,
-                                    cached_status: None,
-                                    cached_history: None,
-                                },
-                                filter_query: String::new(),
-                                is_filtering: false,
-                            }));
+                        if let Err(e) = res {
+                            return Ok(Some(AppState::Error(
+                                e.to_string(),
+                                Box::new(AppState::ListingWorktrees {
+                                    worktrees: Vec::new(),
+                                    table_state: TableState::default(),
+                                    refresh_needed: RefreshType::Full,
+                                    selection_mode: false,
+                                    dashboard: crate::app::model::DashboardState {
+                                        active_tab: crate::app::model::DashboardTab::Info,
+                                        cached_status: None,
+                                        cached_history: None,
+                                    },
+                                    filter_query: String::new(),
+                                    is_filtering: false,
+                                }),
+                            )));
                         }
-                        return Ok(Some(prev_state.clone()));
+
+                        return Ok(Some(AppState::ListingWorktrees {
+                            worktrees: Vec::new(),
+                            table_state: TableState::default(),
+                            refresh_needed: RefreshType::Full,
+                            selection_mode: false,
+                            dashboard: crate::app::model::DashboardState {
+                                active_tab: crate::app::model::DashboardTab::Info,
+                                cached_status: None,
+                                cached_history: None,
+                            },
+                            filter_query: String::new(),
+                            is_filtering: false,
+                        }));
                     }
-                    PromptType::CommitMessage => {
+                }
+                PromptType::CommitMessage => {
+                    if !val.is_empty() {
                         let (path, target_state) =
                             if let AppState::ViewingStatus { path, .. } = prev_state {
                                 (Some(path.clone()), prev_state.clone())
@@ -112,11 +110,28 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                                 return Ok(Some(new_state));
                             }
                         }
-                        return Ok(Some(prev_state.clone()));
                     }
-                    PromptType::ApiKey => {
+                }
+                PromptType::ApiKey => {
+                    if !val.is_empty() {
                         let _ = repo.set_api_key(&val);
-                        return Ok(Some(prev_state.clone()));
+                    }
+                }
+                PromptType::StashMessage => {
+                   let msg = if val.is_empty() {
+                        None
+                    } else {
+                        Some(val)
+                    };
+                    if let AppState::ViewingStashes { path, .. } = prev_state {
+                        let _ = repo.stash_save(path, msg.as_deref());
+                        if let Ok(stashes) = repo.list_stashes(path) {
+                            let mut next_state = prev_state.clone();
+                            if let AppState::ViewingStashes { stashes: s, .. } = &mut next_state {
+                                *s = stashes;
+                            }
+                            return Ok(Some(next_state));
+                        }
                     }
                 }
             }
