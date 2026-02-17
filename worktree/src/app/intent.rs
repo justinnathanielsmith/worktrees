@@ -63,6 +63,9 @@ pub enum Intent {
     Rebase {
         upstream: Option<String>,
     },
+    Teleport {
+        target: String,
+    },
     ViewStashes {
         path: String,
         branch: String,

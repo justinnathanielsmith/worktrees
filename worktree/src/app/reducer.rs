@@ -1154,6 +1154,133 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     }
                 }
             }
+            Intent::Teleport { target } => {
+                let repo_clone = repo.clone();
+                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
+                    .await
+                    .into_diagnostic()?
+                    .map_err(|e| miette::miette!("{e:?}"))?;
+
+                let candidates: Vec<&Worktree> =
+                    worktrees.iter().filter(|wt| !wt.is_bare).collect();
+
+                // 1. Resolve Current Worktree
+                let current_dir = std::env::current_dir().into_diagnostic()?;
+                let current_dir_canonical = current_dir.canonicalize().unwrap_or(current_dir);
+
+                let source_wt = candidates.iter().find(|wt| {
+                    Path::new(&wt.path)
+                        .canonicalize()
+                        .map(|p| p == current_dir_canonical)
+                        .unwrap_or(false)
+                });
+
+                let source_wt = match source_wt {
+                    Some(wt) => wt,
+                    None => {
+                        return Err(miette::miette!(
+                            "Not currently in a managed worktree. Teleport must be run from a worktree directory."
+                        ));
+                    }
+                };
+
+                // 2. Resolve Target Worktree (using fuzzy match logic like Switch)
+                let needle = target.to_lowercase();
+                let matched_target = candidates
+                    .iter()
+                    .find(|wt| wt.branch.to_lowercase() == needle)
+                    .or_else(|| {
+                        candidates.iter().find(|wt| {
+                            Path::new(&wt.path)
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .is_some_and(|n| n.to_lowercase() == needle)
+                        })
+                    })
+                    .or_else(|| {
+                        candidates
+                            .iter()
+                            .find(|wt| wt.branch.to_lowercase().contains(&needle))
+                    })
+                    .or_else(|| {
+                        candidates
+                            .iter()
+                            .find(|wt| wt.path.to_lowercase().contains(&needle))
+                    });
+
+                let target_wt = match matched_target {
+                    Some(wt) => wt,
+                    None => {
+                        return Err(miette::miette!(
+                            "Target worktree '{}' not found.",
+                            target
+                        ));
+                    }
+                };
+
+                if source_wt.path == target_wt.path {
+                    return Err(miette::miette!("Already in target worktree '{}'.", target_wt.branch));
+                }
+
+                // 3. Verify changes exist
+                let status = repo.get_status(&source_wt.path).map_err(|e| miette::miette!(e))?;
+                if status.staged.is_empty() && status.unstaged.is_empty() && status.untracked.is_empty() {
+                    if !json_mode && !quiet_mode {
+                        println!("{} Current worktree is clean. Nothing to teleport.", "ℹ".blue());
+                    }
+                    return Ok(());
+                }
+
+                if !json_mode && !quiet_mode {
+                    println!(
+                        "{} Teleporting changes from '{}' to '{}'...",
+                        "➜".cyan().bold(),
+                        source_wt.branch.bold(),
+                        target_wt.branch.bold()
+                    );
+                }
+
+                let source_path = source_wt.path.clone();
+                let target_path = target_wt.path.clone();
+                let target_branch = target_wt.branch.clone();
+                let repo_clone2 = repo.clone();
+
+                let res = tokio::task::spawn_blocking(move || {
+                    // Stash changes
+                    let msg = format!("Teleport to {}", target_branch);
+                    repo_clone2.stash_save(&source_path, Some(&msg))?;
+
+                    // Verify stash exists (it should be at index 0)
+                    let stashes = repo_clone2.list_stashes(&source_path)?;
+                    if stashes.is_empty() {
+                         return Err(anyhow::anyhow!("Failed to create stash for teleport."));
+                    }
+
+                    // Apply to target
+                    match repo_clone2.apply_stash(&target_path, 0) {
+                        Ok(()) => {
+                            // Only drop if apply succeeded
+                            repo_clone2.drop_stash(&source_path, 0)?;
+                            Ok(())
+                        }
+                        Err(e) => {
+                            Err(anyhow::anyhow!("Failed to apply changes to target '{}': {}. Changes preserved in stash@{{0}}.", target_branch, e))
+                        }
+                    }
+                }).await.into_diagnostic()?;
+
+                res.map_err(|e| miette::miette!(e.to_string()))?;
+
+                if !json_mode && !quiet_mode {
+                    println!("{} Teleport complete!", "✔".green().bold());
+                } else if json_mode {
+                    self.view.render_json(&serde_json::json!({
+                        "status": "success",
+                        "from": source_wt.branch,
+                        "to": target_wt.branch
+                    })).map_err(|e| miette::miette!("{e:?}"))?;
+                }
+            }
             Intent::ApplyStash { path, index } => {
                 let repo_clone = repo.clone();
                 let path_clone = path;

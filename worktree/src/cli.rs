@@ -169,6 +169,13 @@ pub enum Commands {
         /// The upstream branch to rebase onto (defaults to 'main')
         upstream: Option<String>,
     },
+    /// Move uncommitted changes (patch) from current worktree to another
+    ///
+    /// Example: worktree teleport feature-xyz
+    Teleport {
+        /// The name or branch of the target worktree
+        target: String,
+    },
 }
 
 #[derive(Subcommand)]

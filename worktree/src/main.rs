@@ -196,6 +196,7 @@ async fn main() -> Result<()> {
         Some(Commands::Completions { shell }) => Intent::Completions { shell },
         Some(Commands::Open) => Intent::Open,
         Some(Commands::Rebase { upstream }) => Intent::Rebase { upstream },
+        Some(Commands::Teleport { target }) => Intent::Teleport { target },
         None => {
             if cli.json {
                 let worktrees = GitProjectRepository
