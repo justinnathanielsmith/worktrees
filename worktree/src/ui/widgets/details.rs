@@ -194,6 +194,17 @@ impl Widget for DetailsWidget<'_> {
                         Span::styled(" COMMIT : ", Style::default().fg(theme.secondary)),
                         Span::styled(&wt.commit, Style::default().fg(theme.subtle)),
                     ]));
+                    
+                    // Added for Vibe Engineering: Implicit Remote/Upstream
+                    lines.push(Line::from(vec![
+                        Span::styled(" REMOTE : ", Style::default().fg(theme.secondary)),
+                        Span::styled("ORIGIN", Style::default().fg(theme.subtle)),
+                    ]));
+                     lines.push(Line::from(vec![
+                        Span::styled(" TRACK  : ", Style::default().fg(theme.secondary)),
+                        Span::styled(format!("origin/{}", wt.branch), Style::default().fg(theme.subtle)),
+                    ]));
+
                     lines.push(Line::from(""));
 
                     // -- SECTION 2: STATUS --

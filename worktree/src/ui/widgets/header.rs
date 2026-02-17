@@ -18,10 +18,12 @@ impl Widget for HeaderWidget<'_> {
     fn render(self, area: ratatui::layout::Rect, buf: &mut ratatui::buffer::Buffer) {
         let theme = CyberTheme::default();
 
+        let mode_color = theme.mode_color(self.state);
+
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Thick) // Thicker border for header
-            .border_style(Style::default().fg(theme.primary))
+            .border_style(Style::default().fg(mode_color))
             .style(Style::default().bg(theme.header_bg));
 
         let inner_area = block.inner(area);
@@ -68,6 +70,8 @@ impl Widget for HeaderWidget<'_> {
             .render(layout[0], buf);
 
         // -- Right Side: Status Matrix --
+        let time = chrono::Local::now().format("%H:%M:%S").to_string();
+
         let mode_str = match self.state {
             AppState::ListingWorktrees { mode, .. } => match mode {
                 crate::app::model::AppMode::Normal => "READY",
@@ -84,6 +88,7 @@ impl Widget for HeaderWidget<'_> {
             AppState::Fetching { .. } => "NET_FETCH",
             AppState::Pushing { .. } => "NET_PUSH",
             AppState::Error(..) => "SYS_ERR",
+            AppState::Confirming { .. } => "CONFIRM",
             _ => "UNKNOWN",
         };
 
@@ -93,6 +98,8 @@ impl Widget for HeaderWidget<'_> {
         };
 
         let status_info = Line::from(vec![
+            Span::styled(format!(" {} ", time), Style::default().fg(theme.subtle)),
+            Span::styled("| ", Style::default().fg(theme.subtle)),
             Span::styled("CTX: ", Style::default().fg(theme.subtle)),
             Span::styled(context_str, Style::default().fg(theme.secondary)),
             Span::styled(" | ", Style::default().fg(theme.subtle)),

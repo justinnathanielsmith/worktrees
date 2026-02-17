@@ -21,6 +21,8 @@ pub fn render_listing(
     history: Option<&[GitCommit]>,
     filter_query: &str,
     is_filtering: bool,
+    mode: crate::app::model::AppMode,
+    spinner_tick: usize,
 ) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
@@ -39,7 +41,13 @@ pub fn render_listing(
         (chunks[0], None)
     };
 
-    let table = WorktreeListWidget::new(&filtered_worktrees);
+    // Dim the list if we are searching/filtering
+    let is_dimmed = is_filtering;
+
+    let table = WorktreeListWidget::new(&filtered_worktrees)
+        .dimmed(is_dimmed)
+        .tick(spinner_tick);
+        
     f.render_stateful_widget(table, list_area, table_state);
 
     if let Some(area) = search_area {
@@ -74,12 +82,19 @@ pub fn render_listing(
         .selected()
         .and_then(|i| filtered_worktrees.get(i));
 
+    // Auto-switch tabs based on mode
+    let effective_tab = match mode {
+        crate::app::model::AppMode::Git => DashboardTab::Status,
+        crate::app::model::AppMode::Manage => DashboardTab::Info,
+        _ => active_tab,
+    };
+
     render_dashboard(
         f,
         selected_worktree,
         worktrees,
         context,
-        active_tab,
+        effective_tab,
         status,
         history,
         chunks[1],

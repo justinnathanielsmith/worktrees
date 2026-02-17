@@ -18,84 +18,129 @@ impl Widget for FooterWidget<'_> {
         let shortcuts = match self.state {
             AppState::ListingWorktrees { mode, .. } => match mode {
                 crate::app::model::AppMode::Normal => vec![
-                    ("[j/k]", "NAV", theme.primary),
-                    ("[ENT]", "OPEN", theme.primary),
-                    ("[m]", "MANAGE", theme.success),
-                    ("[g]", "GIT", theme.success),
-                    ("[/]", "FILTER", theme.success),
-                    ("[v]", "STATUS", theme.text),
-                    ("[l]", "LOG", theme.text),
-                    ("[q]", "EXIT", theme.accent),
+                    vec![
+                        ("[j/k]", "NAV", theme.primary),
+                        ("[ENT]", "OPEN", theme.primary),
+                    ],
+                    vec![
+                        ("[m]", "MANAGE", theme.secondary),
+                        ("[g]", "GIT", theme.secondary),
+                        ("[/]", "FILTER", theme.warning),
+                    ],
+                    vec![
+                        ("[v]", "STATUS", theme.text),
+                        ("[l]", "LOG", theme.text),
+                        ("[q]", "EXIT", theme.error),
+                    ]
                 ],
                 crate::app::model::AppMode::Manage => vec![
-                    ("[a]", "ADD", theme.success),
-                    ("[r]", "REMOVE", theme.error),
-                    ("[c]", "CLEAN", theme.success),
-                    ("[ESC]", "BACK", theme.accent),
+                    vec![
+                        ("[a]", "ADD", theme.success),
+                        ("[ESC]", "BACK", theme.accent),
+                    ],
+                    vec![
+                        ("[r]", "REMOVE", theme.error),
+                        ("[c]", "CLEAN", theme.error), // Changed to error for safety
+                    ]
                 ],
                 crate::app::model::AppMode::Git => vec![
-                    ("[p]", "PULL", theme.success),
-                    ("[P]", "PUSH", theme.success),
-                    ("[s]", "SYNC", theme.success),
-                    ("[R]", "REBASE", theme.success),
-                    ("[ESC]", "BACK", theme.accent),
+                    vec![
+                        ("[p]", "PULL", theme.success),
+                        ("[P]", "PUSH", theme.success),
+                        ("[s]", "SYNC", theme.success),
+                        ("[R]", "REBASE", theme.success),
+                    ],
+                    vec![
+                        ("[ESC]", "BACK", theme.accent),
+                    ]
                 ],
                 crate::app::model::AppMode::Filter => vec![
-                    ("[Typing...]", "SEARCH", theme.primary),
-                    ("[ENT]", "DONE", theme.success),
-                    ("[ESC]", "CLEAR", theme.error),
+                    vec![
+                        ("[Typing...]", "SEARCH", theme.primary),
+                        ("[ENT]", "DONE", theme.success),
+                    ],
+                    vec![
+                        ("[ESC]", "CLEAR", theme.error),
+                    ]
                 ],
             },
             AppState::ViewingStatus { .. } => vec![
-                ("[j/k]", "NAV", theme.primary),
-                ("[TAB]", "STAGE", theme.success),
-                ("[C]", "COMMIT", theme.success),
-                ("[ESC]", "BACK", theme.accent),
+                vec![
+                    ("[j/k]", "NAV", theme.primary),
+                    ("[TAB]", "STAGE", theme.success),
+                    ("[C]", "COMMIT", theme.success),
+                ],
+                vec![
+                    ("[ESC]", "BACK", theme.accent),
+                ]
             ],
             AppState::ViewingHistory { .. } => vec![
-                ("[j/k]", "NAV", theme.primary),
-                ("[ESC]", "BACK", theme.accent),
+                vec![
+                    ("[j/k]", "NAV", theme.primary),
+                    ("[ESC]", "BACK", theme.accent),
+                ]
             ],
             AppState::SwitchingBranch { .. }
             | AppState::PickingBaseRef { .. }
             | AppState::Committing { .. } => vec![
-                ("[j/k]", "NAV", theme.primary),
-                ("[ENT]", "SELECT", theme.success),
-                ("[ESC]", "BACK", theme.accent),
+                vec![
+                    ("[j/k]", "NAV", theme.primary),
+                    ("[ENT]", "SELECT", theme.success),
+                ],
+                vec![
+                    ("[ESC]", "BACK", theme.accent),
+                ]
             ],
             AppState::SelectingEditor { .. } => vec![
-                ("[j/k]", "NAV", theme.primary),
-                ("[ENT]", "OPEN", theme.success),
-                ("[ESC]", "BACK", theme.accent),
+                vec![
+                    ("[j/k]", "NAV", theme.primary),
+                    ("[ENT]", "OPEN", theme.success),
+                ],
+                vec![
+                    ("[ESC]", "BACK", theme.accent),
+                ]
             ],
             AppState::Prompting { .. } => vec![
-                ("[ENT]", "SUBMIT", theme.success),
-                ("[ESC]", "CANCEL", theme.error),
+                vec![
+                    ("[ENT]", "SUBMIT", theme.success),
+                    ("[ESC]", "CANCEL", theme.error),
+                ]
             ],
             AppState::Confirming { .. } => vec![
-                ("[y]", "YES", theme.success),
-                ("[n]", "NO", theme.error),
-                ("[ESC]", "CANCEL", theme.subtle),
+                vec![
+                    ("[y]", "YES", theme.success),
+                    ("[n]", "NO", theme.error),
+                ],
+                vec![
+                    ("[ESC]", "CANCEL", theme.subtle),
+                ]
             ],
-            AppState::Help { .. } => vec![("[ESC]", "BACK", theme.accent)],
+            AppState::Help { .. } => vec![vec![("[ESC]", "BACK", theme.accent)]],
             AppState::Welcome => vec![
-                ("[I]", "INIT", theme.primary),
-                ("[C]", "CONVERT", theme.secondary),
-                ("[Q]", "EXIT", theme.accent),
+                vec![
+                    ("[I]", "INIT", theme.primary),
+                    ("[C]", "CONVERT", theme.secondary),
+                    ("[Q]", "EXIT", theme.error),
+                ]
             ],
-            _ => vec![("[Q]", "EXIT", theme.accent)],
+            _ => vec![vec![("[Q]", "EXIT", theme.error)]],
         };
 
         let mut spans = Vec::new();
-        for (i, (key, label, color)) in shortcuts.into_iter().enumerate() {
-            if i > 0 {
-                spans.push(Span::styled(" | ", Style::default().fg(theme.border)));
+        for (group_idx, group) in shortcuts.into_iter().enumerate() {
+            if group_idx > 0 {
+                 spans.push(Span::styled("   │   ", Style::default().fg(theme.subtle).add_modifier(Modifier::DIM)));
             }
-            spans.push(Span::styled(
-                format!(" {key} "),
-                Style::default().fg(color).add_modifier(Modifier::BOLD),
-            ));
-            spans.push(Span::styled(label, Style::default().fg(theme.subtle)));
+            for (i, (key, label, color)) in group.into_iter().enumerate() {
+                if i > 0 {
+                    spans.push(Span::styled(" ", Style::default()));
+                }
+                spans.push(Span::styled(
+                    format!("{key}"),
+                    Style::default().fg(color).add_modifier(Modifier::BOLD),
+                ));
+                spans.push(Span::styled(format!(" {label}"), Style::default().fg(theme.subtle)));
+            }
         }
 
         let footer_text = vec![Line::from(spans)];

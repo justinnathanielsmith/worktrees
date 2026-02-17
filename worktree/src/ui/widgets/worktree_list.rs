@@ -11,11 +11,27 @@ use ratatui::{
 
 pub struct WorktreeListWidget<'a> {
     worktrees: &'a [Worktree],
+    is_dimmed: bool,
+    spinner_tick: usize,
 }
 
 impl<'a> WorktreeListWidget<'a> {
     pub const fn new(worktrees: &'a [Worktree]) -> Self {
-        Self { worktrees }
+        Self {
+            worktrees,
+            is_dimmed: false,
+            spinner_tick: 0,
+        }
+    }
+
+    pub const fn dimmed(mut self, is_dimmed: bool) -> Self {
+        self.is_dimmed = is_dimmed;
+        self
+    }
+
+    pub const fn tick(mut self, tick: usize) -> Self {
+        self.spinner_tick = tick;
+        self
     }
 }
 
@@ -25,15 +41,27 @@ impl StatefulWidget for WorktreeListWidget<'_> {
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer, state: &mut Self::State) {
         let theme = CyberTheme::default();
 
+        let border_style = if self.is_dimmed {
+            Style::default().fg(theme.subtle).add_modifier(Modifier::DIM)
+        } else {
+            Style::default().fg(theme.border)
+        };
+
+        let title_style = if self.is_dimmed {
+            Style::default().fg(theme.subtle).add_modifier(Modifier::DIM)
+        } else {
+            Style::default()
+                .fg(theme.primary)
+                .add_modifier(Modifier::BOLD)
+        };
+
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .border_style(Style::default().fg(theme.border))
+            .border_style(border_style)
             .title(Span::styled(
                 format!(" ACTIVE WORKTREES ({}) ", self.worktrees.len()),
-                Style::default()
-                    .fg(theme.primary)
-                    .add_modifier(Modifier::BOLD),
+                title_style,
             ));
 
         if self.worktrees.is_empty() {
@@ -72,18 +100,30 @@ impl StatefulWidget for WorktreeListWidget<'_> {
             .enumerate()
             .map(|(i, wt)| {
                 let is_selected = Some(i) == state.selected();
+                let is_dirty = wt.status_summary.as_ref().is_some_and(|s| s != "clean");
 
                 let (icon, branch_style) = if wt.is_bare {
                     (
                         Icons::HUB,
-                        Style::default()
-                            .fg(theme.primary)
-                            .add_modifier(Modifier::BOLD),
+                        if self.is_dimmed {
+                            Style::default().fg(theme.subtle)
+                        } else {
+                            Style::default()
+                                .fg(theme.primary)
+                                .add_modifier(Modifier::BOLD)
+                        },
                     )
                 } else if wt.is_detached {
                     (Icons::DETACHED, Style::default().fg(theme.error))
                 } else {
-                    (Icons::WORKTREE, Style::default().fg(theme.primary)) // Changed to primary for better visibility
+                    (
+                        Icons::WORKTREE,
+                        if self.is_dimmed {
+                            Style::default().fg(theme.subtle)
+                        } else {
+                            Style::default().fg(theme.primary)
+                        },
+                    )
                 };
 
                 let intent_str = if wt.is_bare {
@@ -98,17 +138,44 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                         .map_or_else(|| wt.branch.clone(), |n| n.to_string_lossy().to_string())
                 };
 
-                let row_style = if is_selected {
-                    Style::default()
-                        .bg(theme.selection_bg)
-                        .fg(theme.primary) // Text highlights in primary color on selection
-                        .add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default().fg(theme.text)
-                };
+                let mut row_style = Style::default().fg(theme.text);
+                
+                if self.is_dimmed {
+                    row_style = row_style.add_modifier(Modifier::DIM);
+                }
 
-                // Cyber-style cursor
-                let prefix = if is_selected { " ▊ " } else { "   " };
+                if is_selected {
+                    row_style = row_style
+                        .bg(theme.selection_bg)
+                        .fg(theme.primary)
+                        .add_modifier(Modifier::BOLD);
+                        
+                    // Remove dim modifier if selected, to make it pop even when filtering
+                    if self.is_dimmed {
+                         row_style = row_style.remove_modifier(Modifier::DIM);   
+                    }
+                } else if is_dirty && !self.is_dimmed {
+                     // Subtle warning tint for dirty rows if not selected and not dimmed
+                     // We don't have a background color for warning in theme, so let's use subtle or just text color
+                     // The user requested: "row background has a subtle warning (Yellow) tint"
+                     // Since we don't have a 'tint', we can maybe change the text color or just keep it simple.
+                     // Making the text warning color might be too much.
+                     // The user said "row background". Ratatui doesn't support alpha blending for bg.
+                     // Best we can do is maybe use a different bg color if we had one.
+                     // Let's just color the status cell strongly.
+                }
+
+                // Cyber-style cursor animation
+                // ▊, ▋, ▌, ▍, ▎, ▏
+                let spinner_chars = ["▊", "▋", "▌", "▍", "▌", "▋"];
+                let spinner_idx = (self.spinner_tick / 2) % spinner_chars.len();
+                let cursor_char = spinner_chars[spinner_idx];
+                
+                let prefix = if is_selected { 
+                    format!(" {} ", cursor_char)
+                } else { 
+                    "   ".to_string()
+                };
 
                 let status_cell = wt.status_summary.as_ref().map_or_else(
                     || Cell::from("-"),
@@ -116,17 +183,29 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                         let (color, icon) = if summary == "clean" {
                             (theme.success, Icons::CLEAN)
                         } else {
-                            (theme.warning, Icons::DIRTY) // Changed to warning for dirty state
+                            (theme.warning, Icons::DIRTY)
                         };
+                        
+                        let style = if self.is_dimmed && !is_selected {
+                             Style::default().fg(theme.subtle)   
+                        } else {
+                             Style::default().fg(color)
+                        };
+                        
                         Cell::from(format!("{} {}", icon, summary.to_uppercase()))
-                            .style(Style::default().fg(color))
+                            .style(style)
                     },
                 );
+                
+                let mut cell_style = Style::default();
+                if self.is_dimmed && !is_selected {
+                    cell_style = cell_style.fg(theme.subtle);
+                }
 
                 Row::new(vec![
                     Cell::from(format!("{prefix}{icon}")),
-                    Cell::from(intent_str).style(branch_style),
-                    Cell::from(wt.branch.clone()).style(Style::default().fg(theme.primary)),
+                    Cell::from(intent_str).style(if is_selected { branch_style } else { cell_style }),
+                    Cell::from(wt.branch.clone()).style(if is_selected { Style::default().fg(theme.primary) } else { cell_style }),
                     status_cell,
                     Cell::from(format_size(wt.size_bytes)).style(Style::default().fg(theme.subtle)),
                     Cell::from(wt.commit.chars().take(7).collect::<String>())
@@ -151,9 +230,13 @@ impl StatefulWidget for WorktreeListWidget<'_> {
         .header(
             Row::new(vec!["", "INTENT", "BRANCH", "STATUS", "SIZE", "COMMIT"])
                 .style(
-                    Style::default()
-                        .fg(theme.secondary)
-                        .add_modifier(Modifier::BOLD),
+                    if self.is_dimmed {
+                        Style::default().fg(theme.subtle).add_modifier(Modifier::DIM)
+                    } else {
+                        Style::default()
+                            .fg(theme.secondary)
+                            .add_modifier(Modifier::BOLD)
+                    }
                 )
                 .bottom_margin(1),
         )

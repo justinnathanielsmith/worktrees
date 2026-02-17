@@ -1,3 +1,4 @@
+use crate::app::model::{AppMode, AppState};
 use ratatui::style::Color;
 
 pub struct CyberTheme {

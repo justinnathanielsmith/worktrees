@@ -74,6 +74,8 @@ impl View {
                     dashboard.cached_history.as_deref(),
                     filter_query,
                     *is_filtering,
+                    *mode,
+                    spinner_tick,
                 );
             }
             AppState::ViewingStatus {
