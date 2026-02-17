@@ -11,6 +11,15 @@ pub enum PromptType {
     ApiKey,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AppMode {
+    #[default]
+    Normal,
+    Manage,
+    Git,
+    Filter,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DashboardTab {
     Info,
@@ -200,6 +209,7 @@ pub enum AppState {
         dashboard: DashboardState,
         filter_query: String,
         is_filtering: bool,
+        mode: AppMode,
     },
     /// Detailed Git status view for a specific worktree.
     ViewingStatus {

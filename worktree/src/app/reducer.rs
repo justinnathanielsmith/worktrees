@@ -1156,6 +1156,10 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 .map_err(|e| miette::miette!(e.to_string()))?;
             }
             Intent::ViewStashes { .. } => {}
+            Intent::ChangeMode(_) => {
+                // This is primarily handled in listing.rs for TUI
+                // but we keep the variant here for intent completeness.
+            }
         }
 
         Ok(())

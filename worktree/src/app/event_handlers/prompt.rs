@@ -65,6 +65,7 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                                     },
                                     filter_query: String::new(),
                                     is_filtering: false,
+                                    mode: crate::app::model::AppMode::Normal,
                                 }),
                             )));
                         }
@@ -81,6 +82,7 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                             },
                             filter_query: String::new(),
                             is_filtering: false,
+                            mode: crate::app::model::AppMode::Normal,
                         }));
                     }
                 }

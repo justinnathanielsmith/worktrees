@@ -16,20 +16,37 @@ impl Widget for FooterWidget<'_> {
         let theme = CyberTheme::default();
 
         let shortcuts = match self.state {
-            AppState::ListingWorktrees { .. } => vec![
-                ("[j/k]", "NAV", theme.primary),
-                ("[ENT]", "OPEN", theme.primary),
-                ("[v]", "STATUS", theme.text),
-                ("[l]", "LOG", theme.text),
-                ("[s]", "SYNC", theme.success),
-                ("[p/P]", "PUSH", theme.success),
-                ("[b]", "BRANCH", theme.success),
-                ("[a]", "ADD", theme.success),
-                ("[c]", "PRUNE", theme.success),
-                ("[C]", "CLEAN", theme.error),
-                ("[d/x]", "DEL", theme.error),
-                ("[q]", "EXIT", theme.accent),
-            ],
+            AppState::ListingWorktrees { mode, .. } => match mode {
+                crate::app::model::AppMode::Normal => vec![
+                    ("[j/k]", "NAV", theme.primary),
+                    ("[ENT]", "OPEN", theme.primary),
+                    ("[v]", "STATUS", theme.text),
+                    ("[l]", "LOG", theme.text),
+                    ("[m]", "MANAGE", theme.success),
+                    ("[g]", "GIT", theme.success),
+                    ("[/]", "FILTER", theme.success),
+                    ("[q]", "EXIT", theme.accent),
+                ],
+                crate::app::model::AppMode::Manage => vec![
+                    ("[a]", "ADD", theme.success),
+                    ("[d/x]", "DEL", theme.error),
+                    ("[c]", "PRUNE", theme.success),
+                    ("[C]", "CLEAN", theme.error),
+                    ("[ESC]", "BACK", theme.accent),
+                ],
+                crate::app::model::AppMode::Git => vec![
+                    ("[s]", "SYNC", theme.success),
+                    ("[p]", "PUSH", theme.success),
+                    ("[P]", "PULL", theme.success),
+                    ("[f]", "FETCH", theme.success),
+                    ("[ESC]", "BACK", theme.accent),
+                ],
+                crate::app::model::AppMode::Filter => vec![
+                    ("[Typing...]", "SEARCH", theme.primary),
+                    ("[ENT]", "DONE", theme.success),
+                    ("[ESC]", "CLEAR", theme.error),
+                ],
+            },
             AppState::ViewingStatus { .. } => vec![
                 ("[j/k]", "NAV", theme.primary),
                 ("[TAB]", "STAGE", theme.success),

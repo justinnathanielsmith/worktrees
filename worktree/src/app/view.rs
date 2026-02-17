@@ -151,6 +151,7 @@ impl View {
                 worktrees,
                 filter_query,
                 is_filtering,
+                mode,
                 ..
             } = state
             {
@@ -177,6 +178,7 @@ impl View {
                         },
                         filter_query: filter_query.clone(),
                         is_filtering: *is_filtering,
+                        mode: *mode,
                     };
                 } else if *refresh_needed == RefreshType::Dashboard {
                     let (status, history) = Self::fetch_dashboard_data(
@@ -198,6 +200,7 @@ impl View {
                         },
                         filter_query: filter_query.clone(),
                         is_filtering: *is_filtering,
+                        mode: *mode,
                     };
                 }
             }
@@ -786,6 +789,7 @@ mod tests {
             },
             filter_query: String::new(),
             is_filtering: false,
+            mode: crate::app::model::AppMode::Normal,
         };
 
         terminal

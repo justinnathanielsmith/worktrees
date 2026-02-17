@@ -81,4 +81,5 @@ pub enum Intent {
         path: String,
         message: Option<String>,
     },
+    ChangeMode(crate::app::model::AppMode),
 }
