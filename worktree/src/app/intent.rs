@@ -54,4 +54,8 @@ pub enum Intent {
         shell: clap_complete::Shell,
     },
     Open,
+    Migrate {
+        force: bool,
+        dry_run: bool,
+    },
 }

@@ -138,6 +138,10 @@ pub trait ProjectRepository {
     /// Watches the repository for changes.
     /// Returns a channel receiver that emits repository events.
     fn watch(&self) -> Result<crossbeam_channel::Receiver<RepositoryEvent>>;
+
+    /// Migrates the current standard repository to a Bare Hub structure in-place.
+    /// Returns the path to the main worktree.
+    fn migrate_to_bare(&self, force: bool, dry_run: bool) -> Result<std::path::PathBuf>;
 }
 
 /// Events emitted by the repository watcher.

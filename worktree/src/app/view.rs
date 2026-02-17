@@ -656,6 +656,10 @@ mod tests {
             Ok(std::path::PathBuf::from("/mock/hub"))
         }
 
+        fn migrate_to_bare(&self, _force: bool, _dry_run: bool) -> anyhow::Result<std::path::PathBuf> {
+            Ok(std::path::PathBuf::from("/mock/migrated_hub"))
+        }
+
         fn check_status(&self, _path: &std::path::Path) -> crate::domain::repository::RepoStatus {
             crate::domain::repository::RepoStatus::BareHub
         }
