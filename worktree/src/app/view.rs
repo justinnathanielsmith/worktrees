@@ -632,6 +632,18 @@ mod tests {
             Ok(())
         }
 
+        fn rebase(&self, _path: &str, _upstream: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn get_conflict_diff(&self, _path: &str) -> anyhow::Result<String> {
+            Ok(String::new())
+        }
+
+        fn explain_rebase_conflict(&self, _diff: &str) -> anyhow::Result<String> {
+            Ok("Mock conflict explanation".to_string())
+        }
+
         fn get_api_key(&self) -> anyhow::Result<Option<String>> {
             Ok(None)
         }
@@ -656,7 +668,11 @@ mod tests {
             Ok(std::path::PathBuf::from("/mock/hub"))
         }
 
-        fn migrate_to_bare(&self, _force: bool, _dry_run: bool) -> anyhow::Result<std::path::PathBuf> {
+        fn migrate_to_bare(
+            &self,
+            _force: bool,
+            _dry_run: bool,
+        ) -> anyhow::Result<std::path::PathBuf> {
             Ok(std::path::PathBuf::from("/mock/migrated_hub"))
         }
 

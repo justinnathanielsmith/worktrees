@@ -75,16 +75,9 @@ fn check_and_handle_repo_state(repo: &GitProjectRepository) -> Result<bool> {
                 let path = repo
                     .migrate_to_bare(false, false) // force=false, dry_run=false
                     .map_err(|e| miette::miette!(e))?;
-                println!(
-                    "Migration successful! The Bare Hub is now set up."
-                );
-                println!(
-                    "Main worktree is located at: {}",
-                    path.display()
-                );
-                println!(
-                    "Please navigate to that directory to continue."
-                );
+                println!("Migration successful! The Bare Hub is now set up.");
+                println!("Main worktree is located at: {}", path.display());
+                println!("Please navigate to that directory to continue.");
             }
             Ok(false)
         }
