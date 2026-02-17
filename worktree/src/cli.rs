@@ -162,6 +162,13 @@ pub enum Commands {
     ///
     /// Example: worktree open
     Open,
+    /// Rebase the current worktree onto an upstream branch
+    ///
+    /// Example: worktree rebase main
+    Rebase {
+        /// The upstream branch to rebase onto (defaults to 'main')
+        upstream: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
