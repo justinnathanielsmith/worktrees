@@ -48,6 +48,7 @@ pub struct GitCommit {
     pub author: String,
     pub date: String,
     pub message: String,
+    pub graph: String,
 }
 
 /// The architectural context of the project.

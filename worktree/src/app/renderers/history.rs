@@ -32,7 +32,7 @@ pub fn render_history(f: &mut Frame, branch: &str, commits: &[GitCommit], select
     let mut items = Vec::new();
     for (i, commit) in commits.iter().enumerate() {
         let is_selected = i == selected_index;
-        let row_style = if is_selected {
+        let row_style = if is_selected && !commit.hash.is_empty() {
             Style::default()
                 .bg(theme.selection_bg)
                 .fg(theme.text)
@@ -41,19 +41,26 @@ pub fn render_history(f: &mut Frame, branch: &str, commits: &[GitCommit], select
             Style::default().fg(theme.text)
         };
 
-        let prefix = if is_selected { " ▶ " } else { "   " };
+        let prefix = if is_selected && !commit.hash.is_empty() { " ▶" } else { "  " };
 
-        items.push(Line::from(vec![
+        let mut entry = vec![
+            Span::styled(format!("{:<15}", commit.graph), row_style.fg(theme.primary)),
             Span::styled(prefix, row_style.fg(theme.primary)),
-            Span::styled(&commit.hash, row_style.fg(theme.warning)),
-            Span::raw(" "),
-            Span::styled(format!(" {:<10} ", commit.date), row_style.fg(theme.subtle)),
-            Span::styled(
-                format!(" {:<15} ", commit.author),
-                row_style.fg(theme.accent),
-            ),
-            Span::styled(&commit.message, row_style),
-        ]));
+        ];
+
+        if !commit.hash.is_empty() {
+            entry.extend(vec![
+                Span::styled(format!(" {} ", commit.hash), row_style.fg(theme.warning)),
+                Span::styled(format!(" {:<10} ", commit.date), row_style.fg(theme.subtle)),
+                Span::styled(
+                    format!(" {:<15} ", commit.author),
+                    row_style.fg(theme.accent),
+                ),
+                Span::styled(&commit.message, row_style),
+            ]);
+        }
+
+        items.push(Line::from(entry));
     }
 
     let p = Paragraph::new(items).alignment(Alignment::Left);

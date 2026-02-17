@@ -25,12 +25,22 @@ pub fn handle_history_events(
                 }
                 KeyCode::Down | KeyCode::Char('j') => {
                     if !commits.is_empty() {
-                        *selected_index = (*selected_index + 1) % commits.len();
+                        let mut next = (*selected_index + 1) % commits.len();
+                        // Skip graph-only lines
+                        while next != *selected_index && commits[next].hash.is_empty() {
+                            next = (next + 1) % commits.len();
+                        }
+                        *selected_index = next;
                     }
                 }
                 KeyCode::Up | KeyCode::Char('k') => {
                     if !commits.is_empty() {
-                        *selected_index = (*selected_index + commits.len() - 1) % commits.len();
+                        let mut prev = (*selected_index + commits.len() - 1) % commits.len();
+                        // Skip graph-only lines
+                        while prev != *selected_index && commits[prev].hash.is_empty() {
+                            prev = (prev + commits.len() - 1) % commits.len();
+                        }
+                        *selected_index = prev;
                     }
                 }
                 _ => {}
@@ -58,7 +68,7 @@ pub fn handle_history_events(
                             && row < inner_y + inner_h
                         {
                             let relative_y = row.saturating_sub(inner_y) as usize;
-                            if relative_y < commits.len() {
+                            if relative_y < commits.len() && !commits[relative_y].hash.is_empty() {
                                 *selected_index = relative_y;
                             }
                         }

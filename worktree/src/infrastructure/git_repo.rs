@@ -209,13 +209,24 @@ impl GitProjectRepository {
         output
             .lines()
             .filter_map(|line| {
-                let parts: Vec<&str> = line.splitn(4, '|').collect();
-                if parts.len() == 4 {
+                // The format is: graph\x00hash\x00author\x00date\x00message
+                let parts: Vec<&str> = line.splitn(5, '\x00').collect();
+                if parts.len() == 5 {
                     Some(GitCommit {
-                        hash: parts[0].to_string(),
-                        author: parts[1].to_string(),
-                        date: parts[2].to_string(),
-                        message: parts[3].to_string(),
+                        graph: parts[0].to_string(),
+                        hash: parts[1].to_string(),
+                        author: parts[2].to_string(),
+                        date: parts[3].to_string(),
+                        message: parts[4].to_string(),
+                    })
+                } else if parts.len() == 1 && !parts[0].trim().is_empty() {
+                    // This handles lines that only contain graph components (lines between commits)
+                    Some(GitCommit {
+                        graph: parts[0].to_string(),
+                        hash: String::new(),
+                        author: String::new(),
+                        date: String::new(),
+                        message: String::new(),
                     })
                 } else {
                     None
@@ -644,8 +655,9 @@ impl ProjectRepository for GitProjectRepository {
             "-C",
             path,
             "log",
+            "--graph",
             &format!("-{limit_str}"),
-            "--pretty=format:%h|%an|%ad|%s",
+            "--pretty=format:%x00%h%x00%an%x00%ad%x00%s",
             "--date=short",
         ])?;
 
