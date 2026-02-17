@@ -5,9 +5,9 @@ use std::path::Path;
 pub fn generate_warp_workflows(project_path: &Path) -> Result<()> {
     let warp_dir = project_path.join(".warp").join("workflows");
     fs::create_dir_all(&warp_dir)
-        .with_context(|| format!("Failed to create Warp directory: {:?}", warp_dir))?;
+        .with_context(|| format!("Failed to create Warp directory: {warp_dir:?}"))?;
 
-    let workflow_content = r#"---
+    let workflow_content = r"---
 name: Worktree Setup
 command: worktree setup
 description: Setup canonical environment (main and dev worktrees)
@@ -41,11 +41,11 @@ author: Worktree Hub
 arguments:
   - name: name
     description: The name of the worktree to switch to
-"#;
+";
 
     let workflow_path = warp_dir.join("worktrees.yaml");
     fs::write(&workflow_path, workflow_content)
-        .with_context(|| format!("Failed to write Warp workflow file: {:?}", workflow_path))?;
+        .with_context(|| format!("Failed to write Warp workflow file: {workflow_path:?}"))?;
 
     Ok(())
 }

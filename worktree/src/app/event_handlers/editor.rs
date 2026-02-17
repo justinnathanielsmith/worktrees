@@ -1,28 +1,22 @@
 use crate::app::model::{AppState, EditorConfig};
 use crate::domain::repository::ProjectRepository;
-use anyhow::Result;
-use ratatui::{Terminal, backend::CrosstermBackend};
-use std::io;
 use std::process::Command;
 
 use super::helpers::create_timed_state;
 
-#[allow(clippy::too_many_arguments)]
 pub fn handle_editor_events<R: ProjectRepository>(
-    event: crossterm::event::Event,
+    event: &crossterm::event::Event,
     repo: &R,
-    _terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     branch: &str,
     options: &[EditorConfig],
     selected: &mut usize,
     prev_state: &AppState,
-    _spinner_tick: &mut usize,
-) -> Result<Option<AppState>> {
+) -> Option<AppState> {
     use crossterm::event::{Event, KeyCode};
     let key_code = if let Event::Key(key) = event {
         key.code
     } else {
-        return Ok(None);
+        return None;
     };
 
     let normalized_code = match key_code {
@@ -69,13 +63,13 @@ pub fn handle_editor_events<R: ProjectRepository>(
                     prev_state: Box::new(prev_state.clone()),
                 };
                 let _ = Command::new(&options[*selected].command).arg(&p).spawn();
-                return Ok(Some(create_timed_state(opening_state, prev_clone, 800)));
+                return Some(create_timed_state(opening_state, prev_clone, 800));
             }
         }
         KeyCode::Esc => {
-            return Ok(Some(prev_state.clone()));
+            return Some(prev_state.clone());
         }
         _ => {}
     }
-    Ok(None)
+    None
 }

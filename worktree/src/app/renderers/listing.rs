@@ -17,8 +17,8 @@ pub fn render_listing(
     context: ProjectContext,
     area: Rect,
     active_tab: DashboardTab,
-    status: &Option<GitStatus>,
-    history: &Option<Vec<GitCommit>>,
+    status: Option<&GitStatus>,
+    history: Option<&[GitCommit]>,
     filter_query: &str,
     is_filtering: bool,
 ) {

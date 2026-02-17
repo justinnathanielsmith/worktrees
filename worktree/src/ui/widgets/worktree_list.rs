@@ -14,12 +14,12 @@ pub struct WorktreeListWidget<'a> {
 }
 
 impl<'a> WorktreeListWidget<'a> {
-    pub fn new(worktrees: &'a [Worktree]) -> Self {
+    pub const fn new(worktrees: &'a [Worktree]) -> Self {
         Self { worktrees }
     }
 }
 
-impl<'a> StatefulWidget for WorktreeListWidget<'a> {
+impl StatefulWidget for WorktreeListWidget<'_> {
     type State = TableState;
 
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer, state: &mut Self::State) {
@@ -95,8 +95,7 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
                 } else {
                     std::path::Path::new(&wt.path)
                         .file_name()
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_else(|| wt.branch.clone())
+                        .map_or_else(|| wt.branch.clone(), |n| n.to_string_lossy().to_string())
                 };
 
                 let row_style = if is_selected {
@@ -111,20 +110,21 @@ impl<'a> StatefulWidget for WorktreeListWidget<'a> {
                 // Cyber-style cursor
                 let prefix = if is_selected { " ▊ " } else { "   " };
 
-                let status_cell = if let Some(summary) = &wt.status_summary {
-                    let (color, icon) = if summary == "clean" {
-                        (theme.success, Icons::CLEAN)
-                    } else {
-                        (theme.warning, Icons::DIRTY) // Changed to warning for dirty state
-                    };
-                    Cell::from(format!("{} {}", icon, summary.to_uppercase()))
-                        .style(Style::default().fg(color))
-                } else {
-                    Cell::from("-")
-                };
+                let status_cell = wt.status_summary.as_ref().map_or_else(
+                    || Cell::from("-"),
+                    |summary| {
+                        let (color, icon) = if summary == "clean" {
+                            (theme.success, Icons::CLEAN)
+                        } else {
+                            (theme.warning, Icons::DIRTY) // Changed to warning for dirty state
+                        };
+                        Cell::from(format!("{} {}", icon, summary.to_uppercase()))
+                            .style(Style::default().fg(color))
+                    },
+                );
 
                 Row::new(vec![
-                    Cell::from(format!("{}{}", prefix, icon)),
+                    Cell::from(format!("{prefix}{icon}")),
                     Cell::from(intent_str).style(branch_style),
                     Cell::from(wt.branch.clone()).style(Style::default().fg(theme.primary)),
                     status_cell,
@@ -176,7 +176,7 @@ fn format_size(bytes: u64) -> String {
     } else if bytes >= KB {
         format!("{:.1} KB", bytes as f64 / KB as f64)
     } else {
-        format!("{} B", bytes)
+        format!("{bytes} B")
     }
 }
 
@@ -204,7 +204,7 @@ mod tests {
         let content = buffer
             .content()
             .iter()
-            .map(|c| c.symbol())
+            .map(ratatui::buffer::Cell::symbol)
             .collect::<String>();
 
         assert!(content.contains("No worktrees found."));

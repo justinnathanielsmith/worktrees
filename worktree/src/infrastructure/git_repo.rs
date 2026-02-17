@@ -25,19 +25,18 @@ impl GitProjectRepository {
         let output = Command::new(&git_cmd)
             .args(args)
             .output()
-            .with_context(|| format!("Failed to execute git {:?}. HELP: Ensure 'git' is installed and you have the necessary permissions.", args))?;
+            .with_context(|| format!("Failed to execute git {args:?}. HELP: Ensure 'git' is installed and you have the necessary permissions."))?;
 
         if !output.status.success() {
             let err = String::from_utf8_lossy(&output.stderr);
             return Err(anyhow::anyhow!(
-                "Git error: {}. HELP: Check your network connection or repository permissions.",
-                err
+                "Git error: {err}. HELP: Check your network connection or repository permissions."
             ));
         }
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
 
-    fn resolve_config_path(&self, legacy_filename: &str, new_filename: &str) -> Option<PathBuf> {
+    fn resolve_config_path(legacy_filename: &str, new_filename: &str) -> Option<PathBuf> {
         // 1. Check legacy path first (for backward compatibility)
         if let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
             let legacy_path = Path::new(&home).join(legacy_filename);
@@ -106,7 +105,7 @@ impl GitProjectRepository {
         }
     }
 
-    fn get_status_summary(&self, path: &str) -> Result<String> {
+    fn get_status_summary(path: &str) -> Result<String> {
         let output = Self::run_git(&["-C", path, "status", "--porcelain"])?;
         if output.trim().is_empty() {
             Ok("clean".to_string())
@@ -122,7 +121,6 @@ impl GitProjectRepository {
                 let s = &line[..2];
                 match s {
                     "M " | "A " | "D " | "R " | "C " => staged += 1,
-                    " M" | " D" | " T" => unstaged += 1,
                     "??" => untracked += 1,
                     "MM" | "MD" => {
                         staged += 1;
@@ -134,13 +132,13 @@ impl GitProjectRepository {
 
             let mut summary = Vec::new();
             if staged > 0 {
-                summary.push(format!("+{}", staged));
+                summary.push(format!("+{staged}"));
             }
             if unstaged > 0 {
-                summary.push(format!("~{}", unstaged));
+                summary.push(format!("~{unstaged}"));
             }
             if untracked > 0 {
-                summary.push(format!("?{}", untracked));
+                summary.push(format!("?{untracked}"));
             }
 
             if summary.is_empty() {
@@ -227,18 +225,20 @@ impl GitProjectRepository {
         branches
     }
 
-    fn get_project_root_path(&self) -> Result<PathBuf> {
+    fn get_project_root_path() -> Result<PathBuf> {
         // Use git rev-parse --git-common-dir to find the bare repo location
         let output = Self::run_git(&["rev-parse", "--path-format=absolute", "--git-common-dir"])?;
         let common_dir = Path::new(output.trim());
 
         // The project root is the parent of the .bare (or .git) directory
-        common_dir.parent().map(|p| p.to_path_buf()).ok_or_else(|| {
-            anyhow::anyhow!(
-                "Could not determine project root from git common dir: {:?}",
-                common_dir
-            )
-        })
+        common_dir
+            .parent()
+            .map(std::path::Path::to_path_buf)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Could not determine project root from git common dir: {common_dir:?}"
+                )
+            })
     }
 
     fn calculate_dir_size(path: &Path) -> u64 {
@@ -264,8 +264,7 @@ impl ProjectRepository for GitProjectRepository {
     fn init_bare_repo(&self, url: Option<&str>, project_name: &str) -> Result<()> {
         if Path::new(project_name).exists() {
             return Err(anyhow::anyhow!(
-                "Directory '{}' already exists. HELP: Choose a different name or remove the existing directory.",
-                project_name
+                "Directory '{project_name}' already exists. HELP: Choose a different name or remove the existing directory."
             ));
         }
 
@@ -302,8 +301,7 @@ impl ProjectRepository for GitProjectRepository {
         let abs_path_str = abs_path.to_string_lossy();
 
         Self::run_git(&["worktree", "add", "--", &abs_path_str, branch]).context(format!(
-            "Failed to add worktree '{}'. HELP: Ensure the branch '{}' exists on origin.",
-            path, branch
+            "Failed to add worktree '{path}'. HELP: Ensure the branch '{branch}' exists on origin."
         ))?;
         self.handle_context_files(&abs_path_str);
         Ok(())
@@ -319,12 +317,12 @@ impl ProjectRepository for GitProjectRepository {
         if res.is_err() && base == "HEAD" {
             debug!("Normal worktree add failed on HEAD, trying --orphan for fresh repository...");
             Self::run_git(&["worktree", "add", "--orphan", "-b", branch, &abs_path_str])
-                .context(format!("Failed to create orphan worktree '{}'. HELP: Ensure your Git version is 2.42+ or manually create the first commit.", path))?;
+                .context(format!("Failed to create orphan worktree '{path}'. HELP: Ensure your Git version is 2.42+ or manually create the first commit."))?;
             self.handle_context_files(&abs_path_str);
             return Ok(());
         }
 
-        res.context(format!("Failed to create new worktree '{}' from '{}'. HELP: Ensure the base branch '{}' is valid.", path, base, base))?;
+        res.context(format!("Failed to create new worktree '{path}' from '{base}'. HELP: Ensure the base branch '{base}' is valid."))?;
         self.handle_context_files(&abs_path_str);
         Ok(())
     }
@@ -337,7 +335,7 @@ impl ProjectRepository for GitProjectRepository {
         args.push("--");
         args.push(path);
 
-        Self::run_git(&args).context(format!("Failed to remove worktree '{}'. HELP: Ensure the directory is not in use by another process.", path))?;
+        Self::run_git(&args).context(format!("Failed to remove worktree '{path}'. HELP: Ensure the directory is not in use by another process."))?;
         Ok(())
     }
 
@@ -384,7 +382,7 @@ impl ProjectRepository for GitProjectRepository {
                             let _ = std::fs::remove_dir_all(&destination);
                         }
                         std::os::unix::fs::symlink(source, &destination).with_context(|| {
-                            format!("Failed to symlink {:?} to {:?}", source, destination)
+                            format!("Failed to symlink {source:?} to {destination:?}")
                         })?;
                     }
                     #[cfg(not(unix))]
@@ -403,7 +401,7 @@ impl ProjectRepository for GitProjectRepository {
                         debug!(?source, "Directory copy not yet supported, skipping.");
                     } else {
                         std::fs::copy(source, &destination).with_context(|| {
-                            format!("Failed to copy {:?} to {:?}", source, destination)
+                            format!("Failed to copy {source:?} to {destination:?}")
                         })?;
                     }
                 }
@@ -453,7 +451,7 @@ impl ProjectRepository for GitProjectRepository {
                 }
 
                 if !wt.is_bare && !wt.path.is_empty() {
-                    wt.status_summary = self.get_status_summary(&wt.path).ok();
+                    wt.status_summary = Self::get_status_summary(&wt.path).ok();
                 }
 
                 Ok(wt)
@@ -491,7 +489,7 @@ impl ProjectRepository for GitProjectRepository {
     }
 
     fn get_preferred_editor(&self) -> Result<Option<String>> {
-        if let Some(path) = self.resolve_config_path(".worktrees.editor", "editor")
+        if let Some(path) = Self::resolve_config_path(".worktrees.editor", "editor")
             && path.exists()
         {
             let content = std::fs::read_to_string(path)?;
@@ -501,8 +499,7 @@ impl ProjectRepository for GitProjectRepository {
     }
 
     fn set_preferred_editor(&self, editor: &str) -> Result<()> {
-        let path = self
-            .resolve_config_path(".worktrees.editor", "editor")
+        let path = Self::resolve_config_path(".worktrees.editor", "editor")
             .ok_or_else(|| anyhow::anyhow!("Could not determine configuration directory"))?;
 
         if let Some(parent) = path.parent() {
@@ -624,7 +621,7 @@ impl ProjectRepository for GitProjectRepository {
             "-C",
             path,
             "log",
-            &format!("-{}", limit_str),
+            &format!("-{limit_str}"),
             "--pretty=format:%h|%an|%ad|%s",
             "--date=short",
         ])?;
@@ -658,18 +655,16 @@ impl ProjectRepository for GitProjectRepository {
             Ok(password) if !password.trim().is_empty() => {
                 return Ok(Some(password.trim().to_string()));
             }
-            Ok(_) => { /* empty, continue */ }
-            Err(keyring::Error::NoEntry) => { /* missing, continue */ }
+            Ok(_) | Err(keyring::Error::NoEntry) => { /* empty or missing, continue */ }
             Err(e) => {
                 return Err(anyhow::anyhow!(
-                    "System keyring error ({}). Please ensure your system keychain is unlocked.",
-                    e
+                    "System keyring error ({e}). Please ensure your system keychain is unlocked."
                 ));
             }
         }
 
         // 3. Check Config File (Legacy or New)
-        if let Some(path) = self.resolve_config_path(".worktrees.gemini_key", "gemini_key")
+        if let Some(path) = Self::resolve_config_path(".worktrees.gemini_key", "gemini_key")
             && path.exists()
         {
             let content = std::fs::read_to_string(path)?;
@@ -700,7 +695,7 @@ impl ProjectRepository for GitProjectRepository {
         }
 
         // 2. Always store in file as fallback/sync
-        if let Some(path) = self.resolve_config_path(".worktrees.gemini_key", "gemini_key")
+        if let Some(path) = Self::resolve_config_path(".worktrees.gemini_key", "gemini_key")
             && let Some(parent) = path.parent()
         {
             std::fs::create_dir_all(parent)?;
@@ -782,12 +777,12 @@ impl ProjectRepository for GitProjectRepository {
                     if target.exists() {
                         let path_str = target.to_string_lossy().to_string();
                         if dry_run {
-                            cleaned_paths.push(format!("[dry-run] build artifact: {}", path_str));
+                            cleaned_paths.push(format!("[dry-run] build artifact: {path_str}"));
                         } else {
                             match fs::remove_dir_all(&target) {
-                                Ok(_) => cleaned_paths.push(format!("cleaned: {}", path_str)),
+                                Ok(()) => cleaned_paths.push(format!("cleaned: {path_str}")),
                                 Err(e) => {
-                                    error!(error = %e, path = %path_str, "Failed to remove artifact directory")
+                                    error!(error = %e, path = %path_str, "Failed to remove artifact directory");
                                 }
                             }
                         }
@@ -821,13 +816,7 @@ impl ProjectRepository for GitProjectRepository {
             let gitdir_file = entry.path().join("gitdir");
 
             // Check if gitdir file exists and is valid
-            let is_stale = if !gitdir_file.exists() {
-                debug!(
-                    worktree = %worktree_name,
-                    "Missing gitdir file, marking as stale"
-                );
-                true
-            } else {
+            let is_stale = if gitdir_file.exists() {
                 // Read the gitdir file to get the worktree path
                 match fs::read_to_string(&gitdir_file) {
                     Ok(gitdir_content) => {
@@ -862,6 +851,12 @@ impl ProjectRepository for GitProjectRepository {
                         true
                     }
                 }
+            } else {
+                debug!(
+                    worktree = %worktree_name,
+                    "Missing gitdir file, marking as stale"
+                );
+                true
             };
 
             if is_stale {
@@ -880,7 +875,7 @@ impl ProjectRepository for GitProjectRepository {
     }
 
     fn get_project_root(&self) -> Result<PathBuf> {
-        self.get_project_root_path()
+        Self::get_project_root_path()
     }
 
     fn convert_to_bare(&self, name: Option<&str>, branch: Option<&str>) -> Result<PathBuf> {
@@ -894,12 +889,11 @@ impl ProjectRepository for GitProjectRepository {
         }
 
         // Determine current branch if not provided
-        let branch = match branch {
-            Some(b) => b.to_string(),
-            None => {
-                let out = Self::run_git(&["rev-parse", "--abbrev-ref", "HEAD"])?;
-                out.trim().to_string()
-            }
+        let branch = if let Some(b) = branch {
+            b.to_string()
+        } else {
+            let out = Self::run_git(&["rev-parse", "--abbrev-ref", "HEAD"])?;
+            out.trim().to_string()
         };
 
         // Determine project name and hub directory
@@ -907,9 +901,10 @@ impl ProjectRepository for GitProjectRepository {
             .file_name()
             .and_then(|s| s.to_str())
             .unwrap_or("project");
-        let hub_name = name
-            .map(|n| n.to_string())
-            .unwrap_or_else(|| format!("{}-hub", project_name));
+        let hub_name = name.map_or_else(
+            || format!("{project_name}-hub"),
+            std::string::ToString::to_string,
+        );
         let parent_dir = current_dir
             .parent()
             .ok_or_else(|| anyhow::anyhow!("Could not find parent directory"))?;
@@ -952,7 +947,7 @@ impl ProjectRepository for GitProjectRepository {
             &worktree_dir.to_string_lossy(),
             &branch,
         ])
-        .context(format!("Failed to add initial worktree '{}'", branch))?;
+        .context(format!("Failed to add initial worktree '{branch}'"))?;
 
         Ok(hub_dir)
     }
@@ -1236,11 +1231,7 @@ mod tests {
         let path1 = temp_dir.join("worktrees").join("gemini_key");
         let path2 = temp_dir.join(".worktrees.gemini_key");
 
-        let actual_path = if path1.exists() {
-            path1.clone()
-        } else {
-            path2.clone()
-        };
+        let actual_path = if path1.exists() { path1 } else { path2 };
         assert!(actual_path.exists(), "API key file should be created");
 
         // Verify initial creation is secure
@@ -1249,8 +1240,7 @@ mod tests {
         let mode = permissions.mode() & 0o777;
         assert_eq!(
             mode, 0o600,
-            "Initial creation: API key file permissions should be 600, but were {:o}",
-            mode
+            "Initial creation: API key file permissions should be 600, but were {mode:o}"
         );
 
         // Test existing file scenario: Sabotage permissions to 644
@@ -1280,8 +1270,7 @@ mod tests {
             & 0o777;
         assert_eq!(
             mode_fixed, 0o600,
-            "Fixed API key file permissions should be 600, but were {:o}",
-            mode_fixed
+            "Fixed API key file permissions should be 600, but were {mode_fixed:o}"
         );
 
         // Restore env
@@ -1402,7 +1391,7 @@ mod tests {
         // We need to run the test inside temp_dir to simulate repo context
         let original_dir = std::env::current_dir().unwrap();
         if let Err(e) = std::env::set_current_dir(&temp_dir) {
-            println!("Failed to set current dir: {}", e);
+            println!("Failed to set current dir: {e}");
             return;
         }
 

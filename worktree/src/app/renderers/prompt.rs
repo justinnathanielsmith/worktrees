@@ -19,7 +19,7 @@ pub fn render_prompt(f: &mut Frame, prompt_type: &PromptType, input: &str) {
         PromptType::CommitMessage => " COMMIT MESSAGE ",
         PromptType::ApiKey => " GEMINI API KEY ",
         PromptType::NameNewWorktree { base_ref } => {
-            &format!(" NAME NEW WORKTREE (FROM {}) ", base_ref)
+            &format!(" NAME NEW WORKTREE (FROM {base_ref}) ")
         }
     };
 

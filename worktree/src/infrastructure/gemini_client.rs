@@ -66,11 +66,10 @@ impl GeminiClient {
             Follow the format: <type>(<scope>): <description>
             Do not include any conversational filler, markdown blocks, or explanations. Just the message.
 
-            Branch: {}
+            Branch: {branch}
 
             Diff:
-{}",
-            branch, diff
+{diff}"
         );
 
         let url = format!(
@@ -100,7 +99,7 @@ impl GeminiClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await?;
-            return Err(anyhow::anyhow!("Gemini API error: {}", error_body));
+            return Err(anyhow::anyhow!("Gemini API error: {error_body}"));
         }
 
         let gemini_response: GeminiResponse = response

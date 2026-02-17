@@ -20,7 +20,7 @@ pub fn render_history(f: &mut Frame, branch: &str, commits: &[GitCommit], select
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.secondary))
         .title(Span::styled(
-            format!(" 󰊚 COMMIT LOG: {} ", branch),
+            format!(" 󰊚 COMMIT LOG: {branch} "),
             Style::default()
                 .fg(theme.secondary)
                 .add_modifier(Modifier::BOLD),

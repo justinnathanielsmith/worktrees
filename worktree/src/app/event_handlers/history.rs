@@ -1,13 +1,12 @@
 use crate::app::model::AppState;
-use anyhow::Result;
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle_history_events(
-    event: crossterm::event::Event,
+    event: &crossterm::event::Event,
     commits: &[crate::domain::repository::GitCommit],
     selected_index: &mut usize,
     prev_state: &AppState,
-) -> Result<Option<AppState>> {
+) -> Option<AppState> {
     use crate::app::renderers::helpers::centered_rect;
     use crossterm::event::{Event, KeyCode, MouseButton, MouseEventKind};
     use ratatui::layout::Rect;
@@ -22,7 +21,7 @@ pub fn handle_history_events(
 
             match normalized_code {
                 KeyCode::Esc | KeyCode::Char('q') => {
-                    return Ok(Some(prev_state.clone()));
+                    return Some(prev_state.clone());
                 }
                 KeyCode::Down | KeyCode::Char('j') => {
                     if !commits.is_empty() {
@@ -80,5 +79,5 @@ pub fn handle_history_events(
         }
         _ => {}
     }
-    Ok(None)
+    None
 }

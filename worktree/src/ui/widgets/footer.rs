@@ -11,7 +11,7 @@ pub struct FooterWidget<'a> {
     pub state: &'a AppState,
 }
 
-impl<'a> Widget for FooterWidget<'a> {
+impl Widget for FooterWidget<'_> {
     fn render(self, area: ratatui::layout::Rect, buf: &mut ratatui::buffer::Buffer) {
         let theme = CyberTheme::default();
 
@@ -40,12 +40,9 @@ impl<'a> Widget for FooterWidget<'a> {
                 ("[j/k]", "NAV", theme.primary),
                 ("[ESC]", "BACK", theme.accent),
             ],
-            AppState::SwitchingBranch { .. } | AppState::PickingBaseRef { .. } => vec![
-                ("[j/k]", "NAV", theme.primary),
-                ("[ENT]", "SELECT", theme.success),
-                ("[ESC]", "BACK", theme.accent),
-            ],
-            AppState::Committing { .. } => vec![
+            AppState::SwitchingBranch { .. }
+            | AppState::PickingBaseRef { .. }
+            | AppState::Committing { .. } => vec![
                 ("[j/k]", "NAV", theme.primary),
                 ("[ENT]", "SELECT", theme.success),
                 ("[ESC]", "BACK", theme.accent),
@@ -79,7 +76,7 @@ impl<'a> Widget for FooterWidget<'a> {
                 spans.push(Span::styled(" | ", Style::default().fg(theme.border)));
             }
             spans.push(Span::styled(
-                format!(" {} ", key),
+                format!(" {key} "),
                 Style::default().fg(color).add_modifier(Modifier::BOLD),
             ));
             spans.push(Span::styled(label, Style::default().fg(theme.subtle)));

@@ -24,7 +24,7 @@ pub fn render_editor_selection(
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.accent))
         .title(Span::styled(
-            format!(" 📝 SELECT EDITOR: {} ", branch),
+            format!(" 📝 SELECT EDITOR: {branch} "),
             Style::default()
                 .fg(theme.accent)
                 .add_modifier(Modifier::BOLD),

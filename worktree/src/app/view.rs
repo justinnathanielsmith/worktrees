@@ -1,7 +1,14 @@
 use crate::app::cli_renderer::CliRenderer;
-use crate::app::event_handlers::*;
+use crate::app::event_handlers::{
+    handle_branch_events, handle_committing_events, handle_confirm_events, handle_editor_events,
+    handle_history_events, handle_listing_events, handle_picking_ref_events, handle_prompt_events,
+    handle_status_events,
+};
 use crate::app::model::{AppState, RefreshType};
-use crate::app::renderers::*;
+use crate::app::renderers::{
+    render_branch_selection, render_commit_menu, render_editor_selection, render_history,
+    render_listing, render_modals, render_prompt, render_status,
+};
 use crate::domain::repository::{ProjectRepository, RepositoryEvent, Worktree};
 use crate::ui::widgets::{footer::FooterWidget, header::HeaderWidget};
 use anyhow::Result;
@@ -60,8 +67,8 @@ impl View {
                     context,
                     area,
                     dashboard.active_tab,
-                    &dashboard.cached_status,
-                    &dashboard.cached_history,
+                    dashboard.cached_status.as_ref(),
+                    dashboard.cached_history.as_deref(),
                     filter_query,
                     *is_filtering,
                 );
@@ -210,7 +217,7 @@ impl View {
                         ..
                     } => {
                         new_state = handle_listing_events(
-                            event.clone(),
+                            &event,
                             repo,
                             terminal,
                             worktrees,
@@ -227,14 +234,14 @@ impl View {
                         ..
                     } => {
                         new_state = handle_status_events(
-                            event.clone(),
+                            &event,
                             repo,
                             path,
                             branch,
                             status,
                             prev_state,
                             &current_state_clone,
-                        )?;
+                        );
                     }
                     AppState::ViewingHistory {
                         branch: _,
@@ -243,12 +250,8 @@ impl View {
                         prev_state,
                         ..
                     } => {
-                        new_state = handle_history_events(
-                            event.clone(),
-                            commits,
-                            selected_index,
-                            prev_state,
-                        )?;
+                        new_state =
+                            handle_history_events(&event, commits, selected_index, prev_state);
                     }
                     AppState::SwitchingBranch {
                         path,
@@ -258,13 +261,13 @@ impl View {
                         ..
                     } => {
                         new_state = handle_branch_events(
-                            event.clone(),
+                            &event,
                             repo,
                             path,
                             branches,
                             selected_index,
                             prev_state,
-                        )?;
+                        );
                     }
                     AppState::PickingBaseRef {
                         branches,
@@ -272,12 +275,8 @@ impl View {
                         prev_state,
                         ..
                     } => {
-                        new_state = handle_picking_ref_events(
-                            event.clone(),
-                            branches,
-                            selected_index,
-                            prev_state,
-                        )?;
+                        new_state =
+                            handle_picking_ref_events(&event, branches, selected_index, prev_state);
                     }
                     AppState::SelectingEditor {
                         branch,
@@ -287,15 +286,8 @@ impl View {
                         ..
                     } => {
                         new_state = handle_editor_events(
-                            event.clone(),
-                            repo,
-                            terminal,
-                            branch,
-                            options,
-                            selected,
-                            prev_state,
-                            spinner_tick,
-                        )?;
+                            &event, repo, branch, options, selected, prev_state,
+                        );
                     }
                     AppState::Prompting {
                         prompt_type,
@@ -304,7 +296,7 @@ impl View {
                         ..
                     } => {
                         new_state = handle_prompt_events(
-                            event.clone(),
+                            &event,
                             repo,
                             terminal,
                             prompt_type,
@@ -316,7 +308,7 @@ impl View {
                     AppState::Confirming {
                         action, prev_state, ..
                     } => {
-                        new_state = handle_confirm_events(event.clone(), repo, action, prev_state)?;
+                        new_state = handle_confirm_events(&event, repo, action, prev_state);
                     }
                     AppState::Committing {
                         path,
@@ -326,14 +318,14 @@ impl View {
                         ..
                     } => {
                         new_state = handle_committing_events(
-                            event.clone(),
+                            &event,
                             repo,
                             path,
                             branch,
                             selected_index,
                             prev_state,
                             &current_state_clone,
-                        )?;
+                        );
                     }
                     // Handle global exit if not handled by detailed handlers (or for states without handlers)
                     _ => {
@@ -443,8 +435,8 @@ impl View {
                     context,
                     chunks[1],
                     dashboard.active_tab,
-                    &dashboard.cached_status,
-                    &dashboard.cached_history,
+                    dashboard.cached_status.as_ref(),
+                    dashboard.cached_history.as_deref(),
                     filter_query,
                     *is_filtering,
                 );
@@ -692,7 +684,10 @@ mod tests {
         let content = buffer.content();
 
         // Check for key welcome screen text
-        let content_str = content.iter().map(|c| c.symbol()).collect::<String>();
+        let content_str = content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect::<String>();
 
         // Check for key welcome screen text
         let has_welcome_text =
@@ -764,7 +759,7 @@ mod tests {
         let content_str = buffer
             .content()
             .iter()
-            .map(|c| c.symbol())
+            .map(ratatui::buffer::Cell::symbol)
             .collect::<String>();
 
         assert!(
@@ -793,7 +788,7 @@ mod tests {
         let content_str = buffer
             .content()
             .iter()
-            .map(|c| c.symbol())
+            .map(ratatui::buffer::Cell::symbol)
             .collect::<String>();
 
         assert!(
@@ -831,7 +826,7 @@ mod tests {
         let content_str = buffer
             .content()
             .iter()
-            .map(|c| c.symbol())
+            .map(ratatui::buffer::Cell::symbol)
             .collect::<String>();
 
         // Check that SyncComplete text appears (rendered via Timed inner_state)

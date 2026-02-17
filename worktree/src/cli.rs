@@ -25,7 +25,7 @@ pub struct Cli {
 pub enum Commands {
     /// Initialize a new bare repository from a remote URL
     ///
-    /// Example: worktree init https://github.com/user/repo.git
+    /// Example: worktree init <https://github.com/user/repo.git>
     Init {
         /// URL of the remote repository to clone (optional)
         url: Option<String>,
@@ -100,7 +100,7 @@ pub enum Commands {
         /// Show what would be deleted without actually removing anything
         #[arg(long)]
         dry_run: bool,
-        /// Remove build artifacts (node_modules, target, build, etc.) from inactive worktrees
+        /// Remove build artifacts (`node_modules`, target, build, etc.) from inactive worktrees
         #[arg(long)]
         artifacts: bool,
     },

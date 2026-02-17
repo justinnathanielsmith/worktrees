@@ -18,7 +18,7 @@ pub fn render_commit_menu(f: &mut Frame, branch: &str, selected_index: usize) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.accent))
         .title(Span::styled(
-            format!(" 󰊚 COMMIT: {} ", branch),
+            format!(" 󰊚 COMMIT: {branch} "),
             Style::default()
                 .fg(theme.accent)
                 .add_modifier(Modifier::BOLD),

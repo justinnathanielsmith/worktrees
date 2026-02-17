@@ -10,13 +10,13 @@ use super::helpers::{create_timed_state, move_selection};
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle_listing_events<R: ProjectRepository>(
-    event: crossterm::event::Event,
+    event: &crossterm::event::Event,
     repo: &R,
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     worktrees: &[Worktree],
     table_state: &mut TableState,
     current_state: &AppState,
-    spinner_tick: &mut usize,
+    spinner_tick: &usize,
 ) -> Result<Option<AppState>> {
     use crossterm::event::{Event, KeyCode, MouseButton, MouseEventKind};
 
@@ -38,7 +38,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
             let key_code = key.code;
 
             if is_filtering {
-                let mut new_query = filter_query.clone();
+                let mut new_query = filter_query;
                 let mut stop_filtering = false;
                 let mut changed = false;
                 let mut selection_changed = false;
@@ -97,7 +97,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                 return Ok(None);
             }
 
-            if let KeyCode::Char('/') = key_code {
+            if key_code == KeyCode::Char('/') {
                 let mut new_state = current_state.clone();
                 if let AppState::ListingWorktrees { is_filtering, .. } = &mut new_state {
                     *is_filtering = true;
@@ -106,7 +106,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
             }
 
             // Handle Shift+P for Pull before normalization (since p is Push)
-            if let KeyCode::Char('P') = key_code
+            if key_code == KeyCode::Char('P')
                 && let Some(i) = table_state.selected()
                 && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
             {
@@ -118,13 +118,10 @@ pub fn handle_listing_events<R: ProjectRepository>(
                     prev_state: prev.clone(),
                 };
                 terminal.draw(|f| {
-                    super::super::view::View::draw(f, repo, &mut pulling_state, *spinner_tick)
+                    super::super::view::View::draw(f, repo, &mut pulling_state, *spinner_tick);
                 })?;
                 if let Err(e) = repo.pull(&path) {
-                    return Ok(Some(AppState::Error(
-                        format!("Failed to pull: {}", e),
-                        prev,
-                    )));
+                    return Ok(Some(AppState::Error(format!("Failed to pull: {e}"), prev)));
                 }
                 let prev_clone = prev.clone();
                 let complete_state = AppState::PullComplete {
@@ -166,7 +163,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                     }
                     return Ok(Some(new_state));
                 }
-                KeyCode::Char('d') | KeyCode::Char('x') | KeyCode::Char('D') => {
+                KeyCode::Char('d' | 'x' | 'D') => {
                     let is_force = matches!(key_code, KeyCode::Char('D'));
                     if let Some(i) = table_state.selected()
                         && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
@@ -254,7 +251,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                     }
                     return Ok(Some(new_state));
                 }
-                KeyCode::Char('1') | KeyCode::Char('2') | KeyCode::Char('3') => {
+                KeyCode::Char('1' | '2' | '3') => {
                     if let AppState::ListingWorktrees {
                         worktrees,
                         table_state,
@@ -289,7 +286,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                 KeyCode::Char('a') => {
                     let branches = repo
                         .list_branches()
-                        .map_err(|e| anyhow::anyhow!("Failed to list branches: {}", e))?;
+                        .map_err(|e| anyhow::anyhow!("Failed to list branches: {e}"))?;
                     return Ok(Some(AppState::PickingBaseRef {
                         branches,
                         selected_index: 0,
@@ -313,7 +310,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                                 repo,
                                 &mut syncing_state,
                                 *spinner_tick,
-                            )
+                            );
                         })?;
                         let _ = repo.sync_configs(&path);
                         let prev_clone = prev.clone();
@@ -341,13 +338,10 @@ pub fn handle_listing_events<R: ProjectRepository>(
                                 repo,
                                 &mut pushing_state,
                                 *spinner_tick,
-                            )
+                            );
                         })?;
                         if let Err(e) = repo.push(&path) {
-                            return Ok(Some(AppState::Error(
-                                format!("Failed to push: {}", e),
-                                prev,
-                            )));
+                            return Ok(Some(AppState::Error(format!("Failed to push: {e}"), prev)));
                         }
                         let prev_clone = prev.clone();
                         let complete_state = AppState::PushComplete {
@@ -371,7 +365,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                         }
                         Err(e) => {
                             return Ok(Some(AppState::Error(
-                                format!("Failed to clean worktrees: {}", e),
+                                format!("Failed to clean worktrees: {e}"),
                                 prev,
                             )));
                         }
@@ -402,21 +396,20 @@ pub fn handle_listing_events<R: ProjectRepository>(
                             };
                             let _ = Command::new(&editor).arg(&path).spawn();
                             return Ok(Some(create_timed_state(opening_state, *prev_clone, 800)));
-                        } else {
-                            let options = EditorConfig::defaults();
-                            return Ok(Some(AppState::SelectingEditor {
-                                branch,
-                                options,
-                                selected: 0,
-                                prev_state: prev,
-                            }));
                         }
+                        let options = EditorConfig::defaults();
+                        return Ok(Some(AppState::SelectingEditor {
+                            branch,
+                            options,
+                            selected: 0,
+                            prev_state: prev,
+                        }));
                     }
                 }
                 KeyCode::Char('u') => {
                     let mut setup_state = AppState::SettingUpDefaults;
                     terminal.draw(|f| {
-                        super::super::view::View::draw(f, repo, &mut setup_state, *spinner_tick)
+                        super::super::view::View::draw(f, repo, &mut setup_state, *spinner_tick);
                     })?;
 
                     // Silent setup for TUI
@@ -496,7 +489,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
                                 repo,
                                 &mut fetching_state,
                                 *spinner_tick,
-                            )
+                            );
                         })?;
                         let _ = repo.fetch(&path);
                         return Ok(Some(*prev));
@@ -539,19 +532,18 @@ pub fn handle_listing_events<R: ProjectRepository>(
                                     *prev_clone,
                                     800,
                                 )));
-                            } else {
-                                let options = EditorConfig::defaults();
-                                return Ok(Some(AppState::SelectingEditor {
-                                    branch,
-                                    options,
-                                    selected: 0,
-                                    prev_state: prev,
-                                }));
                             }
+                            let options = EditorConfig::defaults();
+                            return Ok(Some(AppState::SelectingEditor {
+                                branch,
+                                options,
+                                selected: 0,
+                                prev_state: prev,
+                            }));
                         }
                     }
                 }
-                KeyCode::Char('?') | KeyCode::Char('h') => {
+                KeyCode::Char('?' | 'h') => {
                     return Ok(Some(AppState::Help {
                         prev_state: Box::new(current_state.clone()),
                     }));
@@ -575,7 +567,7 @@ pub fn handle_listing_events<R: ProjectRepository>(
 
                         // Split Logic: Percentage(40) for Worktree List
                         // Width of list = (term_width - 2) * 0.4
-                        let list_width = ((term_width as f32 - 2.0) * 0.4) as u16;
+                        let list_width = ((f32::from(term_width) - 2.0) * 0.4) as u16;
 
                         let x = mouse.column;
                         let y = mouse.row;

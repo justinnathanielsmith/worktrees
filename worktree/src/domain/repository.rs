@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 /// Custom attributes for a worktree.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct WorktreeMetadata {
     pub created_at: Option<String>,
     pub purpose: Option<String>,
@@ -13,7 +13,7 @@ pub struct WorktreeMetadata {
 }
 
 /// Represents a Git worktree and its current state.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Worktree {
     /// The absolute path to the worktree on disk.
     pub path: String,
@@ -34,7 +34,7 @@ pub struct Worktree {
 }
 
 /// Detailed git status of a specific worktree.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct GitStatus {
     pub staged: Vec<(String, String)>,   // (path, code)
     pub unstaged: Vec<(String, String)>, // (path, code)
@@ -42,7 +42,7 @@ pub struct GitStatus {
 }
 
 /// Information about a single Git commit.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct GitCommit {
     pub hash: String,
     pub author: String,
@@ -51,7 +51,7 @@ pub struct GitCommit {
 }
 
 /// The architectural context of the project.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum ProjectContext {
     /// A standard project with no specialized sync logic.
     Standard,
@@ -141,7 +141,7 @@ pub trait ProjectRepository {
 }
 
 /// Events emitted by the repository watcher.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum RepositoryEvent {
     /// The list of worktrees has changed (added, removed, pruned).
     #[allow(dead_code)]

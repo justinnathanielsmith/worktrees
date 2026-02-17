@@ -10,8 +10,8 @@ pub fn render_dashboard(
     all_worktrees: &[Worktree],
     context: ProjectContext,
     active_tab: DashboardTab,
-    status: &Option<GitStatus>,
-    history: &Option<Vec<GitCommit>>,
+    status: Option<&GitStatus>,
+    history: Option<&[GitCommit]>,
     area: Rect,
 ) {
     let widget = DashboardWidget::new(

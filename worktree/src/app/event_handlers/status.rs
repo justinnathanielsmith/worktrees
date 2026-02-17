@@ -1,17 +1,16 @@
 use crate::app::model::AppState;
 use crate::domain::repository::ProjectRepository;
-use anyhow::Result;
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle_status_events<R: ProjectRepository>(
-    event: crossterm::event::Event,
+    event: &crossterm::event::Event,
     repo: &R,
     path: &str,
     branch: &str,
     status: &mut crate::app::model::StatusViewState,
     prev_state: &AppState,
     current_state: &AppState,
-) -> Result<Option<AppState>> {
+) -> Option<AppState> {
     use crossterm::event::{Event, KeyCode, MouseButton, MouseEventKind};
     use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
@@ -42,7 +41,7 @@ pub fn handle_status_events<R: ProjectRepository>(
 
             match normalized_code {
                 KeyCode::Esc | KeyCode::Char('q') => {
-                    return Ok(Some(prev_state.clone()));
+                    return Some(prev_state.clone());
                 }
                 KeyCode::Down | KeyCode::Char('j') => {
                     let total = status.total();
@@ -80,12 +79,12 @@ pub fn handle_status_events<R: ProjectRepository>(
                     }
                 }
                 KeyCode::Char('c') => {
-                    return Ok(Some(AppState::Committing {
+                    return Some(AppState::Committing {
                         path: path.to_string(),
                         branch: branch.to_string(),
                         selected_index: 0,
                         prev_state: Box::new(current_state.clone()),
-                    }));
+                    });
                 }
                 KeyCode::Char('a') => {
                     let _ = repo.stage_all(path);
@@ -253,5 +252,5 @@ pub fn handle_status_events<R: ProjectRepository>(
         _ => {}
     }
 
-    Ok(None)
+    None
 }

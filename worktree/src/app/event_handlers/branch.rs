@@ -1,20 +1,19 @@
 use crate::app::model::AppState;
 use crate::domain::repository::ProjectRepository;
-use anyhow::Result;
 
 pub fn handle_branch_events<R: ProjectRepository>(
-    event: crossterm::event::Event,
+    event: &crossterm::event::Event,
     repo: &R,
     path: &str,
     branches: &[String],
     selected_index: &mut usize,
     prev_state: &AppState,
-) -> Result<Option<AppState>> {
+) -> Option<AppState> {
     use crossterm::event::{Event, KeyCode};
     let key_code = if let Event::Key(key) = event {
         key.code
     } else {
-        return Ok(None);
+        return None;
     };
 
     let normalized_code = match key_code {
@@ -24,7 +23,7 @@ pub fn handle_branch_events<R: ProjectRepository>(
 
     match normalized_code {
         KeyCode::Esc | KeyCode::Char('q') => {
-            return Ok(Some(prev_state.clone()));
+            return Some(prev_state.clone());
         }
         KeyCode::Down | KeyCode::Char('j') => {
             if !branches.is_empty() {
@@ -40,14 +39,14 @@ pub fn handle_branch_events<R: ProjectRepository>(
             if let Some(branch) = branches.get(*selected_index)
                 && let Err(e) = repo.switch_branch(path, branch)
             {
-                return Ok(Some(AppState::Error(
-                    format!("Failed to switch branch: {}", e),
+                return Some(AppState::Error(
+                    format!("Failed to switch branch: {e}"),
                     Box::new(prev_state.clone()),
-                )));
+                ));
             }
-            return Ok(Some(prev_state.clone()));
+            return Some(prev_state.clone());
         }
         _ => {}
     }
-    Ok(None)
+    None
 }

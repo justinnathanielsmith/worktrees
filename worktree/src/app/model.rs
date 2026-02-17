@@ -10,14 +10,14 @@ pub enum PromptType {
     ApiKey,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DashboardTab {
     Info,
     Status,
     Log,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RefreshType {
     None,
     Dashboard,
@@ -80,7 +80,7 @@ pub struct StatusViewState {
 }
 
 impl StatusViewState {
-    pub fn total(&self) -> usize {
+    pub const fn total(&self) -> usize {
         self.staged.len() + self.unstaged.len() + self.untracked.len()
     }
 
@@ -127,68 +127,68 @@ pub enum AppState {
         title: String,
         message: String,
         action: Box<Intent>,
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Synchronizing configuration files.
     Syncing {
         branch: String,
         #[allow(dead_code)]
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Synchronization completed.
     SyncComplete {
         branch: String,
         #[allow(dead_code)]
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Help modal showing shortcuts.
     Help {
         #[allow(dead_code)]
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Fetching from remote.
     Fetching {
         branch: String,
         #[allow(dead_code)]
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Pulling from remote.
     Pulling {
         branch: String,
         #[allow(dead_code)]
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Pull completed.
     PullComplete {
         branch: String,
         #[allow(dead_code)]
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Pushing changes to remote.
     Pushing {
         branch: String,
         #[allow(dead_code)]
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Push completed.
     PushComplete {
         branch: String,
         #[allow(dead_code)]
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Selecting an editor to open a worktree.
     SelectingEditor {
         branch: String,
         options: Vec<EditorConfig>,
         selected: usize,
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Opening a worktree in the selected editor.
     OpeningEditor {
         branch: String,
         editor: String,
         #[allow(dead_code)]
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// The primary state showing all active worktrees.
     ListingWorktrees {
@@ -205,40 +205,40 @@ pub enum AppState {
         path: String,
         branch: String,
         status: StatusViewState,
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Git commit history log view.
     ViewingHistory {
         branch: String,
         commits: Vec<crate::domain::repository::GitCommit>,
         selected_index: usize,
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Branch selection menu for switching worktree branches.
     SwitchingBranch {
         path: String,
         branches: Vec<String>,
         selected_index: usize,
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Commit menu selection.
     Committing {
         path: String,
         branch: String,
         selected_index: usize,
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Branch selection menu for creating a new worktree.
     PickingBaseRef {
         branches: Vec<String>,
         selected_index: usize,
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// General purpose text input prompt.
     Prompting {
         prompt_type: PromptType,
         input: String,
-        prev_state: Box<AppState>,
+        prev_state: Box<Self>,
     },
     /// Initial setup of canonical worktrees.
     SettingUpDefaults,
@@ -246,48 +246,48 @@ pub enum AppState {
     SetupComplete,
     /// Temporary state that transitions after a duration.
     Timed {
-        inner_state: Box<AppState>,
-        target_state: Box<AppState>,
+        inner_state: Box<Self>,
+        target_state: Box<Self>,
         start_time: Instant,
         duration: Duration,
     },
     /// An error state with a message.
-    Error(String, #[allow(dead_code)] Box<AppState>),
+    Error(String, #[allow(dead_code)] Box<Self>),
     /// Signal to exit the application.
     Exiting(Option<String>),
 }
 
 impl AppState {
     /// Signals that the worktree list needs to be re-fetched from the repository.
-    pub fn request_refresh(&mut self) {
-        if let AppState::ListingWorktrees { refresh_needed, .. } = self {
+    pub const fn request_refresh(&mut self) {
+        if let Self::ListingWorktrees { refresh_needed, .. } = self {
             *refresh_needed = RefreshType::Full;
         }
     }
 
     /// Helper to extract the previous state from states that track it.
     #[allow(dead_code)]
-    pub fn prev_state_boxed(&self) -> &AppState {
+    pub fn prev_state_boxed(&self) -> &Self {
         match self {
-            AppState::Confirming { prev_state, .. } => prev_state,
-            AppState::Syncing { prev_state, .. } => prev_state,
-            AppState::SyncComplete { prev_state, .. } => prev_state,
-            AppState::Help { prev_state } => prev_state,
-            AppState::Fetching { prev_state, .. } => prev_state,
-            AppState::Pulling { prev_state, .. } => prev_state,
-            AppState::PullComplete { prev_state, .. } => prev_state,
-            AppState::Pushing { prev_state, .. } => prev_state,
-            AppState::PushComplete { prev_state, .. } => prev_state,
-            AppState::SelectingEditor { prev_state, .. } => prev_state,
-            AppState::OpeningEditor { prev_state, .. } => prev_state,
-            AppState::ViewingStatus { prev_state, .. } => prev_state,
-            AppState::ViewingHistory { prev_state, .. } => prev_state,
-            AppState::SwitchingBranch { prev_state, .. } => prev_state,
-            AppState::Committing { prev_state, .. } => prev_state,
-            AppState::PickingBaseRef { prev_state, .. } => prev_state,
-            AppState::Prompting { prev_state, .. } => prev_state,
-            AppState::Timed { target_state, .. } => target_state,
-            AppState::Error(_, prev_state) => prev_state,
+            Self::Confirming { prev_state, .. }
+            | Self::Syncing { prev_state, .. }
+            | Self::SyncComplete { prev_state, .. }
+            | Self::Help { prev_state }
+            | Self::Fetching { prev_state, .. }
+            | Self::Pulling { prev_state, .. }
+            | Self::PullComplete { prev_state, .. }
+            | Self::Pushing { prev_state, .. }
+            | Self::PushComplete { prev_state, .. }
+            | Self::SelectingEditor { prev_state, .. }
+            | Self::OpeningEditor { prev_state, .. }
+            | Self::ViewingStatus { prev_state, .. }
+            | Self::ViewingHistory { prev_state, .. }
+            | Self::SwitchingBranch { prev_state, .. }
+            | Self::Committing { prev_state, .. }
+            | Self::PickingBaseRef { prev_state, .. }
+            | Self::Prompting { prev_state, .. }
+            | Self::Error(_, prev_state) => prev_state,
+            Self::Timed { target_state, .. } => target_state,
             _ => panic!("State does not have a previous state"),
         }
     }

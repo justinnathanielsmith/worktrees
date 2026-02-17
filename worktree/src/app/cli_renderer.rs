@@ -9,12 +9,12 @@ pub struct CliRenderer;
 impl CliRenderer {
     pub fn render_banner() {
         let lines = [
-            r#"██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗████████╗██████╗ ███████╗███████╗███████╗"#,
-            r#"██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝╚══██╔══╝██╔══██╗██╔════╝██╔════╝██╔════╝"#,
-            r#"██║ █╗ ██║██║   ██║██████╔╝█████╔╝    ██║   ██████╔╝█████╗  █████╗  ███████╗"#,
-            r#"██║███╗██║██║   ██║██╔══██╗██╔═██╗    ██║   ██╔══██╗██╔══╝  ██╔══╝  ╚════██║"#,
-            r#"╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗   ██║   ██║  ██║███████╗███████╗███████║"#,
-            r#" ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝"#,
+            r"██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗████████╗██████╗ ███████╗███████╗███████╗",
+            r"██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝╚══██╔══╝██╔══██╗██╔════╝██╔════╝██╔════╝",
+            r"██║ █╗ ██║██║   ██║██████╔╝█████╔╝    ██║   ██████╔╝█████╗  █████╗  ███████╗",
+            r"██║███╗██║██║   ██║██╔══██╗██╔═██╗    ██║   ██╔══██╗██╔══╝  ██╔══╝  ╚════██║",
+            r"╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗   ██║   ██║  ██║███████╗███████╗███████║",
+            r" ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝",
         ];
 
         let colors = [
@@ -42,7 +42,7 @@ impl CliRenderer {
 
     pub fn render_json<T: serde::Serialize>(data: &T) -> Result<()> {
         let json = serde_json::to_string_pretty(data)?;
-        println!("{}", json);
+        println!("{json}");
         Ok(())
     }
 
@@ -61,7 +61,7 @@ impl CliRenderer {
             table.add_row(vec![&wt.branch, &wt.commit, &wt.path, status]);
         }
 
-        println!("{}", table);
+        println!("{table}");
     }
 
     pub fn render_feedback_prompt() {
@@ -82,7 +82,7 @@ impl CliRenderer {
                 println!(
                     "{} {} [{} {}]",
                     "🚀".blue(),
-                    format!("INITIALIZING BARE REPOSITORY: {}", project_name)
+                    format!("INITIALIZING BARE REPOSITORY: {project_name}")
                         .blue()
                         .bold(),
                     "STATUS:".dimmed(),
@@ -98,14 +98,12 @@ impl CliRenderer {
                 println!(
                     "   {} {}",
                     "├─ Location:".dimmed(),
-                    format!("{}/.bare", project_name).white()
+                    format!("{project_name}/.bare").white()
                 );
                 println!(
                     "   {} {}",
                     "└─ Action:  ".dimmed(),
-                    format!("cd {} && worktree setup", project_name)
-                        .blue()
-                        .bold()
+                    format!("cd {project_name} && worktree setup").blue().bold()
                 );
                 println!();
             }
@@ -113,7 +111,7 @@ impl CliRenderer {
                 println!(
                     "{} {} [{} {}]",
                     "📁".purple(),
-                    format!("ADDING WORKTREE: {} (branch: {})", intent, branch)
+                    format!("ADDING WORKTREE: {intent} (branch: {branch})")
                         .purple()
                         .bold(),
                     "STATUS:".dimmed(),
@@ -125,7 +123,7 @@ impl CliRenderer {
                     "   {} {} {}",
                     "┗━".dimmed(),
                     "SUCCESS:".green().bold(),
-                    format!("Worktree active at ./{}", intent).white()
+                    format!("Worktree active at ./{intent}").white()
                 );
                 println!();
             }
@@ -133,7 +131,7 @@ impl CliRenderer {
                 println!(
                     "{} {} [{} {}]",
                     "🔥".red(),
-                    format!("REMOVING WORKTREE: {}", intent).red().bold(),
+                    format!("REMOVING WORKTREE: {intent}").red().bold(),
                     "STATUS:".dimmed(),
                     "DELETING".purple()
                 );
@@ -145,7 +143,7 @@ impl CliRenderer {
                 println!(
                     "{} {} [{} {}]",
                     "🔄".cyan(),
-                    format!("SYNCING CONFIGURATIONS: {}", branch).cyan().bold(),
+                    format!("SYNCING CONFIGURATIONS: {branch}").cyan().bold(),
                     "STATUS:".dimmed(),
                     "SYNCHRONIZING".yellow()
                 );
@@ -155,14 +153,14 @@ impl CliRenderer {
                     "   {} {} {}",
                     "┗━".dimmed(),
                     "SUCCESS:".green().bold(),
-                    format!("Synced configurations for {}", branch).white()
+                    format!("Synced configurations for {branch}").white()
                 );
             }
             AppState::Pushing { branch, .. } => {
                 println!(
                     "{} {} [{} {}]",
                     "⬆".cyan(),
-                    format!("PUSHING: {}", branch).cyan().bold(),
+                    format!("PUSHING: {branch}").cyan().bold(),
                     "STATUS:".dimmed(),
                     "UPLOADING".yellow()
                 );
@@ -172,7 +170,7 @@ impl CliRenderer {
                     "   {} {} {}",
                     "┗━".dimmed(),
                     "SUCCESS:".green().bold(),
-                    format!("Pushed {} to remote", branch).white()
+                    format!("Pushed {branch} to remote").white()
                 );
                 println!();
             }
@@ -180,7 +178,7 @@ impl CliRenderer {
                 println!(
                     "{} {} [{} {}]",
                     "🔍".cyan(),
-                    format!("SELECTING EDITOR FOR: {}", branch).cyan().bold(),
+                    format!("SELECTING EDITOR FOR: {branch}").cyan().bold(),
                     "STATUS:".dimmed(),
                     "PENDING SELECTION".yellow()
                 );
@@ -189,7 +187,7 @@ impl CliRenderer {
                 println!(
                     "{} {} [{} {}]",
                     "📝".yellow(),
-                    format!("OPENING WORKTREE: {}", branch).yellow().bold(),
+                    format!("OPENING WORKTREE: {branch}").yellow().bold(),
                     "EDITOR:".dimmed(),
                     editor.purple().bold()
                 );

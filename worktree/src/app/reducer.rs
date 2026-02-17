@@ -11,16 +11,15 @@ use std::process::Command;
 use std::time::Duration;
 use tracing::{error, info, instrument};
 
-fn get_project_name(url: &Option<String>, name: Option<String>) -> String {
+fn get_project_name(url: Option<&String>, name: Option<String>) -> String {
     name.unwrap_or_else(|| {
-        url.as_ref()
-            .and_then(|u| {
-                Path::new(u.trim_end_matches('/'))
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .map(|s| s.to_string())
-            })
-            .unwrap_or_else(|| "project".to_string())
+        url.and_then(|u| {
+            Path::new(u.trim_end_matches('/'))
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .map(std::string::ToString::to_string)
+        })
+        .unwrap_or_else(|| "project".to_string())
     })
 }
 
@@ -31,7 +30,7 @@ pub struct Reducer<R: ProjectRepository> {
 }
 
 impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
-    pub fn new(repo: R, json_mode: bool, quiet_mode: bool) -> Self {
+    pub const fn new(repo: R, json_mode: bool, quiet_mode: bool) -> Self {
         Self {
             repo,
             json_mode,
@@ -52,7 +51,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
 
         match intent {
             Intent::Initialize { url, name, warp } => {
-                let project_name = get_project_name(&url, name);
+                let project_name = get_project_name(url.as_ref(), name);
                 if !json_mode && !quiet_mode {
                     View::render(AppState::Initializing {
                         project_name: project_name.clone(),
@@ -85,7 +84,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 .into_diagnostic()?;
 
                 match res {
-                    Ok(_) => {
+                    Ok(()) => {
                         if warp {
                             if let Err(e) =
                                 crate::infrastructure::warp_integration::generate_warp_workflows(
@@ -156,7 +155,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                             .template("{spinner:.magenta} {msg}")
                             .into_diagnostic()?,
                     );
-                    pb.set_message(format!("Adding worktree: {}...", intent));
+                    pb.set_message(format!("Adding worktree: {intent}..."));
                     pb.enable_steady_tick(Duration::from_millis(100));
                     Some(pb)
                 } else {
@@ -174,7 +173,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 .into_diagnostic()?;
 
                 match res {
-                    Ok(_) => {
+                    Ok(()) => {
                         if let Some(pb) = pb {
                             pb.finish_and_clear();
                         }
@@ -226,7 +225,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 .into_diagnostic()?;
 
                 match res {
-                    Ok(_) => {
+                    Ok(()) => {
                         info!(%intent, "Worktree removed successfully");
                         if json_mode {
                             View::render_json(
@@ -285,7 +284,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 let repo_clone = repo.clone();
                 let main_res = tokio::task::spawn_blocking(move || {
                     match repo_clone.add_worktree("main", "main") {
-                        Ok(_) => serde_json::json!({ "name": "main", "status": "ready" }),
+                        Ok(()) => serde_json::json!({ "name": "main", "status": "ready" }),
                         Err(_) => serde_json::json!({ "name": "main", "status": "skipped" }),
                     }
                 })
@@ -305,9 +304,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 let repo_clone = repo.clone();
                 let dev_res = tokio::task::spawn_blocking(move || {
                     match repo_clone.add_worktree("dev", "dev") {
-                        Ok(_) => serde_json::json!({ "name": "dev", "status": "ready" }),
+                        Ok(()) => serde_json::json!({ "name": "dev", "status": "ready" }),
                         Err(_) => match repo_clone.add_new_worktree("dev", "dev", "main") {
-                            Ok(_) => serde_json::json!({ "name": "dev", "status": "ready", "created_from": "main" }),
+                            Ok(()) => serde_json::json!({ "name": "dev", "status": "ready", "created_from": "main" }),
                             Err(_) => serde_json::json!({ "name": "dev", "status": "skipped" })
                         },
                     }
@@ -493,7 +492,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                         .into_diagnostic()?;
 
                     match res {
-                        Ok(_) => {
+                        Ok(()) => {
                             if !json_mode && !quiet_mode {
                                 println!("   {} Push complete.", "✔".green());
                             }
@@ -548,7 +547,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                         .into_diagnostic()?;
 
                     match res {
-                        Ok(_) => {
+                        Ok(()) => {
                             if !json_mode && !quiet_mode {
                                 println!("   {} Pull complete.", "✔".green());
                             }
@@ -592,15 +591,13 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                         .await
                         .into_diagnostic()?
                         .map_err(|e| miette::miette!("Failed to get API key: {}", e))?;
-                    if !json_mode {
-                        if let Some(val) = k {
-                            println!("{} Current API key: {}", "➜".cyan().bold(), val);
-                        } else {
-                            println!("{} No API key found.", "⚠".yellow().bold());
-                        }
-                    } else {
+                    if json_mode {
                         View::render_json(&serde_json::json!({ "status": "success", "key": k }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
+                    } else if let Some(val) = k {
+                        println!("{} Current API key: {}", "➜".cyan().bold(), val);
+                    } else {
+                        println!("{} No API key found.", "⚠".yellow().bold());
                     }
                 }
             }
@@ -870,7 +867,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 .into_diagnostic()?;
 
                 match res {
-                    Ok(_) => {
+                    Ok(()) => {
                         info!(%intent, %branch, "Worktree branch switched successfully");
                         if json_mode {
                             View::render_json(&serde_json::json!({
@@ -937,7 +934,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R> {
                 } else {
                     println!("\n{}", "Generated Warp Launch Configuration:".cyan().bold());
                     println!("---");
-                    println!("{}", yaml);
+                    println!("{yaml}");
                     println!("---");
                     println!("\n{}", "To use this configuration:".yellow().bold());
                     println!("1. Save the above content to a file, e.g., `warp-launch.yaml`.");
@@ -984,7 +981,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .calls
-                .push(format!("init:{:?}|{}", url, name));
+                .push(format!("init:{url:?}|{name}"));
             Ok(())
         }
         fn add_worktree(&self, intent: &str, branch: &str) -> anyhow::Result<()> {
@@ -992,7 +989,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .calls
-                .push(format!("add:{}|{}", intent, branch));
+                .push(format!("add:{intent}|{branch}"));
             Ok(())
         }
         fn add_new_worktree(&self, intent: &str, branch: &str, base: &str) -> anyhow::Result<()> {
@@ -1000,7 +997,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .calls
-                .push(format!("add_new:{}|{}|{}", intent, branch, base));
+                .push(format!("add_new:{intent}|{branch}|{base}"));
             Ok(())
         }
         fn remove_worktree(&self, intent: &str, force: bool) -> anyhow::Result<()> {
@@ -1008,7 +1005,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .calls
-                .push(format!("remove:{}|force:{}", intent, force));
+                .push(format!("remove:{intent}|force:{force}"));
             Ok(())
         }
         fn list_worktrees(&self) -> anyhow::Result<Vec<Worktree>> {
@@ -1041,7 +1038,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .calls
-                .push(format!("sync:{}", path));
+                .push(format!("sync:{path}"));
             Ok(())
         }
 
@@ -1059,7 +1056,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .calls
-                .push(format!("pull:{}", path));
+                .push(format!("pull:{path}"));
             Ok(())
         }
         fn detect_context(
@@ -1082,7 +1079,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .calls
-                .push(format!("push:{}", path));
+                .push(format!("push:{path}"));
             Ok(())
         }
         fn get_status(&self, _path: &str) -> anyhow::Result<crate::domain::repository::GitStatus> {
@@ -1122,7 +1119,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .calls
-                .push(format!("switch:{}|{}", path, branch));
+                .push(format!("switch:{path}|{branch}"));
             Ok(())
         }
         fn get_diff(&self, _path: &str) -> anyhow::Result<String> {
@@ -1149,7 +1146,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .calls
-                .push(format!("convert:{:?}|{:?}", name, branch));
+                .push(format!("convert:{name:?}|{branch:?}"));
             Ok(std::path::PathBuf::from("hub"))
         }
 
@@ -1166,29 +1163,29 @@ mod tests {
     #[test]
     fn test_get_project_name() {
         assert_eq!(
-            get_project_name(&Some("https://github.com/user/repo.git".to_string()), None),
+            get_project_name(Some(&"https://github.com/user/repo.git".to_string()), None),
             "repo"
         );
         assert_eq!(
-            get_project_name(&Some("git@github.com:user/my-project".to_string()), None),
+            get_project_name(Some(&"git@github.com:user/my-project".to_string()), None),
             "my-project"
         );
         assert_eq!(
             get_project_name(
-                &Some("https://github.com/user/repo.git".to_string()),
+                Some(&"https://github.com/user/repo.git".to_string()),
                 Some("custom".to_string())
             ),
             "custom"
         );
         assert_eq!(
-            get_project_name(&Some("/path/to/local/repo".to_string()), None),
+            get_project_name(Some(&"/path/to/local/repo".to_string()), None),
             "repo"
         );
         assert_eq!(
-            get_project_name(&None, Some("my-project".to_string())),
+            get_project_name(None, Some("my-project".to_string())),
             "my-project"
         );
-        assert_eq!(get_project_name(&None, None), "project");
+        assert_eq!(get_project_name(None, None), "project");
     }
 
     #[tokio::test]
@@ -1292,8 +1289,8 @@ mod tests {
         res.map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
         let calls = tracker.lock().unwrap().calls.clone();
-        assert_eq!(calls[0], format!("add:{}|main", temp_dir));
-        assert_eq!(calls[1], format!("remove:{}|force:true", temp_dir));
+        assert_eq!(calls[0], format!("add:{temp_dir}|main"));
+        assert_eq!(calls[1], format!("remove:{temp_dir}|force:true"));
         Ok(())
     }
 
