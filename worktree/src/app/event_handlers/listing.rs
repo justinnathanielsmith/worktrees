@@ -24,7 +24,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
 ) -> Result<Option<AppState>> {
     use crossterm::event::{Event, KeyCode, MouseButton, MouseEventKind};
 
-    let (filter_query, _is_filtering, mode, last_selection_change) = if let AppState::ListingWorktrees {
+    let (filter_query, _is_filtering, mode, _last_selection_change) = if let AppState::ListingWorktrees {
         filter_query,
         is_filtering,
         mode,
@@ -210,19 +210,22 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     KeyCode::Char('v') => {
                         if let Some(i) = table_state.selected()
                             && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
-                            && let Ok(status) = repo.get_status(&wt.path)
                         {
-                            return Ok(Some(AppState::ViewingStatus {
+                            let repo_clone = repo.clone();
+                            let path_clone = wt.path.clone();
+                            let tx = async_tx.clone();
+
+                            tokio::task::spawn_blocking(move || {
+                                let result = repo_clone.get_status(&path_clone);
+                                let _ = tx.send(AsyncResult::StatusFetched {
+                                    path: path_clone,
+                                    result,
+                                });
+                            });
+
+                            return Ok(Some(AppState::LoadingStatus {
                                 path: wt.path.clone(),
                                 branch: wt.branch.clone(),
-                                status: crate::app::model::StatusViewState {
-                                    staged: status.staged,
-                                    unstaged: status.unstaged,
-                                    untracked: status.untracked,
-                                    selected_index: 0,
-                                    diff_preview: None,
-                                    show_diff: false,
-                                },
                                 prev_state: Box::new(current_state.clone()),
                             }));
                         }
@@ -230,12 +233,21 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     KeyCode::Char('l') => {
                         if let Some(i) = table_state.selected()
                             && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
-                            && let Ok(commits) = repo.get_history(&wt.path, 50)
                         {
-                            return Ok(Some(AppState::ViewingHistory {
+                            let repo_clone = repo.clone();
+                            let path_clone = wt.path.clone();
+                            let tx = async_tx.clone();
+
+                            tokio::task::spawn_blocking(move || {
+                                let result = repo_clone.get_history(&path_clone, 50);
+                                let _ = tx.send(AsyncResult::HistoryFetched {
+                                    path: path_clone,
+                                    result,
+                                });
+                            });
+
+                            return Ok(Some(AppState::LoadingHistory {
                                 branch: wt.branch.clone(),
-                                commits,
-                                selected_index: 0,
                                 prev_state: Box::new(current_state.clone()),
                             }));
                         }
@@ -342,12 +354,13 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         return Ok(Some(new_state));
                     }
                     KeyCode::Char('a') => {
-                        let branches = repo
-                            .list_branches()
-                            .map_err(|e| anyhow::anyhow!("Failed to list branches: {e}"))?;
-                        return Ok(Some(AppState::PickingBaseRef {
-                            branches,
-                            selected_index: 0,
+                        let repo_clone = repo.clone();
+                        let tx = async_tx.clone();
+                        tokio::task::spawn_blocking(move || {
+                            let result = repo_clone.list_branches();
+                            let _ = tx.send(AsyncResult::BranchesFetched { result });
+                        });
+                        return Ok(Some(AppState::LoadingBranches {
                             prev_state: Box::new(current_state.clone()),
                         }));
                     }
@@ -376,22 +389,15 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         }
                     }
                     KeyCode::Char('c') => {
-                        let prev = Box::new(current_state.clone());
-                        match repo.clean_worktrees(false, false) {
-                            Ok(_) => {
-                                return Ok(Some(create_timed_state(
-                                    AppState::WorktreeRemoved,
-                                    *prev,
-                                    1200,
-                                )));
-                            }
-                            Err(e) => {
-                                return Ok(Some(AppState::Error(
-                                    format!("Failed to clean: {e}"),
-                                    prev,
-                                )));
-                            }
-                        }
+                        let repo_clone = repo.clone();
+                        let tx = async_tx.clone();
+                        tokio::task::spawn_blocking(move || {
+                            let result = repo_clone.clean_worktrees(false, false);
+                            let _ = tx.send(AsyncResult::CleanCompleted { result });
+                        });
+                        return Ok(Some(AppState::Cleaning {
+                            prev_state: Box::new(current_state.clone()),
+                        }));
                     }
                     KeyCode::Char('C') => {
                         return Ok(Some(AppState::Confirming {

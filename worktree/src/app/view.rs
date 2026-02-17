@@ -93,6 +93,12 @@ impl View {
             } => {
                 render_status(f, branch, status, prev_state, area);
             }
+            AppState::LoadingStatus { prev_state, .. }
+            | AppState::LoadingHistory { prev_state, .. }
+            | AppState::LoadingBranches { prev_state, .. }
+            | AppState::Cleaning { prev_state, .. } => {
+                Self::render_background(f, prev_state, context, area, spinner_tick);
+            }
             _ => {}
         }
     }
@@ -185,6 +191,37 @@ impl View {
                         {
                             dashboard.loading = false;
                             dashboard.cached_status = result.ok();
+                        } else if let AppState::LoadingStatus {
+                            path: load_path,
+                            branch,
+                            prev_state,
+                            ..
+                        } = state
+                            && *load_path == path
+                        {
+                            match result {
+                                Ok(status) => {
+                                    *state = AppState::ViewingStatus {
+                                        path,
+                                        branch: branch.clone(),
+                                        status: crate::app::model::StatusViewState {
+                                            staged: status.staged,
+                                            unstaged: status.unstaged,
+                                            untracked: status.untracked,
+                                            selected_index: 0,
+                                            diff_preview: None,
+                                            show_diff: false,
+                                        },
+                                        prev_state: prev_state.clone(),
+                                    };
+                                }
+                                Err(e) => {
+                                    *state = AppState::Error(
+                                        format!("Failed to fetch status: {e}"),
+                                        prev_state.clone(),
+                                    );
+                                }
+                            }
                         }
                     }
                     AsyncResult::HistoryFetched { path, result } => {
@@ -200,6 +237,65 @@ impl View {
                         {
                             dashboard.loading = false;
                             dashboard.cached_history = result.ok();
+                        } else if let AppState::LoadingHistory {
+                            branch, prev_state, ..
+                        } = state
+                        {
+                            match result {
+                                Ok(commits) => {
+                                    *state = AppState::ViewingHistory {
+                                        branch: branch.clone(),
+                                        commits,
+                                        selected_index: 0,
+                                        prev_state: prev_state.clone(),
+                                    };
+                                }
+                                Err(e) => {
+                                    *state = AppState::Error(
+                                        format!("Failed to fetch history: {e}"),
+                                        prev_state.clone(),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    AsyncResult::BranchesFetched { result } => {
+                        if let AppState::LoadingBranches { prev_state, .. } = state {
+                            match result {
+                                Ok(branches) => {
+                                    *state = AppState::PickingBaseRef {
+                                        branches,
+                                        selected_index: 0,
+                                        prev_state: prev_state.clone(),
+                                    };
+                                }
+                                Err(e) => {
+                                    *state = AppState::Error(
+                                        format!("Failed to list branches: {e}"),
+                                        prev_state.clone(),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    AsyncResult::CleanCompleted { result } => {
+                        if let AppState::Cleaning { prev_state, .. } = state {
+                            match result {
+                                Ok(_) => {
+                                    *state = create_timed_state(
+                                        AppState::WorktreeRemoved,
+                                        *prev_state.clone(),
+                                        1200,
+                                    );
+                                }
+                                Err(e) => {
+                                    *state = AppState::Error(
+                                        format!("Clean failed: {e}"),
+                                        prev_state.clone(),
+                                    );
+                                }
+                            }
+                            state.request_refresh();
                         }
                     }
                     AsyncResult::FetchCompleted {
@@ -362,7 +458,7 @@ impl View {
                             mode,
                             last_selection_change: std::time::Instant::now(),
                         };
-                        return Ok(Some("State updated".into())); // Exit loop after updating state
+                        // state updated
                     }
                 } else if *refresh_needed == RefreshType::Dashboard {
                     if let AppState::ListingWorktrees {
@@ -547,6 +643,13 @@ impl View {
                             &current_state_clone,
                         );
                     }
+                    AppState::LoadingStatus { .. }
+                    | AppState::LoadingHistory { .. }
+                    | AppState::LoadingBranches { .. }
+                    | AppState::Cleaning { .. } => {
+                        // Background loading states don't have secondary event handlers
+                        // But can still be exited via global q/Esc handled below
+                    }
                     // Handle global exit if not handled by detailed handlers (or for states without handlers)
                     _ => {
                         if let Event::Key(key) = event
@@ -562,7 +665,6 @@ impl View {
                         return Ok(res);
                     }
                     *state = ns;
-                    state.request_refresh();
                 }
             }
         }
@@ -737,6 +839,12 @@ impl View {
             }
             AppState::ViewingStashes { .. } => {
                 StashListWidget::render(f, chunks[1], display_state);
+            }
+            AppState::LoadingStatus { .. }
+            | AppState::LoadingHistory { .. }
+            | AppState::LoadingBranches { .. }
+            | AppState::Cleaning { .. } => {
+                render_modals(f, repo, display_state, spinner_tick);
             }
             _ => {
                 // Handle modals and everything else

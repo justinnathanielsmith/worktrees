@@ -237,6 +237,10 @@ impl CliRenderer {
             | AppState::PickingBaseRef { .. }
             | AppState::Committing { .. }
             | AppState::Timed { .. }
+            | AppState::LoadingStatus { .. }
+            | AppState::LoadingHistory { .. }
+            | AppState::LoadingBranches { .. }
+            | AppState::Cleaning { .. }
             | AppState::Exiting(_) => {
                 // These are handled by render_tui, no-op for CLI log view
             }

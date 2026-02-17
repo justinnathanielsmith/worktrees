@@ -589,14 +589,21 @@ pub fn render_modals<R: ProjectRepository>(
         }
         AppState::Initializing { .. }
         | AppState::AddingWorktree { .. }
-        | AppState::SettingUpDefaults => {
+        | AppState::SettingUpDefaults
+        | AppState::LoadingStatus { .. }
+        | AppState::LoadingHistory { .. }
+        | AppState::LoadingBranches { .. }
+        | AppState::Cleaning { .. } => {
             let theme = CyberTheme::default();
-            let title_text = if matches!(state, AppState::Initializing { .. }) {
-                "INITIALIZING REPOSITORY"
-            } else if matches!(state, AppState::AddingWorktree { .. }) {
-                "ADDING WORKTREE"
-            } else {
-                "CONFIGURING DEFAULTS"
+            let title_text = match state {
+                AppState::Initializing { .. } => "INITIALIZING REPOSITORY",
+                AppState::AddingWorktree { .. } => "ADDING WORKTREE",
+                AppState::SettingUpDefaults => "CONFIGURING DEFAULTS",
+                AppState::LoadingStatus { .. } => "FETCHING GIT STATUS",
+                AppState::LoadingHistory { .. } => "FETCHING COMMIT HISTORY",
+                AppState::LoadingBranches { .. } => "LISTING BRANCHES",
+                AppState::Cleaning { .. } => "CLEANING WORKTREES",
+                _ => "PROCESSING",
             };
 
             render_info_modal(

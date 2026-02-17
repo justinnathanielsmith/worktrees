@@ -36,4 +36,10 @@ pub enum AsyncResult {
         branch: String,
         result: anyhow::Result<()>,
     },
+    BranchesFetched {
+        result: anyhow::Result<Vec<String>>,
+    },
+    CleanCompleted {
+        result: anyhow::Result<Vec<String>>,
+    },
 }

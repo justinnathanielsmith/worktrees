@@ -236,6 +236,25 @@ pub enum AppState {
         selected_index: usize,
         prev_state: Box<Self>,
     },
+    /// Loading status for a worktree.
+    LoadingStatus {
+        path: String,
+        branch: String,
+        prev_state: Box<Self>,
+    },
+    /// Loading history for a worktree.
+    LoadingHistory {
+        branch: String,
+        prev_state: Box<Self>,
+    },
+    /// Loading branches for selection.
+    LoadingBranches {
+        prev_state: Box<Self>,
+    },
+    /// Cleaning stale worktrees/artifacts.
+    Cleaning {
+        prev_state: Box<Self>,
+    },
     /// Branch selection menu for switching worktree branches.
     SwitchingBranch {
         path: String,
@@ -305,6 +324,10 @@ impl AppState {
             | Self::ViewingStatus { prev_state, .. }
             | Self::ViewingStashes { prev_state, .. }
             | Self::ViewingHistory { prev_state, .. }
+            | Self::LoadingStatus { prev_state, .. }
+            | Self::LoadingHistory { prev_state, .. }
+            | Self::LoadingBranches { prev_state, .. }
+            | Self::Cleaning { prev_state, .. }
             | Self::SwitchingBranch { prev_state, .. }
             | Self::Committing { prev_state, .. }
             | Self::PickingBaseRef { prev_state, .. }
