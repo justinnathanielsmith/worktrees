@@ -1260,8 +1260,8 @@ mod tests {
     use anyhow::Result;
     use crossbeam_channel::Receiver;
 
-    use std::sync::{Arc, Mutex};
     use serial_test::serial;
+    use std::sync::{Arc, Mutex};
 
     #[derive(Default)]
     struct CallTracker {
@@ -1396,15 +1396,13 @@ mod tests {
         }
         fn get_status(&self, path: &str) -> anyhow::Result<crate::domain::repository::GitStatus> {
             let tracker = self.tracker.lock().unwrap();
-            Ok(tracker
-                .status_map
-                .get(path)
-                .cloned()
-                .unwrap_or_else(|| crate::domain::repository::GitStatus {
+            Ok(tracker.status_map.get(path).cloned().unwrap_or_else(|| {
+                crate::domain::repository::GitStatus {
                     staged: vec![],
                     unstaged: vec![],
                     untracked: vec![],
-                }))
+                }
+            }))
         }
         fn stage_all(&self, _path: &str) -> anyhow::Result<()> {
             Ok(())
@@ -1884,12 +1882,18 @@ mod tests {
             .collect();
 
         assert_eq!(relevant_calls.len(), 3);
-        assert!(relevant_calls[0].starts_with("stash_save")
-            && relevant_calls[0].contains(&main_path.to_string_lossy().to_string()));
-        assert!(relevant_calls[1].starts_with("apply_stash")
-            && relevant_calls[1].contains(&dev_path.to_string_lossy().to_string()));
-        assert!(relevant_calls[2].starts_with("drop_stash")
-            && relevant_calls[2].contains(&main_path.to_string_lossy().to_string()));
+        assert!(
+            relevant_calls[0].starts_with("stash_save")
+                && relevant_calls[0].contains(&main_path.to_string_lossy().to_string())
+        );
+        assert!(
+            relevant_calls[1].starts_with("apply_stash")
+                && relevant_calls[1].contains(&dev_path.to_string_lossy().to_string())
+        );
+        assert!(
+            relevant_calls[2].starts_with("drop_stash")
+                && relevant_calls[2].contains(&main_path.to_string_lossy().to_string())
+        );
 
         Ok(())
     }
