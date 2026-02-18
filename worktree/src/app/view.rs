@@ -489,7 +489,7 @@ impl View {
                                 if let AppState::ViewingStashes {
                                     path,
                                     branch,
-                                    selected_index: _,
+                                    selected_index,
                                     prev_state: inner_prev,
                                     ..
                                 } = state
@@ -499,6 +499,7 @@ impl View {
                                     let tx = async_tx.clone();
                                     let repo_clone = repo.clone();
                                     let path_clone_for_task = path_clone.clone();
+                                    let current_index = *selected_index;
                                     tokio::task::spawn_blocking(move || {
                                         let res = repo_clone.list_stashes(&path_clone_for_task);
                                         let _ = tx.send(AsyncResult::StashesFetched {
@@ -509,6 +510,7 @@ impl View {
                                     *state = AppState::LoadingStashes {
                                         path: path_clone.clone(),
                                         branch: branch_clone,
+                                        selected_index: current_index,
                                         prev_state: inner_prev.clone(),
                                     };
                                 }
@@ -519,16 +521,22 @@ impl View {
                         if let AppState::LoadingStashes {
                             path,
                             branch,
+                            selected_index,
                             prev_state,
                         } = state
                         {
                             match result {
                                 Ok(stashes) => {
+                                    let new_selected_index = if stashes.is_empty() {
+                                        0
+                                    } else {
+                                        (*selected_index).min(stashes.len() - 1)
+                                    };
                                     *state = AppState::ViewingStashes {
                                         path: path.clone(),
                                         branch: branch.clone(),
                                         stashes,
-                                        selected_index: 0, // Reset for now or track it
+                                        selected_index: new_selected_index,
                                         prev_state: prev_state.clone(),
                                     };
                                 }

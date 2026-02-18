@@ -28,7 +28,7 @@ impl Widget for StatusTabWidget<'_> {
                 )]));
             } else {
                 let max_items = 15;
-                
+
                 if !status.staged.is_empty() {
                     lines.push(Line::from(Span::styled(
                         " 󰄬 STAGED:",
@@ -36,14 +36,16 @@ impl Widget for StatusTabWidget<'_> {
                             .fg(theme.success)
                             .add_modifier(Modifier::BOLD),
                     )));
-                    
+
                     for (i, (file, code)) in status.staged.iter().enumerate() {
                         if i >= max_items {
                             lines.push(Line::from(vec![
                                 Span::raw("   "),
                                 Span::styled(
                                     format!("... and {} more", status.staged.len() - max_items),
-                                    Style::default().fg(theme.subtle).add_modifier(Modifier::ITALIC),
+                                    Style::default()
+                                        .fg(theme.subtle)
+                                        .add_modifier(Modifier::ITALIC),
                                 ),
                             ]));
                             break;
@@ -72,22 +74,25 @@ impl Widget for StatusTabWidget<'_> {
                             .fg(theme.warning)
                             .add_modifier(Modifier::BOLD),
                     )));
-                    
+
                     let mut count = 0;
                     for (file, code) in &status.unstaged {
                         if count >= max_items {
-                            let remaining = (status.unstaged.len() + status.untracked.len()) - count;
-                             lines.push(Line::from(vec![
+                            let remaining =
+                                (status.unstaged.len() + status.untracked.len()) - count;
+                            lines.push(Line::from(vec![
                                 Span::raw("   "),
                                 Span::styled(
                                     format!("... and {} more", remaining),
-                                    Style::default().fg(theme.subtle).add_modifier(Modifier::ITALIC),
+                                    Style::default()
+                                        .fg(theme.subtle)
+                                        .add_modifier(Modifier::ITALIC),
                                 ),
                             ]));
                             count += 1000; // Force break outer or just break here?
                             break;
                         }
-                        
+
                         let is_deleted = code.contains('D');
                         let style = if is_deleted {
                             Style::default().fg(theme.error)
@@ -104,14 +109,20 @@ impl Widget for StatusTabWidget<'_> {
                     }
 
                     if count < max_items {
-                         for file in &status.untracked {
+                        for file in &status.untracked {
                             if count >= max_items {
                                 // check render count vs total
                                 lines.push(Line::from(vec![
                                     Span::raw("   "),
                                     Span::styled(
-                                        format!("... and {} more", status.untracked.len() - (count - status.unstaged.len())), 
-                                        Style::default().fg(theme.subtle).add_modifier(Modifier::ITALIC),
+                                        format!(
+                                            "... and {} more",
+                                            status.untracked.len()
+                                                - (count - status.unstaged.len())
+                                        ),
+                                        Style::default()
+                                            .fg(theme.subtle)
+                                            .add_modifier(Modifier::ITALIC),
                                     ),
                                 ]));
                                 break;
