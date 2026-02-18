@@ -107,6 +107,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
             .enumerate()
             .map(|(i, wt)| {
                 let is_selected = Some(i) == state.selected();
+                let _is_dirty = wt.status_summary.as_ref().is_some_and(|s| s != "clean");
 
                 let (icon, branch_style) = if wt.is_bare {
                     (
