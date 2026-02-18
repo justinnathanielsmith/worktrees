@@ -23,20 +23,24 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
 ) -> Result<Option<AppState>> {
     use crossterm::event::{Event, KeyCode, MouseButton, MouseEventKind};
 
-    let (filter_query, _is_filtering, mode, _last_selection_change) = if let AppState::ListingWorktrees {
+    // Optimization: Early return for irrelevant mouse events (Moved/Drag) to avoid overhead
+    if let Event::Mouse(mouse) = event {
+        if matches!(mouse.kind, MouseEventKind::Moved | MouseEventKind::Drag(_)) {
+            return Ok(None);
+        }
+    }
+
+    let (filter_query, mode, filtered_worktrees) = if let AppState::ListingWorktrees {
         filter_query,
-        is_filtering,
         mode,
-        last_selection_change,
+        filtered_worktrees,
         ..
     } = current_state
     {
-        (filter_query.clone(), *is_filtering, *mode, *last_selection_change)
+        (filter_query.clone(), *mode, filtered_worktrees.as_slice())
     } else {
-        (String::new(), false, AppMode::Normal, std::time::Instant::now())
+        (String::new(), AppMode::Normal, worktrees)
     };
-
-    let filtered_worktrees = filter_worktrees(worktrees, &filter_query);
 
     match event {
         Event::Key(key) => {
