@@ -550,8 +550,10 @@ impl ProjectRepository for GitProjectRepository {
             .map(|block| {
                 let mut wt = Self::parse_worktree_entry(block);
 
-                // Skip size calculation for performance (avoid recursive walk)
-                wt.size_bytes = 0;
+                if !wt.path.is_empty() {
+                    // wt.size_bytes = Self::calculate_dir_size(Path::new(&wt.path));
+                    wt.size_bytes = 0;
+                }
 
                 if !wt.is_bare && !wt.path.is_empty() {
                     wt.status_summary = Self::get_status_summary(&wt.path).ok();

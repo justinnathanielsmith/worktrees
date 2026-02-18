@@ -15,6 +15,7 @@ pub struct WorktreeListWidget<'a> {
     worktrees: &'a [Worktree],
     is_dimmed: bool,
     spinner_tick: usize,
+    filter_query: Option<&'a str>,
 }
 
 impl<'a> WorktreeListWidget<'a> {
@@ -23,6 +24,7 @@ impl<'a> WorktreeListWidget<'a> {
             worktrees,
             is_dimmed: false,
             spinner_tick: 0,
+            filter_query: None,
         }
     }
 
@@ -33,6 +35,11 @@ impl<'a> WorktreeListWidget<'a> {
 
     pub const fn tick(mut self, tick: usize) -> Self {
         self.spinner_tick = tick;
+        self
+    }
+
+    pub const fn with_filter(mut self, query: Option<&'a str>) -> Self {
+        self.filter_query = query;
         self
     }
 }
@@ -84,16 +91,37 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 ])
                 .split(inner_area);
 
-            let text = vec![
-                Line::from(Span::styled(
-                    "No worktrees found.",
-                    Style::default().fg(theme.subtle),
-                )),
-                Line::from(Span::styled(
-                    "Press [A] to add a worktree.",
-                    Style::default().fg(theme.secondary),
-                )),
-            ];
+            let text = if let Some(query) = self.filter_query
+                && !query.is_empty()
+            {
+                vec![
+                    Line::from(vec![
+                        Span::styled("No worktrees match '", Style::default().fg(theme.subtle)),
+                        Span::styled(
+                            query,
+                            Style::default()
+                                .fg(theme.warning)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled("'.", Style::default().fg(theme.subtle)),
+                    ]),
+                    Line::from(Span::styled(
+                        "Press [Esc] to clear filter.",
+                        Style::default().fg(theme.subtle),
+                    )),
+                ]
+            } else {
+                vec![
+                    Line::from(Span::styled(
+                        "No worktrees found.",
+                        Style::default().fg(theme.subtle),
+                    )),
+                    Line::from(Span::styled(
+                        "Press [A] to add a worktree.",
+                        Style::default().fg(theme.secondary),
+                    )),
+                ]
+            };
 
             Paragraph::new(text)
                 .alignment(Alignment::Center)
@@ -328,6 +356,33 @@ mod tests {
 
         assert!(content.contains("No worktrees found."));
         assert!(content.contains("Press [A] to add a worktree."));
+        assert!(content.contains("ACTIVE WORKTREES (0)"));
+    }
+
+    #[test]
+    fn test_render_empty_worktree_list_with_filter() {
+        let backend = TestBackend::new(40, 10);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut state = TableState::default();
+        let worktrees = vec![];
+        let widget = WorktreeListWidget::new(&worktrees).with_filter(Some("foobar"));
+
+        terminal
+            .draw(|f| {
+                let area = f.area();
+                f.render_stateful_widget(widget, area, &mut state);
+            })
+            .unwrap();
+
+        let buffer = terminal.backend().buffer();
+        let content = buffer
+            .content()
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect::<String>();
+
+        assert!(content.contains("No worktrees match 'foobar'."));
+        assert!(content.contains("Press [Esc] to clear filter."));
         assert!(content.contains("ACTIVE WORKTREES (0)"));
     }
 }
