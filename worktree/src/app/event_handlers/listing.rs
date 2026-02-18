@@ -216,8 +216,6 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                             // Offload editor config fetch
                             let repo_clone = repo.clone();
                             let path_clone = path.clone();
-                            let branch_clone = branch.clone();
-                            let tx = async_tx.clone();
 
                             tokio::task::spawn_blocking(move || {
                                 if let Ok(Some(editor)) = repo_clone.get_preferred_editor() {
