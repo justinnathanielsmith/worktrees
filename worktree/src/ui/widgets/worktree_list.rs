@@ -101,7 +101,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
             return;
         }
 
-        let rows: Vec<Row> = self
+        let rows = self
             .worktrees
             .iter()
             .enumerate()
@@ -227,8 +227,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 ])
                 .style(row_style)
                 .height(1)
-            })
-            .collect();
+            });
 
         let table = Table::new(
             rows,
@@ -283,12 +282,16 @@ impl StatefulWidget for WorktreeListWidget<'_> {
     }
 }
 
-fn format_size(bytes: u64) -> String {
+fn format_size(bytes: u64) -> Cow<'static, str> {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
     const GB: u64 = MB * 1024;
 
-    if bytes >= GB {
+    if bytes == 0 {
+        return Cow::Borrowed("0 B");
+    }
+
+    let s = if bytes >= GB {
         format!("{:.1} GB", bytes as f64 / GB as f64)
     } else if bytes >= MB {
         format!("{:.1} MB", bytes as f64 / MB as f64)
@@ -296,7 +299,8 @@ fn format_size(bytes: u64) -> String {
         format!("{:.1} KB", bytes as f64 / KB as f64)
     } else {
         format!("{bytes} B")
-    }
+    };
+    Cow::Owned(s)
 }
 
 #[cfg(test)]
@@ -330,4 +334,5 @@ mod tests {
         assert!(content.contains("Press [A] to add a worktree."));
         assert!(content.contains("ACTIVE WORKTREES (0)"));
     }
+
 }
