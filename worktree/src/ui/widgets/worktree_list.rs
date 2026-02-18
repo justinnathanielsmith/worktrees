@@ -1,6 +1,5 @@
 use crate::domain::repository::Worktree;
 use crate::ui::theme::{CyberTheme, Icons};
-use std::borrow::Cow;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -10,6 +9,7 @@ use ratatui::{
         ScrollbarState, StatefulWidget, Table, TableState, Widget,
     },
 };
+use std::borrow::Cow;
 
 pub struct WorktreeListWidget<'a> {
     worktrees: &'a [Worktree],
@@ -107,7 +107,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
             .enumerate()
             .map(|(i, wt)| {
                 let is_selected = Some(i) == state.selected();
-                let is_dirty = wt.status_summary.as_ref().is_some_and(|s| s != "clean");
+                let _is_dirty = wt.status_summary.as_ref().is_some_and(|s| s != "clean");
 
                 let (icon, branch_style) = if wt.is_bare {
                     (
@@ -140,9 +140,10 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 {
                     Cow::Borrowed(purpose.as_str())
                 } else {
-                    std::path::Path::new(&wt.path)
-                        .file_name()
-                        .map_or_else(|| Cow::Borrowed(wt.branch.as_str()), |n| n.to_string_lossy())
+                    std::path::Path::new(&wt.path).file_name().map_or_else(
+                        || Cow::Borrowed(wt.branch.as_str()),
+                        |n| n.to_string_lossy(),
+                    )
                 };
 
                 let mut row_style = Style::default().fg(theme.text);
