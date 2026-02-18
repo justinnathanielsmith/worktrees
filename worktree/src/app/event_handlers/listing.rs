@@ -199,7 +199,9 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                                     if let Ok(root_path) = root {
                                         let path_str = root_path.to_string_lossy().to_string();
                                         if let Ok(Some(editor_cmd)) = editor {
-                                            let _ = std::process::Command::new(&editor_cmd).arg(&path_str).spawn();
+                                            let _ = std::process::Command::new(&editor_cmd)
+                                                .arg(&path_str)
+                                                .spawn();
                                         }
                                     }
                                 });
@@ -223,7 +225,9 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
 
                             tokio::task::spawn_blocking(move || {
                                 if let Ok(Some(editor)) = repo_clone.get_preferred_editor() {
-                                    let _ = std::process::Command::new(&editor).arg(&path_clone).spawn();
+                                    let _ = std::process::Command::new(&editor)
+                                        .arg(&path_clone)
+                                        .spawn();
                                     // We could send an AsyncResult to confirm opening, but Timed state handles UI feedback
                                 }
                             });
@@ -335,9 +339,11 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                                     #[cfg(target_os = "macos")]
                                     let _ = std::process::Command::new("open").arg(&path).spawn();
                                     #[cfg(target_os = "linux")]
-                                    let _ = std::process::Command::new("xdg-open").arg(&path).spawn();
+                                    let _ =
+                                        std::process::Command::new("xdg-open").arg(&path).spawn();
                                     #[cfg(target_os = "windows")]
-                                    let _ = std::process::Command::new("explorer").arg(&path).spawn();
+                                    let _ =
+                                        std::process::Command::new("explorer").arg(&path).spawn();
                                 }
                             });
                         }

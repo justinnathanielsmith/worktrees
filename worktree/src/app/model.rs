@@ -260,36 +260,19 @@ pub enum AppState {
         prev_state: Box<Self>,
     },
     /// Loading branches for selection.
-    LoadingBranches {
-        prev_state: Box<Self>,
-    },
+    LoadingBranches { prev_state: Box<Self> },
     /// Cleaning stale worktrees/artifacts.
-    Cleaning {
-        prev_state: Box<Self>,
-    },
+    Cleaning { prev_state: Box<Self> },
     /// Actively staging a file.
-    Staging {
-        path: String,
-        prev_state: Box<Self>,
-    },
+    Staging { path: String, prev_state: Box<Self> },
     /// Actively unstaging a file.
-    Unstaging {
-        path: String,
-        prev_state: Box<Self>,
-    },
+    Unstaging { path: String, prev_state: Box<Self> },
     /// Actively switching branch.
-    SwitchingBranchTask {
-        path: String,
-        prev_state: Box<Self>,
-    },
+    SwitchingBranchTask { path: String, prev_state: Box<Self> },
     /// Actively generating a commit message.
-    GeneratingCommitMessage {
-        prev_state: Box<Self>,
-    },
+    GeneratingCommitMessage { prev_state: Box<Self> },
     /// Loading diff for preview.
-    LoadingDiff {
-        prev_state: Box<Self>,
-    },
+    LoadingDiff { prev_state: Box<Self> },
     /// Branch selection menu for switching worktree branches.
     SwitchingBranch {
         path: String,
