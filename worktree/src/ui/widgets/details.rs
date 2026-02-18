@@ -1,5 +1,6 @@
 use crate::domain::repository::{ProjectContext, Worktree};
 use crate::ui::theme::CyberTheme;
+use std::borrow::Cow;
 use ratatui::{
     layout::Rect,
     style::{Modifier, Style},
@@ -172,8 +173,8 @@ impl Widget for DetailsWidget<'_> {
                         Span::styled(" INTENT : ", Style::default().fg(theme.secondary)),
                         Span::styled(
                             std::path::Path::new(&wt.path).file_name().map_or_else(
-                                || "UNKNOWN".to_string(),
-                                |n| n.to_string_lossy().to_string(),
+                                || Cow::Borrowed("UNKNOWN"),
+                                |n| n.to_string_lossy(),
                             ),
                             Style::default().fg(theme.text).add_modifier(Modifier::BOLD),
                         ),

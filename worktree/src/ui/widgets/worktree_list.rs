@@ -142,6 +142,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 } else {
                     std::path::Path::new(&wt.path)
                         .file_name()
+                        // Use Cow to avoid unnecessary string cloning
                         .map_or_else(|| Cow::Borrowed(wt.branch.as_str()), |n| n.to_string_lossy())
                 };
 
