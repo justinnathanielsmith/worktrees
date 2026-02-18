@@ -434,8 +434,41 @@ impl ProjectRepository for GitProjectRepository {
             return Ok(());
         }
 
-        let content = std::fs::read_to_string(manifest_path)
-            .context("Failed to read .worktrees.sync manifest.")?;
+        let abs_manifest_path = std::env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join(manifest_path);
+
+        let metadata = std::fs::metadata(manifest_path)
+            .context("Failed to read metadata of .worktrees.sync manifest.")?;
+        let mtime = metadata
+            .modified()
+            .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+
+        static SYNC_CONFIG_CACHE: std::sync::OnceLock<
+            std::sync::Mutex<std::collections::HashMap<PathBuf, (std::time::SystemTime, String)>>,
+        > = std::sync::OnceLock::new();
+        let cache = SYNC_CONFIG_CACHE
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+
+        let content = {
+            let mut guard = cache.lock().unwrap();
+            if let Some((cached_mtime, cached_content)) = guard.get(&abs_manifest_path) {
+                if *cached_mtime == mtime {
+                    debug!("Using cached .worktrees.sync manifest.");
+                    cached_content.clone()
+                } else {
+                    let content = std::fs::read_to_string(manifest_path)
+                        .context("Failed to read .worktrees.sync manifest.")?;
+                    guard.insert(abs_manifest_path, (mtime, content.clone()));
+                    content
+                }
+            } else {
+                let content = std::fs::read_to_string(manifest_path)
+                    .context("Failed to read .worktrees.sync manifest.")?;
+                guard.insert(abs_manifest_path, (mtime, content.clone()));
+                content
+            }
+        };
 
         for line in content.lines() {
             let line = line.trim();
