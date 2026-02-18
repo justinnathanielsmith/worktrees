@@ -90,10 +90,8 @@ impl GeminiClient {
     }
 
     async fn generate_content(&self, prompt: String, max_tokens: i32) -> Result<String> {
-        let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={}",
-            self.api_key
-        );
+        let url =
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
         let request = GeminiRequest {
             contents: vec![Content {
@@ -110,6 +108,7 @@ impl GeminiClient {
         let response = self
             .client
             .post(url)
+            .header("x-goog-api-key", &self.api_key)
             .json(&request)
             .send()
             .await
