@@ -187,8 +187,6 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                             let path = if wt.is_bare {
                                 // Offload project root fetching
                                 let repo_clone = repo.clone();
-                                let _tx = async_tx.clone();
-                                let _branch_clone = branch.clone();
                                 tokio::task::spawn_blocking(move || {
                                     let root = repo_clone.get_project_root();
                                     let editor = repo_clone.get_preferred_editor();
