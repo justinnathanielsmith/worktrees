@@ -18,6 +18,7 @@ Most developers rely on 'git stash' to temporarily store work, but stashing is d
     - **Warp Workflows**: Native command discovery via 'Ctrl+Shift+W'.
     - **Path Copying**: Instant context jumps with 'wt switch --copy'.
 - **Smart Cleanup**: Reclaim gigabytes of disk space by purging build artifacts from inactive environments.
+- **Context Teleportation**: Move uncommitted changes between worktrees instantly with 'worktree teleport <target>'.
 - **Zero-Friction Migration**: Convert existing standard repositories to Bare Hubs in-place or as clones.
 - **Cross-Platform**: Native binaries for macOS, Linux, and Windows.
 
@@ -86,18 +87,19 @@ my-project/              <-- Project Root
 
 ## ⌨️ CLI Command Reference
 
-| Command         | Description                                                                     |
-| :-------------- | :------------------------------------------------------------------------------ |
-| `init <url>`    | Initialize a new bare repository (clones if provided).                          |
-| `setup`         | Automatically create `main` and `dev` worktrees.                                |
-| `add <name>`    | Create a new worktree tracking a branch or commit.                              |
-| `switch <name>` | Quick jump to a worktree (prints path for shell).                               |
-| `list`          | Enter the interactive TUI (default command).                                    |
-| `clean`         | Purge build artifacts (`node_modules`, `target`, etc.) from inactive worktrees. |
-| `migrate`       | **In-place** conversion of a standard repo to Bare Hub.                         |
-| `open`          | Generate Warp Launch Configurations for the project.                            |
-| `run <name>`    | Execute a command in an isolated temporary sandbox.                             |
-| `config`        | Securely store your Gemini API key (mode 0o600).                                |
+| Command             | Description                                                                     |
+| :------------------ | :------------------------------------------------------------------------------ |
+| `init <url>`        | Initialize a new bare repository (clones if provided).                          |
+| `setup`             | Automatically create `main` and `dev` worktrees.                                |
+| `add <name>`        | Create a new worktree tracking a branch or commit.                              |
+| `switch <name>`     | Quick jump to a worktree (prints path for shell).                               |
+| `list`              | Enter the interactive TUI (default command).                                    |
+| `clean`             | Purge build artifacts (`node_modules`, `target`, etc.) from inactive worktrees. |
+| `migrate`           | **In-place** conversion of a standard repo to Bare Hub.                         |
+| `open`              | Generate Warp Launch Configurations for the project.                            |
+| `run <name>`        | Execute a command in an isolated temporary sandbox.                             |
+| `teleport <target>` | Move uncommitted changes to another worktree.                                   |
+| `config`            | Securely store your Gemini API key (mode 0o600).                                |
 
 ---
 
