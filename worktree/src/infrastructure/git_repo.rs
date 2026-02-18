@@ -422,6 +422,19 @@ impl ProjectRepository for GitProjectRepository {
             let action = parts[0];
             let source_name = parts[1];
             let source = Path::new(source_name);
+
+            if source.is_absolute()
+                || source
+                    .components()
+                    .any(|c| matches!(c, std::path::Component::ParentDir))
+            {
+                debug!(
+                    ?source,
+                    "Source path is unsafe (absolute or contains '..'), skipping."
+                );
+                continue;
+            }
+
             let destination = Path::new(path).join(source_name);
 
             if !source.exists() {
@@ -1977,5 +1990,58 @@ mod tests {
 
         // Cleanup
         std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_sync_configs_path_traversal() {
+        let _lock = CWD_MUTEX.lock().unwrap();
+        let temp_dir = std::env::temp_dir().join(format!("worktrees_traversal_test_{}", std::process::id()));
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        // Layout:
+        // temp_dir/
+        //   outside.txt (content: "secret")
+        //   repo/
+        //     .worktrees.sync (content: "copy ../outside.txt")
+        //     wt1/ (directory)
+
+        let outside_file = temp_dir.join("outside.txt");
+        std::fs::write(&outside_file, "secret").unwrap();
+
+        let repo_dir = temp_dir.join("repo");
+        std::fs::create_dir(&repo_dir).unwrap();
+
+        let wt1_dir = repo_dir.join("wt1");
+        std::fs::create_dir(&wt1_dir).unwrap();
+
+        let sync_file = repo_dir.join(".worktrees.sync");
+        std::fs::write(&sync_file, "copy ../outside.txt").unwrap();
+
+        let original_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&repo_dir).unwrap();
+
+        let repo = GitProjectRepository;
+        // We pass "wt1" as the path.
+        // Destination becomes "wt1/../outside.txt" -> "outside.txt" (in repo_dir)
+        let res = repo.sync_configs("wt1");
+
+        std::env::set_current_dir(original_cwd).unwrap();
+
+        // If vulnerable, repo_dir/outside.txt should exist and contain "secret"
+        let leaked_file = repo_dir.join("outside.txt");
+
+        // Verify before cleanup
+        assert!(res.is_ok(), "sync_configs should succeed");
+
+        let exists = leaked_file.exists();
+
+        // Cleanup
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+
+        // The fix should PREVENT this file from being created.
+        assert!(!exists, "Vulnerability fixed: Path traversal prevented writing outside worktree");
     }
 }
