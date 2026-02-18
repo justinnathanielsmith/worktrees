@@ -1314,6 +1314,7 @@ mod tests {
             filter_query: String::new(),
             is_filtering: false,
             mode: crate::app::model::AppMode::Normal,
+            last_selection_change: std::time::Instant::now(),
         };
         let render_context = RenderContext {
             project_name: "test-project".to_string(),

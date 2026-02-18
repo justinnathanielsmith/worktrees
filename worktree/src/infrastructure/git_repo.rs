@@ -107,45 +107,27 @@ impl GitProjectRepository {
 
     fn get_status_summary(path: &str) -> Result<String> {
         let output = Self::run_git(&["-C", path, "status", "--porcelain"])?;
-        if output.trim().is_empty() {
+        let status = Self::parse_status_output(&output);
+
+        let staged = status.staged.len();
+        let unstaged = status.unstaged.len();
+        let untracked = status.untracked.len();
+
+        let mut summary = Vec::new();
+        if staged > 0 {
+            summary.push(format!("+{staged}"));
+        }
+        if unstaged > 0 {
+            summary.push(format!("~{unstaged}"));
+        }
+        if untracked > 0 {
+            summary.push(format!("?{untracked}"));
+        }
+
+        if summary.is_empty() {
             Ok("clean".to_string())
         } else {
-            let mut staged = 0;
-            let mut unstaged = 0;
-            let mut untracked = 0;
-
-            for line in output.lines() {
-                if line.len() < 2 {
-                    continue;
-                }
-                let s = &line[..2];
-                match s {
-                    "M " | "A " | "D " | "R " | "C " => staged += 1,
-                    "??" => untracked += 1,
-                    "MM" | "MD" => {
-                        staged += 1;
-                        unstaged += 1;
-                    }
-                    _ => unstaged += 1,
-                }
-            }
-
-            let mut summary = Vec::new();
-            if staged > 0 {
-                summary.push(format!("+{staged}"));
-            }
-            if unstaged > 0 {
-                summary.push(format!("~{unstaged}"));
-            }
-            if untracked > 0 {
-                summary.push(format!("?{untracked}"));
-            }
-
-            if summary.is_empty() {
-                Ok("clean".to_string())
-            } else {
-                Ok(summary.join(" "))
-            }
+            Ok(summary.join(" "))
         }
     }
 
@@ -291,6 +273,49 @@ impl GitProjectRepository {
             }
         }
         total_size
+    }
+
+    fn parse_status_output(output: &str) -> GitStatus {
+        let mut staged = Vec::new();
+        let mut unstaged = Vec::new();
+        let mut untracked = Vec::new();
+
+        for line in output.lines() {
+            if line.len() < 4 {
+                if line.len() >= 2 && &line[..2] == "??" {
+                    untracked.push(line[3..].to_string());
+                }
+                continue;
+            }
+            let status = &line[..2];
+            let file = line[3..].to_string();
+
+            match status {
+                "M " | "A " | "D " | "R " | "C " => staged.push((file, status.to_string())),
+                " M" | " D" => unstaged.push((file, status.to_string())),
+                "??" => untracked.push(file),
+                "MM" => {
+                    staged.push((file.clone(), "M ".to_string()));
+                    unstaged.push((file, " M".to_string()));
+                }
+                "MD" => {
+                    staged.push((file.clone(), "M ".to_string()));
+                    unstaged.push((file, " D".to_string()));
+                }
+                _ => {
+                    // Handle other porcelain status codes if they represent unstaged changes
+                    if status.ends_with('M') || status.ends_with('D') {
+                        unstaged.push((file, status.to_string()));
+                    }
+                }
+            }
+        }
+
+        GitStatus {
+            staged,
+            unstaged,
+            untracked,
+        }
     }
 }
 
@@ -585,38 +610,7 @@ impl ProjectRepository for GitProjectRepository {
 
     fn get_status(&self, path: &str) -> Result<GitStatus> {
         let output = Self::run_git(&["-C", path, "status", "--porcelain"])?;
-        let mut staged = Vec::new();
-        let mut unstaged = Vec::new();
-        let mut untracked = Vec::new();
-
-        for line in output.lines() {
-            if line.len() < 4 {
-                continue;
-            }
-            let status = &line[..2];
-            let file = line[3..].to_string();
-
-            match status {
-                "M " | "A " | "D " | "R " | "C " => staged.push((file, status.to_string())),
-                " M" | " D" => unstaged.push((file, status.to_string())),
-                "??" => untracked.push(file),
-                "MM" => {
-                    staged.push((file.clone(), "M ".to_string()));
-                    unstaged.push((file, " M".to_string()));
-                }
-                "MD" => {
-                    staged.push((file.clone(), "M ".to_string()));
-                    unstaged.push((file, " D".to_string()));
-                }
-                _ => {}
-            }
-        }
-
-        Ok(GitStatus {
-            staged,
-            unstaged,
-            untracked,
-        })
+        Ok(Self::parse_status_output(&output))
     }
 
     fn stage_all(&self, path: &str) -> Result<()> {

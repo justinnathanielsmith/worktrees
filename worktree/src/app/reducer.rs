@@ -50,6 +50,18 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
         }
     }
 
+    async fn run_blocking<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(R) -> anyhow::Result<T> + Send + 'static,
+        T: Send + 'static,
+    {
+        let repo = self.repo.clone();
+        tokio::task::spawn_blocking(move || f(repo))
+            .await
+            .into_diagnostic()?
+            .map_err(|e| miette::miette!(e))
+    }
+
     #[instrument(skip(self))]
     pub async fn handle(&self, intent: Intent) -> Result<()> {
         info!(?intent, "Handling intent");
@@ -87,13 +99,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
 
                 let url_clone = url.clone();
                 let project_name_clone = project_name.clone();
-                let repo_clone = repo.clone();
-
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.init_bare_repo(url_clone.as_deref(), &project_name_clone)
-                })
-                .await
-                .into_diagnostic()?;
+                let res = self
+                    .run_blocking(move |r: R| r.init_bare_repo(url_clone.as_deref(), &project_name_clone))
+                    .await;
 
                 match res {
                     Ok(()) => {
@@ -190,13 +198,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
 
                 let intent_clone = intent.clone();
                 let branch_name_clone = branch_name.clone();
-                let repo_clone = repo.clone();
-
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.add_worktree(&intent_clone, &branch_name_clone)
-                })
-                .await
-                .into_diagnostic()?;
+                let res = self
+                    .run_blocking(move |r: R| r.add_worktree(&intent_clone, &branch_name_clone))
+                    .await;
 
                 match res {
                     Ok(()) => {
@@ -244,13 +248,10 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     });
                 }
                 let intent_clone = intent.clone();
-                let repo_clone = repo.clone();
                 let force_clone = force;
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.remove_worktree(&intent_clone, force_clone)
-                })
-                .await
-                .into_diagnostic()?;
+                let res = self
+                    .run_blocking(move |r: R| r.remove_worktree(&intent_clone, force_clone))
+                    .await;
 
                 match res {
                     Ok(()) => {
@@ -282,11 +283,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
             }
             Intent::ListWorktrees => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
                 info!(count = worktrees.len(), "Worktrees listed successfully");
                 if json_mode {
                     self.view
@@ -312,15 +309,12 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 let mut results = Vec::new();
 
                 info!("Setting up default worktrees (main, dev)");
-                let repo_clone = repo.clone();
-                let main_res = tokio::task::spawn_blocking(move || {
-                    match repo_clone.add_worktree("main", "main") {
-                        Ok(()) => serde_json::json!({ "name": "main", "status": "ready" }),
-                        Err(_) => serde_json::json!({ "name": "main", "status": "skipped" }),
+                let main_res = self.run_blocking(|r: R| {
+                    match r.add_worktree("main", "main") {
+                        Ok(()) => Ok(serde_json::json!({ "name": "main", "status": "ready" })),
+                        Err(_) => Ok(serde_json::json!({ "name": "main", "status": "skipped" })),
                     }
-                })
-                .await
-                .into_diagnostic()?;
+                }).await?;
 
                 let status = main_res["status"].as_str().unwrap_or("unknown");
                 if !json_mode {
@@ -332,16 +326,15 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
                 results.push(main_res);
 
-                let repo_clone = repo.clone();
-                let dev_res = tokio::task::spawn_blocking(move || {
-                    match repo_clone.add_worktree("dev", "dev") {
-                        Ok(()) => serde_json::json!({ "name": "dev", "status": "ready" }),
-                        Err(_) => match repo_clone.add_new_worktree("dev", "dev", "main") {
-                            Ok(()) => serde_json::json!({ "name": "dev", "status": "ready", "created_from": "main" }),
-                            Err(_) => serde_json::json!({ "name": "dev", "status": "skipped" })
+                let dev_res = self.run_blocking(|r: R| {
+                    match r.add_worktree("dev", "dev") {
+                        Ok(()) => Ok(serde_json::json!({ "name": "dev", "status": "ready" })),
+                        Err(_) => match r.add_new_worktree("dev", "dev", "main") {
+                            Ok(()) => Ok(serde_json::json!({ "name": "dev", "status": "ready", "created_from": "main" })),
+                            Err(_) => Ok(serde_json::json!({ "name": "dev", "status": "skipped" }))
                         },
                     }
-                }).await.into_diagnostic()?;
+                }).await?;
 
                 let status = dev_res["status"].as_str().unwrap_or("unknown");
                 if !json_mode {
@@ -385,12 +378,10 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 // 1. Add worktree
                 let intent_clone = intent.clone();
                 let branch_name_clone = branch_name.clone();
-                let repo_clone = repo.clone();
-                tokio::task::spawn_blocking(move || {
-                    repo_clone.add_worktree(&intent_clone, &branch_name_clone)
+                self.run_blocking(move |r: R| {
+                    r.add_worktree(&intent_clone, &branch_name_clone)
                 })
                 .await
-                .into_diagnostic()?
                 .map_err(|e| miette::miette!("Failed to create temporary worktree: {}", e))?;
 
                 if !json_mode && !quiet_mode {
@@ -422,12 +413,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
 
                 // 3. Remove worktree (force to ensure cleanup)
                 let intent_clone = intent.clone();
-                let repo_clone = repo.clone();
-                let _ = tokio::task::spawn_blocking(move || {
-                    repo_clone.remove_worktree(&intent_clone, true)
-                })
-                .await
-                .into_diagnostic()?;
+                let _ = self
+                    .run_blocking(move |r| r.remove_worktree(&intent_clone, true))
+                    .await;
 
                 if !status.success() {
                     return Err(miette::miette!("Command failed with status: {}", status));
@@ -444,11 +432,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
             }
             Intent::SyncConfigurations { intent } => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
                 let targets: Vec<Worktree> = if let Some(name) = intent {
                     worktrees
                         .into_iter()
@@ -472,11 +456,8 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                             wt.branch.bold()
                         );
                     }
-                    let repo_clone = repo.clone();
                     let path = wt.path.clone();
-                    let res = tokio::task::spawn_blocking(move || repo_clone.sync_configs(&path))
-                        .await
-                        .into_diagnostic()?;
+                    let res = self.run_blocking(move |r: R| r.sync_configs(&path)).await;
 
                     if let Err(e) = res {
                         error!(error = %e, path = %wt.path, "Configuration synchronization failed");
@@ -495,11 +476,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
             }
             Intent::Push { intent } => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
 
                 let target = if let Some(name) = intent {
                     worktrees
@@ -520,11 +497,8 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         );
                     }
 
-                    let repo_clone = repo.clone();
                     let path = wt.path.clone();
-                    let res = tokio::task::spawn_blocking(move || repo_clone.push(&path))
-                        .await
-                        .into_diagnostic()?;
+                    let res = self.run_blocking(move |r: R| r.push(&path)).await;
 
                     match res {
                         Ok(()) => {
@@ -550,11 +524,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
             }
 
             Intent::Pull { intent } => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
 
                 let target = if let Some(name) = intent {
                     worktrees
@@ -575,11 +545,8 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         );
                     }
 
-                    let repo_clone = repo.clone();
                     let path = wt.path.clone();
-                    let res = tokio::task::spawn_blocking(move || repo_clone.pull(&path))
-                        .await
-                        .into_diagnostic()?;
+                    let res = self.run_blocking(move |r: R| r.pull(&path)).await;
 
                     match res {
                         Ok(()) => {
@@ -606,10 +573,8 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
             Intent::Config { key, show } => {
                 if let Some(k) = key {
                     let k_clone = k.clone();
-                    let repo_clone = repo.clone();
-                    tokio::task::spawn_blocking(move || repo_clone.set_api_key(&k_clone))
+                    self.run_blocking(move |r: R| r.set_api_key(&k_clone))
                         .await
-                        .into_diagnostic()?
                         .map_err(|e| miette::miette!("Failed to set API key: {}", e))?;
 
                     if !json_mode && !quiet_mode {
@@ -622,10 +587,8 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                             .map_err(|e| miette::miette!("{e:?}"))?;
                     }
                 } else if show {
-                    let repo_clone = repo.clone();
-                    let k = tokio::task::spawn_blocking(move || repo_clone.get_api_key())
+                    let k = self.run_blocking(move |r: R| r.get_api_key())
                         .await
-                        .into_diagnostic()?
                         .map_err(|e| miette::miette!("Failed to get API key: {}", e))?;
                     if json_mode {
                         self.view
@@ -662,13 +625,10 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     }
                 }
 
-                let repo_clone = repo.clone();
-                let stale_worktrees = tokio::task::spawn_blocking(move || {
-                    repo_clone.clean_worktrees(dry_run, artifacts)
-                })
-                .await
-                .into_diagnostic()?
-                .map_err(|e| miette::miette!("Failed to clean worktrees: {}", e))?;
+                let stale_worktrees = self
+                    .run_blocking(move |r: R| r.clean_worktrees(dry_run, artifacts))
+                    .await
+                    .map_err(|e| miette::miette!("Failed to clean worktrees: {}", e))?;
 
                 if stale_worktrees.is_empty() {
                     if !json_mode && !quiet_mode {
@@ -717,11 +677,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
             }
             Intent::SwitchWorktree { name, copy } => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
 
                 let candidates: Vec<&Worktree> =
                     worktrees.iter().filter(|wt| !wt.is_bare).collect();
@@ -824,13 +780,11 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
 
                 let name_clone = name.clone();
                 let branch_clone = branch.clone();
-                let repo_clone = repo.clone();
-
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.convert_to_bare(name_clone.as_deref(), branch_clone.as_deref())
-                })
-                .await
-                .into_diagnostic()?;
+                let res: Result<std::path::PathBuf> = self
+                    .run_blocking(move |r: R| {
+                        r.convert_to_bare(name_clone.as_deref(), branch_clone.as_deref())
+                    })
+                    .await;
 
                 match res {
                     Ok(hub_path) => {
@@ -860,9 +814,6 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
                     }
                     Err(e) => {
-                        if let Some(pb) = pb {
-                            pb.finish_and_clear();
-                        }
                         error!(error = %e, "Failed to convert repository");
                         if json_mode {
                             self.view
@@ -881,10 +832,6 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
             }
             Intent::Migrate { force, dry_run } => {
-                let repo_clone = repo.clone();
-                let force_clone = force;
-                let dry_run_clone = dry_run;
-
                 if !json_mode && !quiet_mode {
                     println!(
                         "{} Migrating repository to Bare Hub structure (in-place)...",
@@ -907,13 +854,11 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     None
                 };
 
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.migrate_to_bare(force_clone, dry_run_clone)
-                })
-                .await
-                .into_diagnostic()?;
+                let res: Result<std::path::PathBuf> = self
+                    .run_blocking(move |r: R| r.migrate_to_bare(force, dry_run))
+                    .await;
 
-                if let Some(pb) = pb {
+                if let Some(ref pb) = pb {
                     pb.finish_and_clear();
                 }
 
@@ -972,11 +917,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
             }
             Intent::CheckoutWorktree { intent, branch } => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
 
                 let needle = intent.to_lowercase();
                 let wt = worktrees
@@ -993,12 +934,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
 
                 let path = wt.path.clone();
                 let branch_clone = branch.clone();
-                let repo_clone2 = repo.clone();
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone2.switch_branch(&path, &branch_clone)
-                })
-                .await
-                .into_diagnostic()?;
+                let res: Result<()> = self
+                    .run_blocking(move |r: R| r.switch_branch(&path, &branch_clone))
+                    .await;
 
                 match res {
                     Ok(()) => {
@@ -1045,11 +983,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 clap_complete::generate(shell, &mut cmd, bin_name, &mut std::io::stdout());
             }
             Intent::Open => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
 
                 let root = repo
                     .get_project_root()
@@ -1094,15 +1028,12 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     );
                 }
 
-                let repo_clone = repo.clone();
                 let upstream_clone = upstream_branch.clone();
                 let path_clone = path.clone();
 
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.rebase(&path_clone, &upstream_clone)
-                })
-                .await
-                .into_diagnostic()?;
+                let res: Result<()> = self
+                    .run_blocking(move |r: R| r.rebase(&path_clone, &upstream_clone))
+                    .await;
 
                 match res {
                     Ok(()) => {
@@ -1127,14 +1058,13 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                                 "➜".cyan().bold()
                             );
 
-                            let repo_clone = repo.clone();
                             let path_clone = path;
-                            let explanation_res = tokio::task::spawn_blocking(move || {
-                                let diff = repo_clone.get_conflict_diff(&path_clone)?;
-                                repo_clone.explain_rebase_conflict(&diff)
-                            })
-                            .await
-                            .into_diagnostic()?;
+                            let explanation_res: Result<String> = self
+                                .run_blocking(move |r: R| {
+                                    let diff = r.get_conflict_diff(&path_clone)?;
+                                    r.explain_rebase_conflict(&diff)
+                                })
+                                .await;
 
                             match explanation_res {
                                 Ok(explanation) => {
@@ -1157,11 +1087,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
             }
             Intent::Teleport { target } => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
 
                 let candidates: Vec<&Worktree> =
                     worktrees.iter().filter(|wt| !wt.is_bare).collect();
@@ -1225,9 +1151,8 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
 
                 // 3. Verify changes exist
-                let status = repo
-                    .get_status(&source_wt.path)
-                    .map_err(|e| miette::miette!(e))?;
+                let source_path_clone = source_wt.path.clone();
+                let status = self.run_blocking(move |r: R| r.get_status(&source_path_clone)).await?;
                 if status.staged.is_empty()
                     && status.unstaged.is_empty()
                     && status.untracked.is_empty()
@@ -1253,31 +1178,30 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 let source_path = source_wt.path.clone();
                 let target_path = target_wt.path.clone();
                 let target_branch = target_wt.branch.clone();
-                let repo_clone2 = repo.clone();
 
-                let res = tokio::task::spawn_blocking(move || {
+                let res: Result<()> = self.run_blocking(move |r: R| {
                     // Stash changes
                     let msg = format!("Teleport to {}", target_branch);
-                    repo_clone2.stash_save(&source_path, Some(&msg))?;
+                    r.stash_save(&source_path, Some(&msg))?;
 
                     // Verify stash exists (it should be at index 0)
-                    let stashes = repo_clone2.list_stashes(&source_path)?;
+                    let stashes = r.list_stashes(&source_path)?;
                     if stashes.is_empty() {
                          return Err(anyhow::anyhow!("Failed to create stash for teleport."));
                     }
 
                     // Apply to target
-                    match repo_clone2.apply_stash(&target_path, 0) {
+                    match r.apply_stash(&target_path, 0) {
                         Ok(()) => {
                             // Only drop if apply succeeded
-                            repo_clone2.drop_stash(&source_path, 0)?;
+                            r.drop_stash(&source_path, 0)?;
                             Ok(())
                         }
                         Err(e) => {
                             Err(anyhow::anyhow!("Failed to apply changes to target '{}': {}. Changes preserved in stash@{{0}}.", target_branch, e))
                         }
                     }
-                }).await.into_diagnostic()?;
+                }).await;
 
                 res.map_err(|e| miette::miette!(e.to_string()))?;
 
@@ -1294,38 +1218,28 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
             }
             Intent::ApplyStash { path, index } => {
-                let repo_clone = repo.clone();
                 let path_clone = path;
-                tokio::task::spawn_blocking(move || repo_clone.apply_stash(&path_clone, index))
+                self.run_blocking(move |r: R| r.apply_stash(&path_clone, index))
                     .await
-                    .into_diagnostic()?
                     .map_err(|e| miette::miette!(e.to_string()))?;
             }
             Intent::PopStash { path, index } => {
-                let repo_clone = repo.clone();
                 let path_clone = path;
-                tokio::task::spawn_blocking(move || repo_clone.pop_stash(&path_clone, index))
+                self.run_blocking(move |r: R| r.pop_stash(&path_clone, index))
                     .await
-                    .into_diagnostic()?
                     .map_err(|e| miette::miette!(e.to_string()))?;
             }
             Intent::DropStash { path, index } => {
-                let repo_clone = repo.clone();
                 let path_clone = path;
-                tokio::task::spawn_blocking(move || repo_clone.drop_stash(&path_clone, index))
+                self.run_blocking(move |r: R| r.drop_stash(&path_clone, index))
                     .await
-                    .into_diagnostic()?
                     .map_err(|e| miette::miette!(e.to_string()))?;
             }
             Intent::StashSave { path, message } => {
-                let repo_clone = repo.clone();
                 let path_clone = path;
-                tokio::task::spawn_blocking(move || {
-                    repo_clone.stash_save(&path_clone, message.as_deref())
-                })
-                .await
-                .into_diagnostic()?
-                .map_err(|e| miette::miette!(e.to_string()))?;
+                self.run_blocking(move |r: R| r.stash_save(&path_clone, message.as_deref()))
+                    .await
+                    .map_err(|e| miette::miette!(e.to_string()))?;
             }
             Intent::ViewStashes { .. } => {}
             Intent::ChangeMode(_) => {
