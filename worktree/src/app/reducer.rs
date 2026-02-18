@@ -1261,10 +1261,14 @@ mod tests {
     use crossbeam_channel::Receiver;
 
     use std::sync::{Arc, Mutex};
+    use serial_test::serial;
 
     #[derive(Default)]
     struct CallTracker {
         calls: Vec<String>,
+        status_map: std::collections::HashMap<String, crate::domain::repository::GitStatus>,
+        stashes_map: std::collections::HashMap<String, Vec<crate::domain::repository::StashEntry>>,
+        worktrees: Option<Vec<Worktree>>,
     }
 
     #[derive(Clone)]
@@ -1312,29 +1316,34 @@ mod tests {
             Ok(())
         }
         fn list_worktrees(&self) -> anyhow::Result<Vec<Worktree>> {
-            self.tracker.lock().unwrap().calls.push("list".to_string());
-            Ok(vec![
-                Worktree {
-                    path: "main".to_string(),
-                    commit: "1234567".to_string(),
-                    branch: "main".to_string(),
-                    is_bare: false,
-                    is_detached: false,
-                    status_summary: Some("clean".to_string()),
-                    size_bytes: 0,
-                    metadata: None,
-                },
-                Worktree {
-                    path: "dev".to_string(),
-                    commit: "abcdef0".to_string(),
-                    branch: "dev".to_string(),
-                    is_bare: false,
-                    is_detached: false,
-                    status_summary: Some("~1".to_string()),
-                    size_bytes: 0,
-                    metadata: None,
-                },
-            ])
+            let mut tracker = self.tracker.lock().unwrap();
+            tracker.calls.push("list".to_string());
+            if let Some(wts) = &tracker.worktrees {
+                Ok(wts.clone())
+            } else {
+                Ok(vec![
+                    Worktree {
+                        path: "main".to_string(),
+                        commit: "1234567".to_string(),
+                        branch: "main".to_string(),
+                        is_bare: false,
+                        is_detached: false,
+                        status_summary: Some("clean".to_string()),
+                        size_bytes: 0,
+                        metadata: None,
+                    },
+                    Worktree {
+                        path: "dev".to_string(),
+                        commit: "abcdef0".to_string(),
+                        branch: "dev".to_string(),
+                        is_bare: false,
+                        is_detached: false,
+                        status_summary: Some("~1".to_string()),
+                        size_bytes: 0,
+                        metadata: None,
+                    },
+                ])
+            }
         }
         fn sync_configs(&self, path: &str) -> anyhow::Result<()> {
             self.tracker
@@ -1385,12 +1394,17 @@ mod tests {
                 .push(format!("push:{path}"));
             Ok(())
         }
-        fn get_status(&self, _path: &str) -> anyhow::Result<crate::domain::repository::GitStatus> {
-            Ok(crate::domain::repository::GitStatus {
-                staged: vec![],
-                unstaged: vec![],
-                untracked: vec![],
-            })
+        fn get_status(&self, path: &str) -> anyhow::Result<crate::domain::repository::GitStatus> {
+            let tracker = self.tracker.lock().unwrap();
+            Ok(tracker
+                .status_map
+                .get(path)
+                .cloned()
+                .unwrap_or_else(|| crate::domain::repository::GitStatus {
+                    staged: vec![],
+                    unstaged: vec![],
+                    untracked: vec![],
+                }))
         }
         fn stage_all(&self, _path: &str) -> anyhow::Result<()> {
             Ok(())
@@ -1485,12 +1499,15 @@ mod tests {
 
         fn list_stashes(
             &self,
-            _path: &str,
+            path: &str,
         ) -> anyhow::Result<Vec<crate::domain::repository::StashEntry>> {
-            Ok(vec![])
+            let tracker = self.tracker.lock().unwrap();
+            Ok(tracker.stashes_map.get(path).cloned().unwrap_or_default())
         }
 
-        fn apply_stash(&self, _path: &str, _index: usize) -> anyhow::Result<()> {
+        fn apply_stash(&self, path: &str, index: usize) -> anyhow::Result<()> {
+            let mut tracker = self.tracker.lock().unwrap();
+            tracker.calls.push(format!("apply_stash:{path}|{index}"));
             Ok(())
         }
 
@@ -1498,11 +1515,34 @@ mod tests {
             Ok(())
         }
 
-        fn drop_stash(&self, _path: &str, _index: usize) -> anyhow::Result<()> {
+        fn drop_stash(&self, path: &str, index: usize) -> anyhow::Result<()> {
+            let mut tracker = self.tracker.lock().unwrap();
+            tracker.calls.push(format!("drop_stash:{path}|{index}"));
+            if let Some(stashes) = tracker.stashes_map.get_mut(path) {
+                if index < stashes.len() {
+                    stashes.remove(index);
+                }
+            }
             Ok(())
         }
 
-        fn stash_save(&self, _path: &str, _message: Option<&str>) -> anyhow::Result<()> {
+        fn stash_save(&self, path: &str, message: Option<&str>) -> anyhow::Result<()> {
+            let mut tracker = self.tracker.lock().unwrap();
+            tracker
+                .calls
+                .push(format!("stash_save:{path}|{:?}", message));
+            tracker
+                .stashes_map
+                .entry(path.to_string())
+                .or_default()
+                .insert(
+                    0,
+                    crate::domain::repository::StashEntry {
+                        index: 0,
+                        branch: "HEAD".to_string(),
+                        message: message.unwrap_or("").to_string(),
+                    },
+                );
             Ok(())
         }
     }
@@ -1748,6 +1788,109 @@ mod tests {
         let calls = tracker.lock().unwrap().calls.clone();
         assert!(calls.contains(&"list".to_string()));
         assert!(calls.contains(&"switch:dev|feature-y".to_string()));
+        Ok(())
+    }
+
+    struct CwdGuard {
+        original: std::path::PathBuf,
+    }
+
+    impl CwdGuard {
+        fn new(target: &std::path::Path) -> Result<Self> {
+            let original = std::env::current_dir()?;
+            std::env::set_current_dir(target)?;
+            Ok(Self { original })
+        }
+    }
+
+    impl Drop for CwdGuard {
+        fn drop(&mut self) {
+            let _ = std::env::set_current_dir(&self.original);
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_reducer_handle_teleport() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let root = temp_dir.path().canonicalize()?;
+        let main_path = root.join("main");
+        let dev_path = root.join("dev");
+        std::fs::create_dir(&main_path)?;
+        std::fs::create_dir(&dev_path)?;
+
+        let _guard = CwdGuard::new(&main_path)?;
+
+        let tracker = Arc::new(Mutex::new(CallTracker::default()));
+
+        // Setup Worktrees
+        {
+            let mut t = tracker.lock().unwrap();
+            t.worktrees = Some(vec![
+                Worktree {
+                    path: main_path.to_string_lossy().to_string(),
+                    commit: "123".to_string(),
+                    branch: "main".to_string(),
+                    is_bare: false,
+                    is_detached: false,
+                    status_summary: None,
+                    size_bytes: 0,
+                    metadata: None,
+                },
+                Worktree {
+                    path: dev_path.to_string_lossy().to_string(),
+                    commit: "456".to_string(),
+                    branch: "dev".to_string(),
+                    is_bare: false,
+                    is_detached: false,
+                    status_summary: None,
+                    size_bytes: 0,
+                    metadata: None,
+                },
+            ]);
+
+            // Setup Dirty Status
+            t.status_map.insert(
+                main_path.to_string_lossy().to_string(),
+                crate::domain::repository::GitStatus {
+                    staged: vec![("file.txt".to_string(), "M".to_string())],
+                    unstaged: vec![],
+                    untracked: vec![],
+                },
+            );
+        }
+
+        let repo = MockRepo::new(tracker.clone());
+        let reducer = Reducer::new(repo, false, false);
+
+        reducer
+            .handle(Intent::Teleport {
+                target: "dev".to_string(),
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let tracker = tracker.lock().unwrap();
+        let calls = &tracker.calls;
+
+        // Check Sequence
+        let relevant_calls: Vec<&String> = calls
+            .iter()
+            .filter(|c| {
+                c.starts_with("stash_save")
+                    || c.starts_with("apply_stash")
+                    || c.starts_with("drop_stash")
+            })
+            .collect();
+
+        assert_eq!(relevant_calls.len(), 3);
+        assert!(relevant_calls[0].starts_with("stash_save")
+            && relevant_calls[0].contains(&main_path.to_string_lossy().to_string()));
+        assert!(relevant_calls[1].starts_with("apply_stash")
+            && relevant_calls[1].contains(&dev_path.to_string_lossy().to_string()));
+        assert!(relevant_calls[2].starts_with("drop_stash")
+            && relevant_calls[2].contains(&main_path.to_string_lossy().to_string()));
+
         Ok(())
     }
 }
