@@ -1,12 +1,11 @@
 use crate::app::async_tasks::AsyncResult;
 use crate::app::intent::Intent;
 use crate::app::model::{
-    AppMode, AppState, DashboardState, DashboardTab, EditorConfig, RefreshType, filter_worktrees,
+    AppMode, AppState, DashboardState, DashboardTab, RefreshType, filter_worktrees,
 };
 use crate::domain::repository::{ProjectRepository, Worktree};
 use anyhow::Result;
 use ratatui::{Terminal, backend::Backend, widgets::TableState};
-use std::process::Command;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::helpers::{create_timed_state, move_selection};
@@ -186,29 +185,58 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                                 wt.branch.clone()
                             };
                             let path = if wt.is_bare {
-                                repo.get_project_root()?.to_string_lossy().to_string()
-                            } else {
-                                wt.path.clone()
-                            };
-                            let prev = Box::new(current_state.clone());
-                            if let Ok(Some(editor)) = repo.get_preferred_editor() {
-                                let _ = Command::new(&editor).arg(&path).spawn();
+                                // Offload project root fetching
+                                let repo_clone = repo.clone();
+                                let _tx = async_tx.clone();
+                                let _branch_clone = branch.clone();
+                                tokio::task::spawn_blocking(move || {
+                                    let root = repo_clone.get_project_root();
+                                    let editor = repo_clone.get_preferred_editor();
+                                    // Send a composite result or just reuse existing mechanisms
+                                    // For simplicity here, let's just trigger the editor logic
+                                    if let Ok(root_path) = root {
+                                        let path_str = root_path.to_string_lossy().to_string();
+                                        if let Ok(Some(editor_cmd)) = editor {
+                                            let _ = std::process::Command::new(&editor_cmd).arg(&path_str).spawn();
+                                        }
+                                    }
+                                });
                                 return Ok(Some(create_timed_state(
                                     AppState::OpeningEditor {
                                         branch,
-                                        editor,
-                                        prev_state: prev.clone(),
+                                        editor: "Detecting...".into(),
+                                        prev_state: Box::new(current_state.clone()),
                                     },
-                                    *prev,
+                                    current_state.clone(),
                                     800,
                                 )));
-                            }
-                            return Ok(Some(AppState::SelectingEditor {
-                                branch,
-                                options: EditorConfig::defaults(),
-                                selected: 0,
-                                prev_state: prev,
-                            }));
+                            } else {
+                                wt.path.clone()
+                            };
+
+                            let prev = Box::new(current_state.clone());
+                            // Offload editor config fetch
+                            let repo_clone = repo.clone();
+                            let path_clone = path.clone();
+                            let branch_clone = branch.clone();
+                            let tx = async_tx.clone();
+
+                            tokio::task::spawn_blocking(move || {
+                                if let Ok(Some(editor)) = repo_clone.get_preferred_editor() {
+                                    let _ = std::process::Command::new(&editor).arg(&path_clone).spawn();
+                                    // We could send an AsyncResult to confirm opening, but Timed state handles UI feedback
+                                }
+                            });
+
+                            return Ok(Some(create_timed_state(
+                                AppState::OpeningEditor {
+                                    branch,
+                                    editor: "Opening...".into(),
+                                    prev_state: prev.clone(),
+                                },
+                                *prev,
+                                800,
+                            )));
                         }
                     }
                     KeyCode::Char('v') => {
@@ -300,13 +328,18 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                             && let Some(wt) = filtered_worktrees.get(i)
                             && wt.is_bare
                         {
-                            let path = repo.get_project_root()?.to_string_lossy().to_string();
-                            #[cfg(target_os = "macos")]
-                            let _ = Command::new("open").arg(&path).spawn();
-                            #[cfg(target_os = "linux")]
-                            let _ = Command::new("xdg-open").arg(&path).spawn();
-                            #[cfg(target_os = "windows")]
-                            let _ = Command::new("explorer").arg(&path).spawn();
+                            let repo_clone = repo.clone();
+                            tokio::task::spawn_blocking(move || {
+                                if let Ok(root) = repo_clone.get_project_root() {
+                                    let path = root.to_string_lossy().to_string();
+                                    #[cfg(target_os = "macos")]
+                                    let _ = std::process::Command::new("open").arg(&path).spawn();
+                                    #[cfg(target_os = "linux")]
+                                    let _ = std::process::Command::new("xdg-open").arg(&path).spawn();
+                                    #[cfg(target_os = "windows")]
+                                    let _ = std::process::Command::new("explorer").arg(&path).spawn();
+                                }
+                            });
                         }
                     }
                     KeyCode::Char('f') => {

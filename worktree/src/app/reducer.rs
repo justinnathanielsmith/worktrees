@@ -985,9 +985,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
             Intent::Open => {
                 let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
 
-                let root = repo
-                    .get_project_root()
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let root = self.run_blocking(|r| r.get_project_root()).await?;
                 let project_name = root
                     .file_name()
                     .and_then(|n| n.to_str())

@@ -63,6 +63,7 @@ impl View {
         match state {
             AppState::ListingWorktrees {
                 worktrees,
+                filtered_worktrees,
                 table_state,
                 dashboard,
                 filter_query,
@@ -73,6 +74,7 @@ impl View {
                 render_listing(
                     f,
                     worktrees.as_slice(),
+                    filtered_worktrees.as_slice(),
                     &mut table_state.clone(),
                     context,
                     area,
@@ -539,6 +541,29 @@ impl View {
                             }
                         }
                     }
+                    AsyncResult::WorktreesListed { result } => {
+                        if let AppState::ListingWorktrees {
+                            worktrees,
+                            filtered_worktrees,
+                            table_state,
+                            dashboard,
+                            filter_query,
+                            ..
+                        } = state
+                        {
+                            if let Ok(new_worktrees) = result {
+                                *worktrees = new_worktrees;
+                                *filtered_worktrees =
+                                    crate::app::model::filter_worktrees(worktrees, filter_query);
+                                if table_state.selected().is_none() && !worktrees.is_empty() {
+                                    table_state.select(Some(0));
+                                }
+                                // Trigger dashboard refresh for new selection
+                                dashboard.cached_status = None;
+                                dashboard.cached_history = None;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -569,66 +594,13 @@ impl View {
             } = state
             {
                 if *refresh_needed == RefreshType::Full {
-                    if let Ok(new_worktrees) = repo.list_worktrees() {
-                        let (mut ts, old_dash, filter, is_filtering, mode, selection_mode_val) =
-                            if let AppState::ListingWorktrees {
-                                table_state,
-                                dashboard,
-                                filter_query,
-                                is_filtering,
-                                mode,
-                                selection_mode,
-                                ..
-                            } = state
-                            {
-                                (
-                                    table_state.clone(),
-                                    dashboard.clone(),
-                                    filter_query.clone(),
-                                    *is_filtering,
-                                    *mode,
-                                    *selection_mode,
-                                )
-                            } else {
-                                unreachable!()
-                            };
-
-                        if ts.selected().is_none() && !new_worktrees.is_empty() {
-                            ts.select(Some(0));
-                        }
-
-                        // Reset dashboard cache on full refresh
-                        let mut new_dashboard = crate::app::model::DashboardState {
-                            active_tab: old_dash.active_tab,
-                            cached_status: None,
-                            cached_history: None,
-                            loading: false,
-                        };
-
-                        let filtered_worktrees = crate::app::model::filter_worktrees(&new_worktrees, &filter);
-
-                        Self::fetch_dashboard_data(
-                            repo,
-                            &filtered_worktrees,
-                            ts.selected(),
-                            &mut new_dashboard,
-                            &async_tx,
-                        );
-
-                        *state = AppState::ListingWorktrees {
-                            worktrees: new_worktrees,
-                            filtered_worktrees,
-                            table_state: ts,
-                            refresh_needed: RefreshType::None,
-                            selection_mode: selection_mode_val,
-                            dashboard: new_dashboard,
-                            filter_query: filter,
-                            is_filtering,
-                            mode,
-                            last_selection_change: std::time::Instant::now(),
-                        };
-                        // state updated
-                    }
+                    let repo_clone = repo.clone();
+                    let tx = async_tx.clone();
+                    tokio::task::spawn_blocking(move || {
+                        let res = repo_clone.list_worktrees();
+                        let _ = tx.send(AsyncResult::WorktreesListed { result: res });
+                    });
+                    *refresh_needed = RefreshType::None;
                 } else if *refresh_needed == RefreshType::Dashboard {
                     if let AppState::ListingWorktrees {
                         refresh_needed,
@@ -929,6 +901,7 @@ impl View {
         match display_state {
             AppState::ListingWorktrees {
                 worktrees,
+                filtered_worktrees,
                 table_state,
                 dashboard,
                 filter_query,
@@ -939,6 +912,7 @@ impl View {
                 render_listing(
                     f,
                     worktrees.as_slice(),
+                    filtered_worktrees.as_slice(),
                     table_state,
                     context,
                     chunks[1],

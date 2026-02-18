@@ -85,4 +85,7 @@ pub enum AsyncResult {
     StashSaved {
         result: anyhow::Result<()>,
     },
+    WorktreesListed {
+        result: anyhow::Result<Vec<crate::domain::repository::Worktree>>,
+    },
 }

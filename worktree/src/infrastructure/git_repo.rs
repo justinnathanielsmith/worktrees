@@ -1157,20 +1157,20 @@ impl ProjectRepository for GitProjectRepository {
                             let path_str = path.to_string_lossy();
                             if path_str.contains(".git") || path_str.contains(".bare") {
                                 // Git metadata change
-                                if path_str.contains("index.lock") || path_str.contains("HEAD.lock")
+                                if path_str.contains("index.lock")
+                                    || path_str.contains("HEAD.lock")
+                                    || path_str.contains(".lock")
+                                    || path_str.contains("node_modules")
+                                    || path_str.contains("target")
                                 {
                                     continue;
                                 }
                                 meaningful_change = true;
-                            } else {
-                                // Source file change
-                                meaningful_change = true;
+                                break;
                             }
                         }
 
                         if meaningful_change {
-                            // For now, emitted a generic refresh to be safe.
-                            // In the future, we can be more granular.
                             let _ = tx.send(RepositoryEvent::RescanRequired);
                         }
                     }
@@ -1740,7 +1740,7 @@ mod tests {
         if let Ok(rx) = rx_res {
             // Modify a file
             std::thread::sleep(std::time::Duration::from_millis(1000));
-            std::fs::write(temp_dir.join("test_file"), "content").unwrap();
+            std::fs::write(temp_dir.join(".bare/config"), "[core]\n\tactive = true").unwrap();
 
             // Expect event
             let event = rx.recv_timeout(std::time::Duration::from_secs(5));

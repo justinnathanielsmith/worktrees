@@ -1,4 +1,4 @@
-use crate::app::model::{DashboardTab, filter_worktrees};
+use crate::app::model::DashboardTab;
 use crate::app::renderers::dashboard::render_dashboard;
 use crate::domain::repository::{GitCommit, GitStatus, ProjectContext, Worktree};
 use crate::ui::widgets::worktree_list::WorktreeListWidget;
@@ -13,6 +13,7 @@ use ratatui::{
 pub fn render_listing(
     f: &mut Frame,
     worktrees: &[Worktree],
+    filtered_worktrees: &[Worktree],
     table_state: &mut TableState,
     context: ProjectContext,
     area: Rect,
@@ -28,8 +29,6 @@ pub fn render_listing(
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
         .split(area);
-
-    let filtered_worktrees = filter_worktrees(worktrees, filter_query);
 
     let (list_area, search_area) = if is_filtering || !filter_query.is_empty() {
         let sub_chunks = Layout::default()
