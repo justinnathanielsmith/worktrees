@@ -100,7 +100,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 let url_clone = url.clone();
                 let project_name_clone = project_name.clone();
                 let res = self
-                    .run_blocking(move |r: R| r.init_bare_repo(url_clone.as_deref(), &project_name_clone))
+                    .run_blocking(move |r: R| {
+                        r.init_bare_repo(url_clone.as_deref(), &project_name_clone)
+                    })
                     .await;
 
                 match res {
@@ -309,12 +311,12 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 let mut results = Vec::new();
 
                 info!("Setting up default worktrees (main, dev)");
-                let main_res = self.run_blocking(|r: R| {
-                    match r.add_worktree("main", "main") {
+                let main_res = self
+                    .run_blocking(|r: R| match r.add_worktree("main", "main") {
                         Ok(()) => Ok(serde_json::json!({ "name": "main", "status": "ready" })),
                         Err(_) => Ok(serde_json::json!({ "name": "main", "status": "skipped" })),
-                    }
-                }).await?;
+                    })
+                    .await?;
 
                 let status = main_res["status"].as_str().unwrap_or("unknown");
                 if !json_mode {
@@ -378,11 +380,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 // 1. Add worktree
                 let intent_clone = intent.clone();
                 let branch_name_clone = branch_name.clone();
-                self.run_blocking(move |r: R| {
-                    r.add_worktree(&intent_clone, &branch_name_clone)
-                })
-                .await
-                .map_err(|e| miette::miette!("Failed to create temporary worktree: {}", e))?;
+                self.run_blocking(move |r: R| r.add_worktree(&intent_clone, &branch_name_clone))
+                    .await
+                    .map_err(|e| miette::miette!("Failed to create temporary worktree: {}", e))?;
 
                 if !json_mode && !quiet_mode {
                     println!(
@@ -587,7 +587,8 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                             .map_err(|e| miette::miette!("{e:?}"))?;
                     }
                 } else if show {
-                    let k = self.run_blocking(move |r: R| r.get_api_key())
+                    let k = self
+                        .run_blocking(move |r: R| r.get_api_key())
                         .await
                         .map_err(|e| miette::miette!("Failed to get API key: {}", e))?;
                     if json_mode {
@@ -1150,7 +1151,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
 
                 // 3. Verify changes exist
                 let source_path_clone = source_wt.path.clone();
-                let status = self.run_blocking(move |r: R| r.get_status(&source_path_clone)).await?;
+                let status = self
+                    .run_blocking(move |r: R| r.get_status(&source_path_clone))
+                    .await?;
                 if status.staged.is_empty()
                     && status.unstaged.is_empty()
                     && status.untracked.is_empty()
