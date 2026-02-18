@@ -1858,12 +1858,37 @@ mod tests {
             );
         }
 
+    #[tokio::test]
+    async fn test_reducer_handle_convert() -> Result<()> {
+        let tracker = Arc::new(Mutex::new(CallTracker::default()));
+        let repo = MockRepo::new(tracker.clone());
+        let reducer = Reducer::new(repo, false, false);
+
+        reducer
+            .handle(Intent::Convert {
+                name: Some("my-hub".to_string()),
+                branch: Some("main".to_string()),
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let calls = tracker.lock().unwrap().calls.clone();
+        assert!(calls.contains(&"convert:Some(\"my-hub\")|Some(\"main\")".to_string()));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_reducer_handle_convert_defaults() -> Result<()> {
+        let tracker = Arc::new(Mutex::new(CallTracker::default()));
         let repo = MockRepo::new(tracker.clone());
         let reducer = Reducer::new(repo, false, false);
 
         reducer
             .handle(Intent::Teleport {
                 target: "dev".to_string(),
+            .handle(Intent::Convert {
+                name: None,
+                branch: None,
             })
             .await
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
@@ -1895,6 +1920,8 @@ mod tests {
                 && relevant_calls[2].contains(&main_path.to_string_lossy().to_string())
         );
 
+        let calls = tracker.lock().unwrap().calls.clone();
+        assert!(calls.contains(&"convert:None|None".to_string()));
         Ok(())
     }
 }
