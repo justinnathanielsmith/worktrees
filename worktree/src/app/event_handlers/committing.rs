@@ -1,6 +1,7 @@
 use crate::app::model::{AppState, PromptType};
 use crate::domain::repository::ProjectRepository;
 
+#[allow(clippy::too_many_arguments)]
 pub fn handle_committing_events<R: ProjectRepository + Clone + Send + Sync + 'static>(
     event: &crossterm::event::Event,
     repo: &R,

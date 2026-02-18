@@ -434,8 +434,41 @@ impl ProjectRepository for GitProjectRepository {
             return Ok(());
         }
 
-        let content = std::fs::read_to_string(manifest_path)
-            .context("Failed to read .worktrees.sync manifest.")?;
+        let abs_manifest_path = std::env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join(manifest_path);
+
+        let metadata = std::fs::metadata(manifest_path)
+            .context("Failed to read metadata of .worktrees.sync manifest.")?;
+        let mtime = metadata
+            .modified()
+            .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+
+        static SYNC_CONFIG_CACHE: std::sync::OnceLock<
+            std::sync::Mutex<std::collections::HashMap<PathBuf, (std::time::SystemTime, String)>>,
+        > = std::sync::OnceLock::new();
+        let cache = SYNC_CONFIG_CACHE
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+
+        let content = {
+            let mut guard = cache.lock().unwrap();
+            if let Some((cached_mtime, cached_content)) = guard.get(&abs_manifest_path) {
+                if *cached_mtime == mtime {
+                    debug!("Using cached .worktrees.sync manifest.");
+                    cached_content.clone()
+                } else {
+                    let content = std::fs::read_to_string(manifest_path)
+                        .context("Failed to read .worktrees.sync manifest.")?;
+                    guard.insert(abs_manifest_path, (mtime, content.clone()));
+                    content
+                }
+            } else {
+                let content = std::fs::read_to_string(manifest_path)
+                    .context("Failed to read .worktrees.sync manifest.")?;
+                guard.insert(abs_manifest_path, (mtime, content.clone()));
+                content
+            }
+        };
 
         for line in content.lines() {
             let line = line.trim();
@@ -1998,7 +2031,8 @@ mod tests {
 
     #[test]
     fn test_parse_worktree_entry_normal() {
-        let block = "worktree /path/to/worktree\nHEAD abc123456789\nbranch refs/heads/feature-branch";
+        let block =
+            "worktree /path/to/worktree\nHEAD abc123456789\nbranch refs/heads/feature-branch";
         let wt = GitProjectRepository::parse_worktree_entry(block);
 
         assert_eq!(wt.path, "/path/to/worktree");
@@ -2036,9 +2070,13 @@ mod tests {
         let wt = GitProjectRepository::parse_worktree_entry(block);
 
         assert_eq!(wt.branch, "group/feature");
+    }
+
+    #[test]
     fn test_sync_configs_path_traversal() {
         let _lock = CWD_MUTEX.lock().unwrap();
-        let temp_dir = std::env::temp_dir().join(format!("worktrees_traversal_test_{}", std::process::id()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("worktrees_traversal_test_{}", std::process::id()));
         if temp_dir.exists() {
             std::fs::remove_dir_all(&temp_dir).unwrap();
         }
@@ -2085,6 +2123,9 @@ mod tests {
         std::fs::remove_dir_all(&temp_dir).unwrap();
 
         // The fix should PREVENT this file from being created.
-        assert!(!exists, "Vulnerability fixed: Path traversal prevented writing outside worktree");
+        assert!(
+            !exists,
+            "Vulnerability fixed: Path traversal prevented writing outside worktree"
+        );
     }
 }
