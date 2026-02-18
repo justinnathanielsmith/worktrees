@@ -1998,7 +1998,8 @@ mod tests {
 
     #[test]
     fn test_parse_worktree_entry_normal() {
-        let block = "worktree /path/to/worktree\nHEAD abc123456789\nbranch refs/heads/feature-branch";
+        let block =
+            "worktree /path/to/worktree\nHEAD abc123456789\nbranch refs/heads/feature-branch";
         let wt = GitProjectRepository::parse_worktree_entry(block);
 
         assert_eq!(wt.path, "/path/to/worktree");
@@ -2036,9 +2037,13 @@ mod tests {
         let wt = GitProjectRepository::parse_worktree_entry(block);
 
         assert_eq!(wt.branch, "group/feature");
+    }
+
+    #[test]
     fn test_sync_configs_path_traversal() {
         let _lock = CWD_MUTEX.lock().unwrap();
-        let temp_dir = std::env::temp_dir().join(format!("worktrees_traversal_test_{}", std::process::id()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("worktrees_traversal_test_{}", std::process::id()));
         if temp_dir.exists() {
             std::fs::remove_dir_all(&temp_dir).unwrap();
         }
@@ -2085,6 +2090,9 @@ mod tests {
         std::fs::remove_dir_all(&temp_dir).unwrap();
 
         // The fix should PREVENT this file from being created.
-        assert!(!exists, "Vulnerability fixed: Path traversal prevented writing outside worktree");
+        assert!(
+            !exists,
+            "Vulnerability fixed: Path traversal prevented writing outside worktree"
+        );
     }
 }
