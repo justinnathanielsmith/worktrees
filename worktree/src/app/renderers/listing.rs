@@ -45,7 +45,12 @@ pub fn render_listing(
 
     let table = WorktreeListWidget::new(filtered_worktrees)
         .dimmed(is_dimmed)
-        .tick(spinner_tick);
+        .tick(spinner_tick)
+        .with_filter(if !filter_query.is_empty() {
+            Some(filter_query)
+        } else {
+            None
+        });
 
     f.render_stateful_widget(table, list_area, table_state);
 
