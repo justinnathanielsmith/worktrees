@@ -2036,6 +2036,9 @@ mod tests {
         let wt = GitProjectRepository::parse_worktree_entry(block);
 
         assert_eq!(wt.branch, "group/feature");
+    }
+
+    #[test]
     fn test_sync_configs_path_traversal() {
         let _lock = CWD_MUTEX.lock().unwrap();
         let temp_dir = std::env::temp_dir().join(format!("worktrees_traversal_test_{}", std::process::id()));

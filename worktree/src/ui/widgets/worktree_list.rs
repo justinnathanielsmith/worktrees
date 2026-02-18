@@ -1,5 +1,6 @@
 use crate::domain::repository::Worktree;
 use crate::ui::theme::{CyberTheme, Icons};
+use std::borrow::Cow;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -133,15 +134,15 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 };
 
                 let intent_str = if wt.is_bare {
-                    "MAIN".to_string()
+                    Cow::Borrowed("MAIN")
                 } else if let Some(meta) = &wt.metadata
                     && let Some(purpose) = &meta.purpose
                 {
-                    purpose.clone()
+                    Cow::Borrowed(purpose.as_str())
                 } else {
                     std::path::Path::new(&wt.path)
                         .file_name()
-                        .map_or_else(|| wt.branch.clone(), |n| n.to_string_lossy().to_string())
+                        .map_or_else(|| Cow::Borrowed(wt.branch.as_str()), |n| n.to_string_lossy())
                 };
 
                 let mut row_style = Style::default().fg(theme.text);
@@ -160,27 +161,17 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                     if self.is_dimmed {
                         row_style = row_style.remove_modifier(Modifier::DIM);
                     }
-                } else if is_dirty && !self.is_dimmed {
-                    // Subtle warning tint for dirty rows if not selected and not dimmed
-                    // We don't have a background color for warning in theme, so let's use subtle or just text color
-                    // The user requested: "row background has a subtle warning (Yellow) tint"
-                    // Since we don't have a 'tint', we can maybe change the text color or just keep it simple.
-                    // Making the text warning color might be too much.
-                    // The user said "row background". Ratatui doesn't support alpha blending for bg.
-                    // Best we can do is maybe use a different bg color if we had one.
-                    // Let's just color the status cell strongly.
                 }
 
                 // Cyber-style cursor animation
                 // ▊, ▋, ▌, ▍, ▎, ▏
-                let spinner_chars = ["▊", "▋", "▌", "▍", "▌", "▋"];
-                let spinner_idx = (self.spinner_tick / 2) % spinner_chars.len();
-                let cursor_char = spinner_chars[spinner_idx];
+                let spinner_prefixes = [" ▊ ", " ▋ ", " ▌ ", " ▍ ", " ▌ ", " ▋ "];
+                let spinner_idx = (self.spinner_tick / 2) % spinner_prefixes.len();
 
                 let prefix = if is_selected {
-                    format!(" {} ", cursor_char)
+                    spinner_prefixes[spinner_idx]
                 } else {
-                    "   ".to_string()
+                    "   "
                 };
 
                 let status_cell = wt.status_summary.as_ref().map_or_else(
@@ -198,7 +189,17 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                             Style::default().fg(color)
                         };
 
-                        Cell::from(format!("{} {}", icon, summary.to_uppercase())).style(style)
+                        let summary_text = if summary == "clean" {
+                            "CLEAN"
+                        } else {
+                            summary.as_str()
+                        };
+                        Cell::from(Line::from(vec![
+                            Span::raw(icon),
+                            Span::raw(" "),
+                            Span::raw(summary_text),
+                        ]))
+                        .style(style)
                     },
                 );
 
@@ -208,20 +209,20 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 }
 
                 Row::new(vec![
-                    Cell::from(format!("{prefix}{icon}")),
+                    Cell::from(Line::from(vec![Span::raw(prefix), Span::raw(icon)])),
                     Cell::from(intent_str).style(if is_selected {
                         branch_style
                     } else {
                         cell_style
                     }),
-                    Cell::from(wt.branch.clone()).style(if is_selected {
+                    Cell::from(wt.branch.as_str()).style(if is_selected {
                         Style::default().fg(theme.primary)
                     } else {
                         cell_style
                     }),
                     status_cell,
                     Cell::from(format_size(wt.size_bytes)).style(Style::default().fg(theme.subtle)),
-                    Cell::from(wt.commit.chars().take(7).collect::<String>())
+                    Cell::from(&wt.commit[..wt.commit.len().min(7)])
                         .style(Style::default().fg(theme.subtle)),
                 ])
                 .style(row_style)
