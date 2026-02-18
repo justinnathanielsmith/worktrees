@@ -1,7 +1,6 @@
 use crate::app::intent::Intent;
 use crate::app::model::AppState;
 use crate::app::ports::{RatatuiView, ViewPort};
-use crate::app::view::View;
 use crate::domain::repository::{ProjectRepository, Worktree};
 use indicatif::{ProgressBar, ProgressStyle};
 use miette::{IntoDiagnostic, Result};
@@ -30,7 +29,6 @@ pub struct Reducer<R: ProjectRepository, V: ViewPort = RatatuiView> {
     quiet_mode: bool,
 }
 
-
 impl<R: ProjectRepository + Clone + Send + Sync + 'static> Reducer<R, RatatuiView> {
     pub const fn new(repo: R, json_mode: bool, quiet_mode: bool) -> Self {
         Self {
@@ -52,6 +50,18 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
         }
     }
 
+    async fn run_blocking<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(R) -> anyhow::Result<T> + Send + 'static,
+        T: Send + 'static,
+    {
+        let repo = self.repo.clone();
+        tokio::task::spawn_blocking(move || f(repo))
+            .await
+            .into_diagnostic()?
+            .map_err(|e| miette::miette!(e))
+    }
+
     #[instrument(skip(self))]
     pub async fn handle(&self, intent: Intent) -> Result<()> {
         info!(?intent, "Handling intent");
@@ -67,7 +77,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
             Intent::Initialize { url, name, warp } => {
                 let project_name = get_project_name(url.as_ref(), name);
                 if !json_mode && !quiet_mode {
-                    View::render(AppState::Initializing {
+                    self.view.render(AppState::Initializing {
                         project_name: project_name.clone(),
                     });
                 }
@@ -89,25 +99,35 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
 
                 let url_clone = url.clone();
                 let project_name_clone = project_name.clone();
-                let repo_clone = repo.clone();
-
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.init_bare_repo(url_clone.as_deref(), &project_name_clone)
-                })
-                .await
-                .into_diagnostic()?;
+                let res = self
+                    .run_blocking(move |r: R| {
+                        r.init_bare_repo(url_clone.as_deref(), &project_name_clone)
+                    })
+                    .await;
 
                 match res {
                     Ok(()) => {
                         if warp {
-                            if let Err(e) =
-                                crate::infrastructure::warp_integration::generate_warp_workflows(
-                                    Path::new(&project_name),
-                                )
-                            {
-                                error!(error = %e, "Failed to generate Warp workflows");
+                            if crate::infrastructure::warp_integration::is_warp_terminal() {
+                                if let Err(e) =
+                                    crate::infrastructure::warp_integration::generate_warp_workflows(
+                                        Path::new(&project_name),
+                                    )
+                                {
+                                    error!(error = %e, "Failed to generate Warp workflows");
+                                } else {
+                                    info!("Warp workflows generated successfully");
+                                }
                             } else {
-                                info!("Warp workflows generated successfully");
+                                info!(
+                                    "Skipping Warp workflow generation: Not running in Warp Terminal"
+                                );
+                                if !json_mode && !quiet_mode {
+                                    println!(
+                                        "{} Skipping Warp workflow generation: Not running in Warp Terminal",
+                                        "⚠".yellow()
+                                    );
+                                }
                             }
                         }
 
@@ -122,14 +142,15 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
                         info!(%project_name, "Repository initialized successfully");
                         if json_mode {
-                            View::render_json(&serde_json::json!({
-                                "status": "success",
-                                "project": project_name,
-                                "path": format!("{}/.bare", project_name)
-                            }))
-                            .map_err(|e| miette::miette!("{e:?}"))?;
+                            self.view
+                                .render_json(&serde_json::json!({
+                                    "status": "success",
+                                    "project": project_name,
+                                    "path": format!("{}/.bare", project_name)
+                                }))
+                                .map_err(|e| miette::miette!("{e:?}"))?;
                         } else if !quiet_mode {
-                            View::render(AppState::Initialized { project_name });
+                            self.view.render(AppState::Initialized { project_name });
                         }
                     }
                     Err(e) => {
@@ -138,13 +159,14 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
                         error!(error = %e, "Failed to initialize repository");
                         if json_mode {
-                            View::render_json(&serde_json::json!({
-                                "status": "error",
-                                "message": e.to_string()
-                            }))
-                            .map_err(|e| miette::miette!("{e:?}"))?;
+                            self.view
+                                .render_json(&serde_json::json!({
+                                    "status": "error",
+                                    "message": e.to_string()
+                                }))
+                                .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            View::render(AppState::Error(
+                            self.view.render(AppState::Error(
                                 e.to_string(),
                                 Box::new(AppState::Welcome),
                             ));
@@ -155,7 +177,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
             Intent::AddWorktree { intent, branch } => {
                 let branch_name = branch.unwrap_or_else(|| intent.clone());
                 if !json_mode {
-                    View::render(AppState::AddingWorktree {
+                    self.view.render(AppState::AddingWorktree {
                         intent: intent.clone(),
                         branch: branch_name.clone(),
                     });
@@ -178,13 +200,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
 
                 let intent_clone = intent.clone();
                 let branch_name_clone = branch_name.clone();
-                let repo_clone = repo.clone();
-
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.add_worktree(&intent_clone, &branch_name_clone)
-                })
-                .await
-                .into_diagnostic()?;
+                let res = self
+                    .run_blocking(move |r: R| r.add_worktree(&intent_clone, &branch_name_clone))
+                    .await;
 
                 match res {
                     Ok(()) => {
@@ -193,14 +211,15 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
                         info!(%intent, %branch_name, "Worktree added successfully");
                         if json_mode {
-                            View::render_json(&serde_json::json!({
-                                "status": "success",
-                                "intent": intent,
-                                "branch": branch_name
-                            }))
-                            .map_err(|e| miette::miette!("{e:?}"))?;
+                            self.view
+                                .render_json(&serde_json::json!({
+                                    "status": "success",
+                                    "intent": intent,
+                                    "branch": branch_name
+                                }))
+                                .map_err(|e| miette::miette!("{e:?}"))?;
                         } else if !quiet_mode {
-                            View::render(AppState::WorktreeAdded { intent });
+                            self.view.render(AppState::WorktreeAdded { intent });
                         }
                     }
                     Err(e) => {
@@ -209,13 +228,14 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
                         error!(error = %e, %intent, "Failed to add worktree");
                         if json_mode {
-                            View::render_json(&serde_json::json!({
-                                "status": "error",
-                                "message": e.to_string()
-                            }))
-                            .map_err(|e| miette::miette!("{e:?}"))?;
+                            self.view
+                                .render_json(&serde_json::json!({
+                                    "status": "error",
+                                    "message": e.to_string()
+                                }))
+                                .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            View::render(AppState::Error(
+                            self.view.render(AppState::Error(
                                 e.to_string(),
                                 Box::new(AppState::Welcome),
                             ));
@@ -225,40 +245,38 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
             }
             Intent::RemoveWorktree { intent, force } => {
                 if !json_mode && !quiet_mode {
-                    View::render(AppState::RemovingWorktree {
+                    self.view.render(AppState::RemovingWorktree {
                         intent: intent.clone(),
                     });
                 }
                 let intent_clone = intent.clone();
-                let repo_clone = repo.clone();
                 let force_clone = force;
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.remove_worktree(&intent_clone, force_clone)
-                })
-                .await
-                .into_diagnostic()?;
+                let res = self
+                    .run_blocking(move |r: R| r.remove_worktree(&intent_clone, force_clone))
+                    .await;
 
                 match res {
                     Ok(()) => {
                         info!(%intent, "Worktree removed successfully");
                         if json_mode {
-                            View::render_json(
-                                &serde_json::json!({ "status": "success", "intent": intent }),
-                            )
-                            .map_err(|e| miette::miette!("{e:?}"))?;
+                            self.view
+                                .render_json(
+                                    &serde_json::json!({ "status": "success", "intent": intent }),
+                                )
+                                .map_err(|e| miette::miette!("{e:?}"))?;
                         } else if !quiet_mode {
-                            View::render(AppState::WorktreeRemoved);
+                            self.view.render(AppState::WorktreeRemoved);
                         }
                     }
                     Err(e) => {
                         error!(error = %e, %intent, "Failed to remove worktree");
                         if json_mode {
-                            View::render_json(
+                            self.view.render_json(
                                 &serde_json::json!({ "status": "error", "message": e.to_string() }),
                             )
                             .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            View::render(AppState::Error(
+                            self.view.render(AppState::Error(
                                 e.to_string(),
                                 Box::new(AppState::Welcome),
                             ));
@@ -267,20 +285,18 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
             }
             Intent::ListWorktrees => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
                 info!(count = worktrees.len(), "Worktrees listed successfully");
                 if json_mode {
-                    View::render_json(&worktrees).map_err(|e| miette::miette!("{e:?}"))?;
+                    self.view
+                        .render_json(&worktrees)
+                        .map_err(|e| miette::miette!("{e:?}"))?;
                 } else {
-                    View::render_banner();
+                    self.view.render_banner();
                     if worktrees.is_empty() {
-                        View::render(AppState::Welcome);
+                        self.view.render(AppState::Welcome);
                     }
-                    View::render_listing_table(&worktrees);
+                    self.view.render_listing_table(&worktrees);
                     let tip = "Tip: Run with 'worktrees list' (no args) for interactive TUI";
                     if !quiet_mode {
                         println!("\n{}", tip.if_supports_color(Stdout, |t| t.dimmed()));
@@ -289,21 +305,18 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
             }
             Intent::SetupDefaults => {
                 if !json_mode && !quiet_mode {
-                    View::render(AppState::SettingUpDefaults);
+                    self.view.render(AppState::SettingUpDefaults);
                 }
 
                 let mut results = Vec::new();
 
                 info!("Setting up default worktrees (main, dev)");
-                let repo_clone = repo.clone();
-                let main_res = tokio::task::spawn_blocking(move || {
-                    match repo_clone.add_worktree("main", "main") {
-                        Ok(()) => serde_json::json!({ "name": "main", "status": "ready" }),
-                        Err(_) => serde_json::json!({ "name": "main", "status": "skipped" }),
-                    }
-                })
-                .await
-                .into_diagnostic()?;
+                let main_res = self
+                    .run_blocking(|r: R| match r.add_worktree("main", "main") {
+                        Ok(()) => Ok(serde_json::json!({ "name": "main", "status": "ready" })),
+                        Err(_) => Ok(serde_json::json!({ "name": "main", "status": "skipped" })),
+                    })
+                    .await?;
 
                 let status = main_res["status"].as_str().unwrap_or("unknown");
                 if !json_mode {
@@ -315,16 +328,15 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
                 results.push(main_res);
 
-                let repo_clone = repo.clone();
-                let dev_res = tokio::task::spawn_blocking(move || {
-                    match repo_clone.add_worktree("dev", "dev") {
-                        Ok(()) => serde_json::json!({ "name": "dev", "status": "ready" }),
-                        Err(_) => match repo_clone.add_new_worktree("dev", "dev", "main") {
-                            Ok(()) => serde_json::json!({ "name": "dev", "status": "ready", "created_from": "main" }),
-                            Err(_) => serde_json::json!({ "name": "dev", "status": "skipped" })
+                let dev_res = self.run_blocking(|r: R| {
+                    match r.add_worktree("dev", "dev") {
+                        Ok(()) => Ok(serde_json::json!({ "name": "dev", "status": "ready" })),
+                        Err(_) => match r.add_new_worktree("dev", "dev", "main") {
+                            Ok(()) => Ok(serde_json::json!({ "name": "dev", "status": "ready", "created_from": "main" })),
+                            Err(_) => Ok(serde_json::json!({ "name": "dev", "status": "skipped" }))
                         },
                     }
-                }).await.into_diagnostic()?;
+                }).await?;
 
                 let status = dev_res["status"].as_str().unwrap_or("unknown");
                 if !json_mode {
@@ -342,9 +354,11 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 results.push(dev_res);
 
                 if json_mode {
-                    View::render_json(&results).map_err(|e| miette::miette!("{e:?}"))?;
+                    self.view
+                        .render_json(&results)
+                        .map_err(|e| miette::miette!("{e:?}"))?;
                 } else if !quiet_mode {
-                    View::render(AppState::SetupComplete);
+                    self.view.render(AppState::SetupComplete);
                 }
             }
             Intent::RunCommand {
@@ -366,13 +380,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 // 1. Add worktree
                 let intent_clone = intent.clone();
                 let branch_name_clone = branch_name.clone();
-                let repo_clone = repo.clone();
-                tokio::task::spawn_blocking(move || {
-                    repo_clone.add_worktree(&intent_clone, &branch_name_clone)
-                })
-                .await
-                .into_diagnostic()?
-                .map_err(|e| miette::miette!("Failed to create temporary worktree: {}", e))?;
+                self.run_blocking(move |r: R| r.add_worktree(&intent_clone, &branch_name_clone))
+                    .await
+                    .map_err(|e| miette::miette!("Failed to create temporary worktree: {}", e))?;
 
                 if !json_mode && !quiet_mode {
                     println!(
@@ -403,12 +413,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
 
                 // 3. Remove worktree (force to ensure cleanup)
                 let intent_clone = intent.clone();
-                let repo_clone = repo.clone();
-                let _ = tokio::task::spawn_blocking(move || {
-                    repo_clone.remove_worktree(&intent_clone, true)
-                })
-                .await
-                .into_diagnostic()?;
+                let _ = self
+                    .run_blocking(move |r| r.remove_worktree(&intent_clone, true))
+                    .await;
 
                 if !status.success() {
                     return Err(miette::miette!("Command failed with status: {}", status));
@@ -417,18 +424,15 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 if !json_mode && !quiet_mode {
                     println!("{} Done.", "✔".green().bold());
                 } else if json_mode {
-                    View::render_json(
-                        &serde_json::json!({ "status": "success", "exit_code": status.code() }),
-                    )
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                    self.view
+                        .render_json(
+                            &serde_json::json!({ "status": "success", "exit_code": status.code() }),
+                        )
+                        .map_err(|e| miette::miette!("{e:?}"))?;
                 }
             }
             Intent::SyncConfigurations { intent } => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
                 let targets: Vec<Worktree> = if let Some(name) = intent {
                     worktrees
                         .into_iter()
@@ -452,11 +456,8 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                             wt.branch.bold()
                         );
                     }
-                    let repo_clone = repo.clone();
                     let path = wt.path.clone();
-                    let res = tokio::task::spawn_blocking(move || repo_clone.sync_configs(&path))
-                        .await
-                        .into_diagnostic()?;
+                    let res = self.run_blocking(move |r: R| r.sync_configs(&path)).await;
 
                     if let Err(e) = res {
                         error!(error = %e, path = %wt.path, "Configuration synchronization failed");
@@ -469,16 +470,13 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
 
                 if json_mode {
-                    View::render_json(&serde_json::json!({ "status": "success" }))
+                    self.view
+                        .render_json(&serde_json::json!({ "status": "success" }))
                         .map_err(|e| miette::miette!("{e:?}"))?;
                 }
             }
             Intent::Push { intent } => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
 
                 let target = if let Some(name) = intent {
                     worktrees
@@ -499,11 +497,8 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         );
                     }
 
-                    let repo_clone = repo.clone();
                     let path = wt.path.clone();
-                    let res = tokio::task::spawn_blocking(move || repo_clone.push(&path))
-                        .await
-                        .into_diagnostic()?;
+                    let res = self.run_blocking(move |r: R| r.push(&path)).await;
 
                     match res {
                         Ok(()) => {
@@ -511,7 +506,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                                 println!("   {} Push complete.", "✔".green());
                             }
                             if json_mode {
-                                View::render_json(&serde_json::json!({ "status": "success", "branch": wt.branch }))
+                                self.view.render_json(&serde_json::json!({ "status": "success", "branch": wt.branch }))
                                     .map_err(|e| miette::miette!("{e:?}"))?;
                             }
                         }
@@ -529,11 +524,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
             }
 
             Intent::Pull { intent } => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
 
                 let target = if let Some(name) = intent {
                     worktrees
@@ -554,11 +545,8 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         );
                     }
 
-                    let repo_clone = repo.clone();
                     let path = wt.path.clone();
-                    let res = tokio::task::spawn_blocking(move || repo_clone.pull(&path))
-                        .await
-                        .into_diagnostic()?;
+                    let res = self.run_blocking(move |r: R| r.pull(&path)).await;
 
                     match res {
                         Ok(()) => {
@@ -566,7 +554,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                                 println!("   {} Pull complete.", "✔".green());
                             }
                             if json_mode {
-                                View::render_json(&serde_json::json!({ "status": "success", "branch": wt.branch }))
+                                self.view.render_json(&serde_json::json!({ "status": "success", "branch": wt.branch }))
                                     .map_err(|e| miette::miette!("{e:?}"))?;
                             }
                         }
@@ -585,28 +573,27 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
             Intent::Config { key, show } => {
                 if let Some(k) = key {
                     let k_clone = k.clone();
-                    let repo_clone = repo.clone();
-                    tokio::task::spawn_blocking(move || repo_clone.set_api_key(&k_clone))
+                    self.run_blocking(move |r: R| r.set_api_key(&k_clone))
                         .await
-                        .into_diagnostic()?
                         .map_err(|e| miette::miette!("Failed to set API key: {}", e))?;
 
                     if !json_mode && !quiet_mode {
                         println!("{} Gemini API key set successfully.", "✔".green().bold());
                     } else if json_mode {
-                        View::render_json(
-                            &serde_json::json!({ "status": "success", "action": "set_key" }),
-                        )
-                        .map_err(|e| miette::miette!("{e:?}"))?;
+                        self.view
+                            .render_json(
+                                &serde_json::json!({ "status": "success", "action": "set_key" }),
+                            )
+                            .map_err(|e| miette::miette!("{e:?}"))?;
                     }
                 } else if show {
-                    let repo_clone = repo.clone();
-                    let k = tokio::task::spawn_blocking(move || repo_clone.get_api_key())
+                    let k = self
+                        .run_blocking(move |r: R| r.get_api_key())
                         .await
-                        .into_diagnostic()?
                         .map_err(|e| miette::miette!("Failed to get API key: {}", e))?;
                     if json_mode {
-                        View::render_json(&serde_json::json!({ "status": "success", "key": k }))
+                        self.view
+                            .render_json(&serde_json::json!({ "status": "success", "key": k }))
                             .map_err(|e| miette::miette!("{e:?}"))?;
                     } else if let Some(val) = k {
                         println!("{} Current API key: {}", "➜".cyan().bold(), val);
@@ -639,24 +626,22 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     }
                 }
 
-                let repo_clone = repo.clone();
-                let stale_worktrees = tokio::task::spawn_blocking(move || {
-                    repo_clone.clean_worktrees(dry_run, artifacts)
-                })
-                .await
-                .into_diagnostic()?
-                .map_err(|e| miette::miette!("Failed to clean worktrees: {}", e))?;
+                let stale_worktrees = self
+                    .run_blocking(move |r: R| r.clean_worktrees(dry_run, artifacts))
+                    .await
+                    .map_err(|e| miette::miette!("Failed to clean worktrees: {}", e))?;
 
                 if stale_worktrees.is_empty() {
                     if !json_mode && !quiet_mode {
                         println!("{} No stale worktrees found.", "✔".green().bold());
                     } else if json_mode {
-                        View::render_json(&serde_json::json!({
-                            "status": "success",
-                            "stale_count": 0,
-                            "stale_worktrees": []
-                        }))
-                        .map_err(|e| miette::miette!("{e:?}"))?;
+                        self.view
+                            .render_json(&serde_json::json!({
+                                "status": "success",
+                                "stale_count": 0,
+                                "stale_worktrees": []
+                            }))
+                            .map_err(|e| miette::miette!("{e:?}"))?;
                     }
                 } else if !json_mode {
                     if dry_run {
@@ -682,21 +667,18 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         );
                     }
                 } else {
-                    View::render_json(&serde_json::json!({
-                        "status": "success",
-                        "dry_run": dry_run,
-                        "stale_count": stale_worktrees.len(),
-                        "stale_worktrees": stale_worktrees
-                    }))
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                    self.view
+                        .render_json(&serde_json::json!({
+                            "status": "success",
+                            "dry_run": dry_run,
+                            "stale_count": stale_worktrees.len(),
+                            "stale_worktrees": stale_worktrees
+                        }))
+                        .map_err(|e| miette::miette!("{e:?}"))?;
                 }
             }
             Intent::SwitchWorktree { name, copy } => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
 
                 let candidates: Vec<&Worktree> =
                     worktrees.iter().filter(|wt| !wt.is_bare).collect();
@@ -753,13 +735,14 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
 
                         if json_mode {
-                            View::render_json(&serde_json::json!({
-                                "status": "success",
-                                "path": wt.path,
-                                "branch": wt.branch,
-                                "copied": copy
-                            }))
-                            .map_err(|e| miette::miette!("{e:?}"))?;
+                            self.view
+                                .render_json(&serde_json::json!({
+                                    "status": "success",
+                                    "path": wt.path,
+                                    "branch": wt.branch,
+                                    "copied": copy
+                                }))
+                                .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
                             // Print ONLY the path to stdout for shell integration
                             println!("{}", wt.path);
@@ -798,13 +781,11 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
 
                 let name_clone = name.clone();
                 let branch_clone = branch.clone();
-                let repo_clone = repo.clone();
-
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.convert_to_bare(name_clone.as_deref(), branch_clone.as_deref())
-                })
-                .await
-                .into_diagnostic()?;
+                let res: Result<std::path::PathBuf> = self
+                    .run_blocking(move |r: R| {
+                        r.convert_to_bare(name_clone.as_deref(), branch_clone.as_deref())
+                    })
+                    .await;
 
                 match res {
                     Ok(hub_path) => {
@@ -813,11 +794,12 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
                         info!(path = ?hub_path, "Repository converted successfully");
                         if json_mode {
-                            View::render_json(&serde_json::json!({
-                                "status": "success",
-                                "hub_path": hub_path.to_string_lossy()
-                            }))
-                            .map_err(|e| miette::miette!("{e:?}"))?;
+                            self.view
+                                .render_json(&serde_json::json!({
+                                    "status": "success",
+                                    "hub_path": hub_path.to_string_lossy()
+                                }))
+                                .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
                             println!("{} Conversion complete!", "✔".green().bold());
                             println!(
@@ -833,18 +815,16 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                         }
                     }
                     Err(e) => {
-                        if let Some(pb) = pb {
-                            pb.finish_and_clear();
-                        }
                         error!(error = %e, "Failed to convert repository");
                         if json_mode {
-                            View::render_json(&serde_json::json!({
-                                "status": "error",
-                                "message": e.to_string()
-                            }))
-                            .map_err(|e| miette::miette!("{e:?}"))?;
+                            self.view
+                                .render_json(&serde_json::json!({
+                                    "status": "error",
+                                    "message": e.to_string()
+                                }))
+                                .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            View::render(AppState::Error(
+                            self.view.render(AppState::Error(
                                 e.to_string(),
                                 Box::new(AppState::Welcome),
                             ));
@@ -853,10 +833,6 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
             }
             Intent::Migrate { force, dry_run } => {
-                let repo_clone = repo.clone();
-                let force_clone = force;
-                let dry_run_clone = dry_run;
-
                 if !json_mode && !quiet_mode {
                     println!(
                         "{} Migrating repository to Bare Hub structure (in-place)...",
@@ -879,13 +855,11 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     None
                 };
 
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.migrate_to_bare(force_clone, dry_run_clone)
-                })
-                .await
-                .into_diagnostic()?;
+                let res: Result<std::path::PathBuf> = self
+                    .run_blocking(move |r: R| r.migrate_to_bare(force, dry_run))
+                    .await;
 
-                if let Some(pb) = pb {
+                if let Some(ref pb) = pb {
                     pb.finish_and_clear();
                 }
 
@@ -899,22 +873,24 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                                     path.display()
                                 );
                             } else {
-                                View::render_json(&serde_json::json!({
-                                    "status": "success",
-                                    "dry_run": true,
-                                    "would_create": path
-                                }))
-                                .map_err(|e| miette::miette!("{e:?}"))?;
+                                self.view
+                                    .render_json(&serde_json::json!({
+                                        "status": "success",
+                                        "dry_run": true,
+                                        "would_create": path
+                                    }))
+                                    .map_err(|e| miette::miette!("{e:?}"))?;
                             }
                         } else {
                             info!("Repository migrated successfully");
                             if json_mode {
-                                View::render_json(&serde_json::json!({
-                                    "status": "success",
-                                    "path": path,
-                                    "message": "Repository migrated to Bare Hub structure."
-                                }))
-                                .map_err(|e| miette::miette!("{e:?}"))?;
+                                self.view
+                                    .render_json(&serde_json::json!({
+                                        "status": "success",
+                                        "path": path,
+                                        "message": "Repository migrated to Bare Hub structure."
+                                    }))
+                                    .map_err(|e| miette::miette!("{e:?}"))?;
                             } else if !quiet_mode {
                                 println!(
                                     "\n{} Migration complete! You are now in a Bare Hub.",
@@ -928,7 +904,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     Err(e) => {
                         error!(error = %e, "Failed to migrate repository");
                         if json_mode {
-                            View::render_json(
+                            self.view.render_json(
                                 &serde_json::json!({ "status": "error", "message": e.to_string() }),
                             )
                             .map_err(|e| miette::miette!("{e:?}"))?;
@@ -942,11 +918,7 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 }
             }
             Intent::CheckoutWorktree { intent, branch } => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
 
                 let needle = intent.to_lowercase();
                 let wt = worktrees
@@ -963,23 +935,21 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
 
                 let path = wt.path.clone();
                 let branch_clone = branch.clone();
-                let repo_clone2 = repo.clone();
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone2.switch_branch(&path, &branch_clone)
-                })
-                .await
-                .into_diagnostic()?;
+                let res: Result<()> = self
+                    .run_blocking(move |r: R| r.switch_branch(&path, &branch_clone))
+                    .await;
 
                 match res {
                     Ok(()) => {
                         info!(%intent, %branch, "Worktree branch switched successfully");
                         if json_mode {
-                            View::render_json(&serde_json::json!({
-                                "status": "success",
-                                "intent": intent,
-                                "branch": branch
-                            }))
-                            .map_err(|e| miette::miette!("{e:?}"))?;
+                            self.view
+                                .render_json(&serde_json::json!({
+                                    "status": "success",
+                                    "intent": intent,
+                                    "branch": branch
+                                }))
+                                .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
                             println!(
                                 "{} Worktree '{}' switched to branch '{}'.",
@@ -992,13 +962,14 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     Err(e) => {
                         error!(error = %e, %intent, %branch, "Failed to switch worktree branch");
                         if json_mode {
-                            View::render_json(&serde_json::json!({
-                                "status": "error",
-                                "message": e.to_string()
-                            }))
-                            .map_err(|e| miette::miette!("{e:?}"))?;
+                            self.view
+                                .render_json(&serde_json::json!({
+                                    "status": "error",
+                                    "message": e.to_string()
+                                }))
+                                .map_err(|e| miette::miette!("{e:?}"))?;
                         } else {
-                            View::render(AppState::Error(
+                            self.view.render(AppState::Error(
                                 e.to_string(),
                                 Box::new(AppState::Welcome),
                             ));
@@ -1013,15 +984,9 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 clap_complete::generate(shell, &mut cmd, bin_name, &mut std::io::stdout());
             }
             Intent::Open => {
-                let repo_clone = repo.clone();
-                let worktrees = tokio::task::spawn_blocking(move || repo_clone.list_worktrees())
-                    .await
-                    .into_diagnostic()?
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
 
-                let root = repo
-                    .get_project_root()
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                let root = self.run_blocking(|r| r.get_project_root()).await?;
                 let project_name = root
                     .file_name()
                     .and_then(|n| n.to_str())
@@ -1030,11 +995,12 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                 let yaml = crate::app::warp::generate_config(project_name, &worktrees);
 
                 if json_mode {
-                    View::render_json(&serde_json::json!({
-                        "status": "success",
-                        "config": yaml
-                    }))
-                    .map_err(|e| miette::miette!("{e:?}"))?;
+                    self.view
+                        .render_json(&serde_json::json!({
+                            "status": "success",
+                            "config": yaml
+                        }))
+                        .map_err(|e| miette::miette!("{e:?}"))?;
                 } else {
                     println!("\n{}", "Generated Warp Launch Configuration:".cyan().bold());
                     println!("---");
@@ -1061,15 +1027,12 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                     );
                 }
 
-                let repo_clone = repo.clone();
                 let upstream_clone = upstream_branch.clone();
                 let path_clone = path.clone();
 
-                let res = tokio::task::spawn_blocking(move || {
-                    repo_clone.rebase(&path_clone, &upstream_clone)
-                })
-                .await
-                .into_diagnostic()?;
+                let res: Result<()> = self
+                    .run_blocking(move |r: R| r.rebase(&path_clone, &upstream_clone))
+                    .await;
 
                 match res {
                     Ok(()) => {
@@ -1077,11 +1040,12 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                             println!("{} Rebase complete.", "✔".green().bold());
                         }
                         if json_mode {
-                            View::render_json(&serde_json::json!({
-                                "status": "success",
-                                "upstream": upstream_branch
-                            }))
-                            .map_err(|e| miette::miette!("{e:?}"))?;
+                            self.view
+                                .render_json(&serde_json::json!({
+                                    "status": "success",
+                                    "upstream": upstream_branch
+                                }))
+                                .map_err(|e| miette::miette!("{e:?}"))?;
                         }
                     }
                     Err(e) => {
@@ -1093,14 +1057,13 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                                 "➜".cyan().bold()
                             );
 
-                            let repo_clone = repo.clone();
                             let path_clone = path;
-                            let explanation_res = tokio::task::spawn_blocking(move || {
-                                let diff = repo_clone.get_conflict_diff(&path_clone)?;
-                                repo_clone.explain_rebase_conflict(&diff)
-                            })
-                            .await
-                            .into_diagnostic()?;
+                            let explanation_res: Result<String> = self
+                                .run_blocking(move |r: R| {
+                                    let diff = r.get_conflict_diff(&path_clone)?;
+                                    r.explain_rebase_conflict(&diff)
+                                })
+                                .await;
 
                             match explanation_res {
                                 Ok(explanation) => {
@@ -1112,50 +1075,178 @@ impl<R: ProjectRepository + Clone + Send + Sync + 'static, V: ViewPort> Reducer<
                                 }
                             }
                         } else {
-                            View::render_json(&serde_json::json!({
-                                "status": "error",
-                                "message": e.to_string()
-                            }))
-                            .map_err(|e| miette::miette!("{e:?}"))?;
+                            self.view
+                                .render_json(&serde_json::json!({
+                                    "status": "error",
+                                    "message": e.to_string()
+                                }))
+                                .map_err(|e| miette::miette!("{e:?}"))?;
                         }
                     }
                 }
             }
+            Intent::Teleport { target } => {
+                let worktrees = self.run_blocking(|r: R| r.list_worktrees()).await?;
+
+                let candidates: Vec<&Worktree> =
+                    worktrees.iter().filter(|wt| !wt.is_bare).collect();
+
+                // 1. Resolve Current Worktree
+                let current_dir = std::env::current_dir().into_diagnostic()?;
+                let current_dir_canonical = current_dir.canonicalize().unwrap_or(current_dir);
+
+                let source_wt = candidates.iter().find(|wt| {
+                    Path::new(&wt.path)
+                        .canonicalize()
+                        .map(|p| p == current_dir_canonical)
+                        .unwrap_or(false)
+                });
+
+                let source_wt = match source_wt {
+                    Some(wt) => wt,
+                    None => {
+                        return Err(miette::miette!(
+                            "Not currently in a managed worktree. Teleport must be run from a worktree directory."
+                        ));
+                    }
+                };
+
+                // 2. Resolve Target Worktree (using fuzzy match logic like Switch)
+                let needle = target.to_lowercase();
+                let matched_target = candidates
+                    .iter()
+                    .find(|wt| wt.branch.to_lowercase() == needle)
+                    .or_else(|| {
+                        candidates.iter().find(|wt| {
+                            Path::new(&wt.path)
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .is_some_and(|n| n.to_lowercase() == needle)
+                        })
+                    })
+                    .or_else(|| {
+                        candidates
+                            .iter()
+                            .find(|wt| wt.branch.to_lowercase().contains(&needle))
+                    })
+                    .or_else(|| {
+                        candidates
+                            .iter()
+                            .find(|wt| wt.path.to_lowercase().contains(&needle))
+                    });
+
+                let target_wt = match matched_target {
+                    Some(wt) => wt,
+                    None => {
+                        return Err(miette::miette!("Target worktree '{}' not found.", target));
+                    }
+                };
+
+                if source_wt.path == target_wt.path {
+                    return Err(miette::miette!(
+                        "Already in target worktree '{}'.",
+                        target_wt.branch
+                    ));
+                }
+
+                // 3. Verify changes exist
+                let source_path_clone = source_wt.path.clone();
+                let status = self
+                    .run_blocking(move |r: R| r.get_status(&source_path_clone))
+                    .await?;
+                if status.staged.is_empty()
+                    && status.unstaged.is_empty()
+                    && status.untracked.is_empty()
+                {
+                    if !json_mode && !quiet_mode {
+                        println!(
+                            "{} Current worktree is clean. Nothing to teleport.",
+                            "ℹ".blue()
+                        );
+                    }
+                    return Ok(());
+                }
+
+                if !json_mode && !quiet_mode {
+                    println!(
+                        "{} Teleporting changes from '{}' to '{}'...",
+                        "➜".cyan().bold(),
+                        source_wt.branch.bold(),
+                        target_wt.branch.bold()
+                    );
+                }
+
+                let source_path = source_wt.path.clone();
+                let target_path = target_wt.path.clone();
+                let target_branch = target_wt.branch.clone();
+
+                let res: Result<()> = self.run_blocking(move |r: R| {
+                    // Stash changes
+                    let msg = format!("Teleport to {}", target_branch);
+                    r.stash_save(&source_path, Some(&msg))?;
+
+                    // Verify stash exists (it should be at index 0)
+                    let stashes = r.list_stashes(&source_path)?;
+                    if stashes.is_empty() {
+                         return Err(anyhow::anyhow!("Failed to create stash for teleport."));
+                    }
+
+                    // Apply to target
+                    match r.apply_stash(&target_path, 0) {
+                        Ok(()) => {
+                            // Only drop if apply succeeded
+                            r.drop_stash(&source_path, 0)?;
+                            Ok(())
+                        }
+                        Err(e) => {
+                            Err(anyhow::anyhow!("Failed to apply changes to target '{}': {}. Changes preserved in stash@{{0}}.", target_branch, e))
+                        }
+                    }
+                }).await;
+
+                res.map_err(|e| miette::miette!(e.to_string()))?;
+
+                if !json_mode && !quiet_mode {
+                    println!("{} Teleport complete!", "✔".green().bold());
+                } else if json_mode {
+                    self.view
+                        .render_json(&serde_json::json!({
+                            "status": "success",
+                            "from": source_wt.branch,
+                            "to": target_wt.branch
+                        }))
+                        .map_err(|e| miette::miette!("{e:?}"))?;
+                }
+            }
             Intent::ApplyStash { path, index } => {
-                let repo_clone = repo.clone();
                 let path_clone = path;
-                tokio::task::spawn_blocking(move || repo_clone.apply_stash(&path_clone, index))
+                self.run_blocking(move |r: R| r.apply_stash(&path_clone, index))
                     .await
-                    .into_diagnostic()?
                     .map_err(|e| miette::miette!(e.to_string()))?;
             }
             Intent::PopStash { path, index } => {
-                let repo_clone = repo.clone();
                 let path_clone = path;
-                tokio::task::spawn_blocking(move || repo_clone.pop_stash(&path_clone, index))
+                self.run_blocking(move |r: R| r.pop_stash(&path_clone, index))
                     .await
-                    .into_diagnostic()?
                     .map_err(|e| miette::miette!(e.to_string()))?;
             }
             Intent::DropStash { path, index } => {
-                let repo_clone = repo.clone();
                 let path_clone = path;
-                tokio::task::spawn_blocking(move || repo_clone.drop_stash(&path_clone, index))
+                self.run_blocking(move |r: R| r.drop_stash(&path_clone, index))
                     .await
-                    .into_diagnostic()?
                     .map_err(|e| miette::miette!(e.to_string()))?;
             }
             Intent::StashSave { path, message } => {
-                let repo_clone = repo.clone();
                 let path_clone = path;
-                tokio::task::spawn_blocking(move || {
-                    repo_clone.stash_save(&path_clone, message.as_deref())
-                })
-                .await
-                .into_diagnostic()?
-                .map_err(|e| miette::miette!(e.to_string()))?;
+                self.run_blocking(move |r: R| r.stash_save(&path_clone, message.as_deref()))
+                    .await
+                    .map_err(|e| miette::miette!(e.to_string()))?;
             }
             Intent::ViewStashes { .. } => {}
+            Intent::ChangeMode(_) => {
+                // This is primarily handled in listing.rs for TUI
+                // but we keep the variant here for intent completeness.
+            }
         }
 
         Ok(())
@@ -1392,7 +1483,10 @@ mod tests {
             Ok(rx)
         }
 
-        fn list_stashes(&self, _path: &str) -> anyhow::Result<Vec<crate::domain::repository::StashEntry>> {
+        fn list_stashes(
+            &self,
+            _path: &str,
+        ) -> anyhow::Result<Vec<crate::domain::repository::StashEntry>> {
             Ok(vec![])
         }
 
@@ -1654,6 +1748,44 @@ mod tests {
         let calls = tracker.lock().unwrap().calls.clone();
         assert!(calls.contains(&"list".to_string()));
         assert!(calls.contains(&"switch:dev|feature-y".to_string()));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_reducer_handle_convert() -> Result<()> {
+        let tracker = Arc::new(Mutex::new(CallTracker::default()));
+        let repo = MockRepo::new(tracker.clone());
+        let reducer = Reducer::new(repo, false, false);
+
+        reducer
+            .handle(Intent::Convert {
+                name: Some("my-hub".to_string()),
+                branch: Some("main".to_string()),
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let calls = tracker.lock().unwrap().calls.clone();
+        assert!(calls.contains(&"convert:Some(\"my-hub\")|Some(\"main\")".to_string()));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_reducer_handle_convert_defaults() -> Result<()> {
+        let tracker = Arc::new(Mutex::new(CallTracker::default()));
+        let repo = MockRepo::new(tracker.clone());
+        let reducer = Reducer::new(repo, false, false);
+
+        reducer
+            .handle(Intent::Convert {
+                name: None,
+                branch: None,
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let calls = tracker.lock().unwrap().calls.clone();
+        assert!(calls.contains(&"convert:None|None".to_string()));
         Ok(())
     }
 }
