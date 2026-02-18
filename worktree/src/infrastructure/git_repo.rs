@@ -282,9 +282,6 @@ impl GitProjectRepository {
 
         for line in output.lines() {
             if line.len() < 4 {
-                if line.len() >= 2 && &line[..2] == "??" {
-                    untracked.push(line[3..].to_string());
-                }
                 continue;
             }
             let status = &line[..2];
@@ -1977,5 +1974,90 @@ mod tests {
 
         // Cleanup
         std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_parse_status_output_clean() {
+        let output = "";
+        let status = GitProjectRepository::parse_status_output(output);
+        assert!(status.staged.is_empty());
+        assert!(status.unstaged.is_empty());
+        assert!(status.untracked.is_empty());
+    }
+
+    #[test]
+    fn test_parse_status_output_staged() {
+        let output = "M  file1.txt\nA  file2.txt\nD  file3.txt\nR  old -> new\nC  copy.txt";
+        let status = GitProjectRepository::parse_status_output(output);
+
+        assert_eq!(status.staged.len(), 5);
+        assert!(status.unstaged.is_empty());
+        assert!(status.untracked.is_empty());
+
+        let staged_map: std::collections::HashMap<_, _> = status.staged.into_iter().collect();
+        assert_eq!(staged_map.get("file1.txt"), Some(&"M ".to_string()));
+        assert_eq!(staged_map.get("file2.txt"), Some(&"A ".to_string()));
+        assert_eq!(staged_map.get("file3.txt"), Some(&"D ".to_string()));
+        assert_eq!(staged_map.get("old -> new"), Some(&"R ".to_string()));
+        assert_eq!(staged_map.get("copy.txt"), Some(&"C ".to_string()));
+    }
+
+    #[test]
+    fn test_parse_status_output_unstaged() {
+        let output = " M file1.txt\n D file2.txt";
+        let status = GitProjectRepository::parse_status_output(output);
+
+        assert!(status.staged.is_empty());
+        assert_eq!(status.unstaged.len(), 2);
+        assert!(status.untracked.is_empty());
+
+        let unstaged_map: std::collections::HashMap<_, _> = status.unstaged.into_iter().collect();
+        assert_eq!(unstaged_map.get("file1.txt"), Some(&" M".to_string()));
+        assert_eq!(unstaged_map.get("file2.txt"), Some(&" D".to_string()));
+    }
+
+    #[test]
+    fn test_parse_status_output_untracked() {
+        let output = "?? new_file.txt\n?? another_file.txt";
+        let status = GitProjectRepository::parse_status_output(output);
+
+        assert!(status.staged.is_empty());
+        assert!(status.unstaged.is_empty());
+        assert_eq!(status.untracked.len(), 2);
+
+        assert!(status.untracked.contains(&"new_file.txt".to_string()));
+        assert!(status.untracked.contains(&"another_file.txt".to_string()));
+    }
+
+    #[test]
+    fn test_parse_status_output_mixed() {
+        let output = "MM file1.txt\nMD file2.txt";
+        let status = GitProjectRepository::parse_status_output(output);
+
+        assert_eq!(status.staged.len(), 2);
+        assert_eq!(status.unstaged.len(), 2);
+
+        // MM -> Staged M, Unstaged M
+        // MD -> Staged M, Unstaged D
+
+        let staged_map: std::collections::HashMap<_, _> = status.staged.iter().cloned().collect();
+        let unstaged_map: std::collections::HashMap<_, _> =
+            status.unstaged.iter().cloned().collect();
+
+        assert_eq!(staged_map.get("file1.txt"), Some(&"M ".to_string()));
+        assert_eq!(unstaged_map.get("file1.txt"), Some(&" M".to_string()));
+
+        assert_eq!(staged_map.get("file2.txt"), Some(&"M ".to_string()));
+        assert_eq!(unstaged_map.get("file2.txt"), Some(&" D".to_string()));
+    }
+
+    #[test]
+    fn test_parse_status_output_ignored_lines() {
+        // Lines too short or irrelevant
+        let output = " \n??\nIgnore";
+        let status = GitProjectRepository::parse_status_output(output);
+        assert!(status.staged.is_empty());
+        assert!(status.unstaged.is_empty());
+        assert!(status.untracked.is_empty());
     }
 }
