@@ -1516,10 +1516,10 @@ mod tests {
         fn drop_stash(&self, path: &str, index: usize) -> anyhow::Result<()> {
             let mut tracker = self.tracker.lock().unwrap();
             tracker.calls.push(format!("drop_stash:{path}|{index}"));
-            if let Some(stashes) = tracker.stashes_map.get_mut(path) {
-                if index < stashes.len() {
-                    stashes.remove(index);
-                }
+            if let Some(stashes) = tracker.stashes_map.get_mut(path)
+                && index < stashes.len()
+            {
+                stashes.remove(index);
             }
             Ok(())
         }
