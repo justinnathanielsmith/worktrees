@@ -205,6 +205,7 @@ pub enum AppState {
     /// The primary state showing all active worktrees.
     ListingWorktrees {
         worktrees: Vec<Worktree>,
+        filtered_worktrees: Vec<Worktree>,
         table_state: TableState,
         refresh_needed: RefreshType,
         selection_mode: bool,

@@ -153,7 +153,7 @@ impl View {
         async_tx: UnboundedSender<AsyncResult>,
         mut async_rx: UnboundedReceiver<AsyncResult>,
     ) -> Result<Option<String>> {
-        let current_dir = std::env::current_dir().unwrap_or_default();
+        let current_dir = std::env::current_dir().map_err(|e| anyhow::anyhow!(e))?;
         let project_name = current_dir
             .file_name()
             .and_then(|n| n.to_str())
@@ -560,6 +560,7 @@ impl View {
                 dashboard: _,
                 table_state: _,
                 worktrees: _,
+                filtered_worktrees: _,
                 filter_query: _,
                 is_filtering: _,
                 mode: _,
@@ -604,9 +605,11 @@ impl View {
                             loading: false,
                         };
 
+                        let filtered_worktrees = crate::app::model::filter_worktrees(&new_worktrees, &filter);
+
                         Self::fetch_dashboard_data(
                             repo,
-                            &new_worktrees,
+                            &filtered_worktrees,
                             ts.selected(),
                             &mut new_dashboard,
                             &async_tx,
@@ -614,6 +617,7 @@ impl View {
 
                         *state = AppState::ListingWorktrees {
                             worktrees: new_worktrees,
+                            filtered_worktrees,
                             table_state: ts,
                             refresh_needed: RefreshType::None,
                             selection_mode: selection_mode_val,
@@ -643,7 +647,7 @@ impl View {
             // Core debouncing logic - needs careful borrowing
             if let AppState::ListingWorktrees {
                 dashboard,
-                worktrees,
+                filtered_worktrees,
                 table_state,
                 last_selection_change,
                 ..
@@ -656,7 +660,7 @@ impl View {
                 {
                     Self::fetch_dashboard_data(
                         repo,
-                        worktrees,
+                        filtered_worktrees,
                         table_state.selected(),
                         dashboard,
                         &async_tx,
@@ -1301,6 +1305,7 @@ mod tests {
         table_state.select(Some(0));
 
         let mut state = AppState::ListingWorktrees {
+            filtered_worktrees: worktrees.clone(),
             worktrees,
             table_state,
             refresh_needed: RefreshType::None,

@@ -83,6 +83,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                 if changed || selection_changed {
                     let mut new_state = current_state.clone();
                     if let AppState::ListingWorktrees {
+                        worktrees: raw_worktrees,
+                        filtered_worktrees: state_filtered,
                         filter_query,
                         is_filtering,
                         refresh_needed,
@@ -98,6 +100,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                             if stop_filtering {
                                 *m = AppMode::Normal;
                             }
+                            // Update the cached filtered list
+                            *state_filtered = filter_worktrees(raw_worktrees, filter_query);
                         }
                         if changed || selection_changed {
                             *refresh_needed = RefreshType::Dashboard;
@@ -256,6 +260,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     KeyCode::Char('1' | '2' | '3') => {
                         if let AppState::ListingWorktrees {
                             worktrees,
+                            filtered_worktrees,
                             table_state,
                             selection_mode,
                             dashboard,
@@ -273,6 +278,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                             };
                             return Ok(Some(AppState::ListingWorktrees {
                                 worktrees: worktrees.to_vec(),
+                                filtered_worktrees: filtered_worktrees.to_vec(),
                                 table_state: table_state.clone(),
                                 refresh_needed: RefreshType::Dashboard,
                                 selection_mode: *selection_mode,
@@ -552,6 +558,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         if row_index < filtered_worktrees.len() {
                             table_state.select(Some(row_index));
                             if let AppState::ListingWorktrees {
+                                filtered_worktrees: state_filtered,
                                 selection_mode,
                                 dashboard,
                                 filter_query,
@@ -562,6 +569,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                             {
                                 return Ok(Some(AppState::ListingWorktrees {
                                     worktrees: worktrees.to_vec(),
+                                    filtered_worktrees: state_filtered.to_vec(),
                                     table_state: table_state.clone(),
                                     refresh_needed: RefreshType::Dashboard,
                                     selection_mode: *selection_mode,
@@ -597,6 +605,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         if let Some(tab) = active_tab {
                             return Ok(Some(AppState::ListingWorktrees {
                                 worktrees: worktrees.to_vec(),
+                                filtered_worktrees: filtered_worktrees.to_vec(), // Use the current function's filtered_worktrees
                                 table_state: table_state.clone(),
                                 refresh_needed: RefreshType::Dashboard,
                                 selection_mode: *selection_mode,
@@ -617,52 +626,38 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
             }
             MouseEventKind::ScrollDown => {
                 move_selection(table_state, filtered_worktrees.len(), 1);
-                if let AppState::ListingWorktrees {
-                    worktrees,
-                    selection_mode,
-                    dashboard,
-                    filter_query,
-                    is_filtering,
-                    mode: m,
-                    ..
-                } = current_state
-                {
-                    return Ok(Some(AppState::ListingWorktrees {
-                        worktrees: worktrees.to_vec(),
-                        table_state: table_state.clone(),
-                        refresh_needed: RefreshType::Dashboard,
-                        selection_mode: *selection_mode,
-                        dashboard: dashboard.clone(),
-                        filter_query: filter_query.clone(),
-                        is_filtering: *is_filtering,
-                        mode: *m,
-                        last_selection_change: std::time::Instant::now(),
-                    }));
+                if let AppState::ListingWorktrees { .. } = current_state {
+                    let mut new_state = current_state.clone();
+                    if let AppState::ListingWorktrees {
+                        table_state: ts,
+                        refresh_needed,
+                        last_selection_change,
+                        ..
+                    } = &mut new_state
+                    {
+                        *ts = table_state.clone();
+                        *refresh_needed = RefreshType::Dashboard;
+                        *last_selection_change = std::time::Instant::now();
+                    }
+                    return Ok(Some(new_state));
                 }
             }
             MouseEventKind::ScrollUp => {
                 move_selection(table_state, filtered_worktrees.len(), -1);
-                if let AppState::ListingWorktrees {
-                    worktrees,
-                    selection_mode,
-                    dashboard,
-                    filter_query,
-                    is_filtering,
-                    mode: m,
-                    ..
-                } = current_state
-                {
-                    return Ok(Some(AppState::ListingWorktrees {
-                        worktrees: worktrees.to_vec(),
-                        table_state: table_state.clone(),
-                        refresh_needed: RefreshType::Dashboard,
-                        selection_mode: *selection_mode,
-                        dashboard: dashboard.clone(),
-                        filter_query: filter_query.clone(),
-                        is_filtering: *is_filtering,
-                        mode: *m,
-                        last_selection_change: std::time::Instant::now(),
-                    }));
+                if let AppState::ListingWorktrees { .. } = current_state {
+                    let mut new_state = current_state.clone();
+                    if let AppState::ListingWorktrees {
+                        table_state: ts,
+                        refresh_needed,
+                        last_selection_change,
+                        ..
+                    } = &mut new_state
+                    {
+                        *ts = table_state.clone();
+                        *refresh_needed = RefreshType::Dashboard;
+                        *last_selection_change = std::time::Instant::now();
+                    }
+                    return Ok(Some(new_state));
                 }
             }
             _ => {}
@@ -707,6 +702,7 @@ mod tests {
         let (async_tx, _async_rx) = mpsc::unbounded_channel();
 
         let current_state = AppState::ListingWorktrees {
+            filtered_worktrees: worktrees.clone(),
             worktrees: worktrees.clone(),
             table_state: table_state.clone(),
             refresh_needed: RefreshType::None,
