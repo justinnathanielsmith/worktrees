@@ -17,6 +17,22 @@ use tracing::{debug, error, instrument};
 pub struct GitProjectRepository;
 
 impl GitProjectRepository {
+    fn calculate_dir_size(path: &Path) -> u64 {
+        let mut total_size = 0;
+        if let Ok(entries) = std::fs::read_dir(path) {
+            for entry in entries.flatten() {
+                if let Ok(meta) = entry.metadata() {
+                    if meta.is_dir() {
+                        total_size += Self::calculate_dir_size(&entry.path());
+                    } else {
+                        total_size += meta.len();
+                    }
+                }
+            }
+        }
+        total_size
+    }
+
     #[instrument]
     fn run_git(args: &[&str]) -> Result<String> {
         let git_cmd = std::env::var("WORKTREES_GIT_PATH").unwrap_or_else(|_| "git".to_string());

@@ -101,135 +101,129 @@ impl StatefulWidget for WorktreeListWidget<'_> {
             return;
         }
 
-        let rows: Vec<Row> = self
-            .worktrees
-            .iter()
-            .enumerate()
-            .map(|(i, wt)| {
-                let is_selected = Some(i) == state.selected();
-                let _is_dirty = wt.status_summary.as_ref().is_some_and(|s| s != "clean");
+        let rows = self.worktrees.iter().enumerate().map(|(i, wt)| {
+            let is_selected = Some(i) == state.selected();
 
-                let (icon, branch_style) = if wt.is_bare {
-                    (
-                        Icons::HUB,
-                        if self.is_dimmed {
-                            Style::default().fg(theme.subtle)
-                        } else {
-                            Style::default()
-                                .fg(theme.primary)
-                                .add_modifier(Modifier::BOLD)
-                        },
-                    )
-                } else if wt.is_detached {
-                    (Icons::DETACHED, Style::default().fg(theme.error))
-                } else {
-                    (
-                        Icons::WORKTREE,
-                        if self.is_dimmed {
-                            Style::default().fg(theme.subtle)
-                        } else {
-                            Style::default().fg(theme.primary)
-                        },
-                    )
-                };
-
-                let intent_str = if wt.is_bare {
-                    Cow::Borrowed("MAIN")
-                } else if let Some(meta) = &wt.metadata
-                    && let Some(purpose) = &meta.purpose
-                {
-                    Cow::Borrowed(purpose.as_str())
-                } else {
-                    std::path::Path::new(&wt.path).file_name().map_or_else(
-                        || Cow::Borrowed(wt.branch.as_str()),
-                        |n| n.to_string_lossy(),
-                    )
-                };
-
-                let mut row_style = Style::default().fg(theme.text);
-
-                if self.is_dimmed {
-                    row_style = row_style.add_modifier(Modifier::DIM);
-                }
-
-                if is_selected {
-                    row_style = row_style
-                        .bg(theme.selection_bg)
-                        .fg(theme.primary)
-                        .add_modifier(Modifier::BOLD);
-
-                    // Remove dim modifier if selected, to make it pop even when filtering
+            let (icon, branch_style) = if wt.is_bare {
+                (
+                    Icons::HUB,
                     if self.is_dimmed {
-                        row_style = row_style.remove_modifier(Modifier::DIM);
-                    }
-                }
-
-                // Cyber-style cursor animation
-                // ▊, ▋, ▌, ▍, ▎, ▏
-                let spinner_prefixes = [" ▊ ", " ▋ ", " ▌ ", " ▍ ", " ▌ ", " ▋ "];
-                let spinner_idx = (self.spinner_tick / 2) % spinner_prefixes.len();
-
-                let prefix = if is_selected {
-                    spinner_prefixes[spinner_idx]
-                } else {
-                    "   "
-                };
-
-                let status_cell = wt.status_summary.as_ref().map_or_else(
-                    || Cell::from("-"),
-                    |summary| {
-                        let (color, icon) = if summary == "clean" {
-                            (theme.success, Icons::CLEAN)
-                        } else {
-                            (theme.warning, Icons::DIRTY)
-                        };
-
-                        let style = if self.is_dimmed && !is_selected {
-                            Style::default().fg(theme.subtle)
-                        } else {
-                            Style::default().fg(color)
-                        };
-
-                        let summary_text = if summary == "clean" {
-                            "CLEAN"
-                        } else {
-                            summary.as_str()
-                        };
-                        Cell::from(Line::from(vec![
-                            Span::raw(icon),
-                            Span::raw(" "),
-                            Span::raw(summary_text),
-                        ]))
-                        .style(style)
+                        Style::default().fg(theme.subtle)
+                    } else {
+                        Style::default()
+                            .fg(theme.primary)
+                            .add_modifier(Modifier::BOLD)
                     },
-                );
-
-                let mut cell_style = Style::default();
-                if self.is_dimmed && !is_selected {
-                    cell_style = cell_style.fg(theme.subtle);
-                }
-
-                Row::new(vec![
-                    Cell::from(Line::from(vec![Span::raw(prefix), Span::raw(icon)])),
-                    Cell::from(intent_str).style(if is_selected {
-                        branch_style
+                )
+            } else if wt.is_detached {
+                (Icons::DETACHED, Style::default().fg(theme.error))
+            } else {
+                (
+                    Icons::WORKTREE,
+                    if self.is_dimmed {
+                        Style::default().fg(theme.subtle)
                     } else {
-                        cell_style
-                    }),
-                    Cell::from(wt.branch.as_str()).style(if is_selected {
                         Style::default().fg(theme.primary)
+                    },
+                )
+            };
+
+            let intent_str = if wt.is_bare {
+                Cow::Borrowed("MAIN")
+            } else if let Some(meta) = &wt.metadata
+                && let Some(purpose) = &meta.purpose
+            {
+                Cow::Borrowed(purpose.as_str())
+            } else {
+                std::path::Path::new(&wt.path).file_name().map_or_else(
+                    || Cow::Borrowed(wt.branch.as_str()),
+                    |n| n.to_string_lossy(),
+                )
+            };
+
+            let mut row_style = Style::default().fg(theme.text);
+
+            if self.is_dimmed {
+                row_style = row_style.add_modifier(Modifier::DIM);
+            }
+
+            if is_selected {
+                row_style = row_style
+                    .bg(theme.selection_bg)
+                    .fg(theme.primary)
+                    .add_modifier(Modifier::BOLD);
+
+                // Remove dim modifier if selected, to make it pop even when filtering
+                if self.is_dimmed {
+                    row_style = row_style.remove_modifier(Modifier::DIM);
+                }
+            }
+
+            // Cyber-style cursor animation
+            // ▊, ▋, ▌, ▍, ▎, ▏
+            let spinner_prefixes = [" ▊ ", " ▋ ", " ▌ ", " ▍ ", " ▌ ", " ▋ "];
+            let spinner_idx = (self.spinner_tick / 2) % spinner_prefixes.len();
+
+            let prefix = if is_selected {
+                spinner_prefixes[spinner_idx]
+            } else {
+                "   "
+            };
+
+            let status_cell = wt.status_summary.as_ref().map_or_else(
+                || Cell::from("-"),
+                |summary| {
+                    let (color, icon) = if summary == "clean" {
+                        (theme.success, Icons::CLEAN)
                     } else {
-                        cell_style
-                    }),
-                    status_cell,
-                    Cell::from(format_size(wt.size_bytes)).style(Style::default().fg(theme.subtle)),
-                    Cell::from(&wt.commit[..wt.commit.len().min(7)])
-                        .style(Style::default().fg(theme.subtle)),
-                ])
-                .style(row_style)
-                .height(1)
-            })
-            .collect();
+                        (theme.warning, Icons::DIRTY)
+                    };
+
+                    let style = if self.is_dimmed && !is_selected {
+                        Style::default().fg(theme.subtle)
+                    } else {
+                        Style::default().fg(color)
+                    };
+
+                    let summary_text = if summary == "clean" {
+                        "CLEAN"
+                    } else {
+                        summary.as_str()
+                    };
+                    Cell::from(Line::from(vec![
+                        Span::raw(icon),
+                        Span::raw(" "),
+                        Span::raw(summary_text),
+                    ]))
+                    .style(style)
+                },
+            );
+
+            let mut cell_style = Style::default();
+            if self.is_dimmed && !is_selected {
+                cell_style = cell_style.fg(theme.subtle);
+            }
+
+            Row::new(vec![
+                Cell::from(Line::from(vec![Span::raw(prefix), Span::raw(icon)])),
+                Cell::from(intent_str).style(if is_selected {
+                    branch_style
+                } else {
+                    cell_style
+                }),
+                Cell::from(wt.branch.as_str()).style(if is_selected {
+                    Style::default().fg(theme.primary)
+                } else {
+                    cell_style
+                }),
+                status_cell,
+                Cell::from(format_size(wt.size_bytes)).style(Style::default().fg(theme.subtle)),
+                Cell::from(&wt.commit[..wt.commit.len().min(7)])
+                    .style(Style::default().fg(theme.subtle)),
+            ])
+            .style(row_style)
+            .height(1)
+        });
 
         let table = Table::new(
             rows,
@@ -284,12 +278,16 @@ impl StatefulWidget for WorktreeListWidget<'_> {
     }
 }
 
-fn format_size(bytes: u64) -> String {
+fn format_size(bytes: u64) -> Cow<'static, str> {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
     const GB: u64 = MB * 1024;
 
-    if bytes >= GB {
+    if bytes == 0 {
+        return Cow::Borrowed("0 B");
+    }
+
+    let s = if bytes >= GB {
         format!("{:.1} GB", bytes as f64 / GB as f64)
     } else if bytes >= MB {
         format!("{:.1} MB", bytes as f64 / MB as f64)
@@ -297,7 +295,8 @@ fn format_size(bytes: u64) -> String {
         format!("{:.1} KB", bytes as f64 / KB as f64)
     } else {
         format!("{bytes} B")
-    }
+    };
+    Cow::Owned(s)
 }
 
 #[cfg(test)]
