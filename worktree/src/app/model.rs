@@ -234,6 +234,7 @@ pub enum AppState {
     LoadingStashes {
         path: String,
         branch: String,
+        selected_index: usize,
         prev_state: Box<Self>,
     },
     /// Actively applying/popping/dropping/saving stash.
