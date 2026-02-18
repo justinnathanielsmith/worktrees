@@ -1,6 +1,5 @@
 use crate::domain::repository::Worktree;
 use crate::ui::theme::{CyberTheme, Icons};
-use std::borrow::Cow;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -10,6 +9,7 @@ use ratatui::{
         ScrollbarState, StatefulWidget, Table, TableState, Widget,
     },
 };
+use std::borrow::Cow;
 
 pub struct WorktreeListWidget<'a> {
     worktrees: &'a [Worktree],

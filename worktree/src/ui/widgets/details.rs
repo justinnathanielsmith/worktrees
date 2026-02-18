@@ -1,12 +1,12 @@
 use crate::domain::repository::{ProjectContext, Worktree};
 use crate::ui::theme::CyberTheme;
-use std::borrow::Cow;
 use ratatui::{
     layout::Rect,
     style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph, Widget},
 };
+use std::borrow::Cow;
 
 pub struct DetailsWidget<'a> {
     worktree: Option<&'a Worktree>,
@@ -172,10 +172,9 @@ impl Widget for DetailsWidget<'_> {
                     lines.push(Line::from(vec![
                         Span::styled(" INTENT : ", Style::default().fg(theme.secondary)),
                         Span::styled(
-                            std::path::Path::new(&wt.path).file_name().map_or_else(
-                                || Cow::Borrowed("UNKNOWN"),
-                                |n| n.to_string_lossy(),
-                            ),
+                            std::path::Path::new(&wt.path)
+                                .file_name()
+                                .map_or_else(|| Cow::Borrowed("UNKNOWN"), |n| n.to_string_lossy()),
                             Style::default().fg(theme.text).add_modifier(Modifier::BOLD),
                         ),
                     ]));
