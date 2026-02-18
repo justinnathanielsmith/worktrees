@@ -75,6 +75,7 @@ impl CliRenderer {
         );
     }
 
+    #[allow(clippy::wildcard_in_or_patterns)]
     pub fn render(state: AppState) {
         match state {
             AppState::Initializing { project_name } => {

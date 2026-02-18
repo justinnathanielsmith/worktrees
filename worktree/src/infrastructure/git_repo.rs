@@ -257,24 +257,6 @@ impl GitProjectRepository {
             })
     }
 
-    fn calculate_dir_size(path: &Path) -> u64 {
-        let mut total_size = 0;
-        if let Ok(entries) = std::fs::read_dir(path) {
-            for entry in entries.flatten() {
-                let metadata = match entry.metadata() {
-                    Ok(m) => m,
-                    Err(_) => continue,
-                };
-                if metadata.is_dir() {
-                    total_size += Self::calculate_dir_size(&entry.path());
-                } else {
-                    total_size += metadata.len();
-                }
-            }
-        }
-        total_size
-    }
-
     fn parse_status_output(output: &str) -> GitStatus {
         let mut staged = Vec::new();
         let mut unstaged = Vec::new();
@@ -431,8 +413,41 @@ impl ProjectRepository for GitProjectRepository {
             return Ok(());
         }
 
-        let content = std::fs::read_to_string(manifest_path)
-            .context("Failed to read .worktrees.sync manifest.")?;
+        let abs_manifest_path = std::env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join(manifest_path);
+
+        let metadata = std::fs::metadata(manifest_path)
+            .context("Failed to read metadata of .worktrees.sync manifest.")?;
+        let mtime = metadata
+            .modified()
+            .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+
+        static SYNC_CONFIG_CACHE: std::sync::OnceLock<
+            std::sync::Mutex<std::collections::HashMap<PathBuf, (std::time::SystemTime, String)>>,
+        > = std::sync::OnceLock::new();
+        let cache = SYNC_CONFIG_CACHE
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+
+        let content = {
+            let mut guard = cache.lock().unwrap();
+            if let Some((cached_mtime, cached_content)) = guard.get(&abs_manifest_path) {
+                if *cached_mtime == mtime {
+                    debug!("Using cached .worktrees.sync manifest.");
+                    cached_content.clone()
+                } else {
+                    let content = std::fs::read_to_string(manifest_path)
+                        .context("Failed to read .worktrees.sync manifest.")?;
+                    guard.insert(abs_manifest_path, (mtime, content.clone()));
+                    content
+                }
+            } else {
+                let content = std::fs::read_to_string(manifest_path)
+                    .context("Failed to read .worktrees.sync manifest.")?;
+                guard.insert(abs_manifest_path, (mtime, content.clone()));
+                content
+            }
+        };
 
         for line in content.lines() {
             let line = line.trim();

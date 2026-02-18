@@ -146,6 +146,7 @@ impl View {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::collapsible_if)]
     fn run_loop<R: ProjectRepository + Clone + Send + Sync + 'static>(
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
         repo: &R,

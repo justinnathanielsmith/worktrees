@@ -43,7 +43,7 @@ pub fn render_listing(
     // Dim the list if we are searching/filtering
     let is_dimmed = is_filtering;
 
-    let table = WorktreeListWidget::new(&filtered_worktrees)
+    let table = WorktreeListWidget::new(filtered_worktrees)
         .dimmed(is_dimmed)
         .tick(spinner_tick);
 

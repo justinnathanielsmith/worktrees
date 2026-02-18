@@ -11,6 +11,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use super::helpers::{create_timed_state, move_selection};
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::collapsible_if)]
 pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'static, B: Backend>(
     event: &crossterm::event::Event,
     repo: &R,
