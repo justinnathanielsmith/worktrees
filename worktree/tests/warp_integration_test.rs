@@ -11,7 +11,10 @@ fn test_generate_warp_workflows() {
     generate_warp_workflows(project_path).expect("Failed to generate warp workflows");
 
     let workflow_dir = project_path.join(".warp").join("workflows");
-    assert!(workflow_dir.exists(), "Warp workflows directory not created");
+    assert!(
+        workflow_dir.exists(),
+        "Warp workflows directory not created"
+    );
 
     let workflow_file = workflow_dir.join("worktrees.yaml");
     assert!(workflow_file.exists(), "Warp workflow file not created");
