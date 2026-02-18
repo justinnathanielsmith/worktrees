@@ -886,7 +886,8 @@ impl ProjectRepository for GitProjectRepository {
 
                 #[cfg(not(unix))]
                 {
-                    std::fs::write(path, key).context("Failed to store API key in fallback file")?;
+                    std::fs::write(path, key)
+                        .context("Failed to store API key in fallback file")?;
                 }
             }
         } else if let Some(path) = Self::resolve_config_path(".worktrees.gemini_key", "gemini_key")
