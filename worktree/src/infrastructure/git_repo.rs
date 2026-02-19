@@ -551,8 +551,7 @@ impl ProjectRepository for GitProjectRepository {
                 let mut wt = Self::parse_worktree_entry(block);
 
                 if !wt.path.is_empty() {
-                    // wt.size_bytes = Self::calculate_dir_size(Path::new(&wt.path));
-                    wt.size_bytes = 0;
+                    wt.size_bytes = Self::calculate_dir_size(Path::new(&wt.path));
                 }
 
                 if !wt.is_bare && !wt.path.is_empty() {
