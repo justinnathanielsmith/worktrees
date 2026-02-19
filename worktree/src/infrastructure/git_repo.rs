@@ -2257,7 +2257,8 @@ mod tests {
     #[test]
     fn test_add_worktree_traversal() {
         let _lock = CWD_MUTEX.lock().unwrap();
-        let temp_dir = std::env::temp_dir().join(format!("worktrees_traversal_test_{}", std::process::id()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("worktrees_traversal_test_{}", std::process::id()));
         if temp_dir.exists() {
             std::fs::remove_dir_all(&temp_dir).unwrap();
         }
@@ -2272,11 +2273,23 @@ mod tests {
             .output()
             .unwrap();
         Command::new(&git_cmd)
-            .args(["-C", &repo_dir.to_string_lossy(), "config", "user.email", "test@example.com"])
+            .args([
+                "-C",
+                &repo_dir.to_string_lossy(),
+                "config",
+                "user.email",
+                "test@example.com",
+            ])
             .output()
             .unwrap();
         Command::new(&git_cmd)
-            .args(["-C", &repo_dir.to_string_lossy(), "config", "user.name", "Test User"])
+            .args([
+                "-C",
+                &repo_dir.to_string_lossy(),
+                "config",
+                "user.name",
+                "Test User",
+            ])
             .output()
             .unwrap();
         std::fs::write(repo_dir.join("a"), "a").unwrap();
@@ -2308,7 +2321,13 @@ mod tests {
         std::env::set_current_dir(original_cwd).unwrap();
         std::fs::remove_dir_all(&temp_dir).unwrap();
 
-        assert!(res.is_err(), "Should reject path traversal '../outside' in add_new_worktree");
-        assert!(res2.is_err(), "Should reject path traversal '../outside2' in add_worktree");
+        assert!(
+            res.is_err(),
+            "Should reject path traversal '../outside' in add_new_worktree"
+        );
+        assert!(
+            res2.is_err(),
+            "Should reject path traversal '../outside2' in add_worktree"
+        );
     }
 }
