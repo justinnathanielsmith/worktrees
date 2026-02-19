@@ -33,6 +33,24 @@ impl GitProjectRepository {
         total_size
     }
 
+    fn validate_worktree_path(&self, path: &str) -> Result<()> {
+        let path_obj = Path::new(path);
+        if path_obj.is_absolute() {
+            return Err(anyhow::anyhow!(
+                "Worktree path must be relative. Absolute paths are not allowed for security reasons."
+            ));
+        }
+        if path_obj
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
+        {
+            return Err(anyhow::anyhow!(
+                "Worktree path cannot contain '..' traversal."
+            ));
+        }
+        Ok(())
+    }
+
     #[instrument]
     fn run_git(args: &[&str]) -> Result<String> {
         let git_cmd = std::env::var("WORKTREES_GIT_PATH").unwrap_or_else(|_| "git".to_string());
@@ -379,6 +397,7 @@ impl ProjectRepository for GitProjectRepository {
     }
 
     fn add_worktree(&self, path: &str, branch: &str) -> Result<()> {
+        self.validate_worktree_path(path)?;
         let root = self.get_project_root()?;
         let abs_path = root.join(path);
         let abs_path_str = abs_path.to_string_lossy();
@@ -391,6 +410,7 @@ impl ProjectRepository for GitProjectRepository {
     }
 
     fn add_new_worktree(&self, path: &str, branch: &str, base: &str) -> Result<()> {
+        self.validate_worktree_path(path)?;
         let root = self.get_project_root()?;
         let abs_path = root.join(path);
         let abs_path_str = abs_path.to_string_lossy();
@@ -2232,5 +2252,63 @@ mod tests {
         assert!(status.staged.is_empty());
         assert!(status.unstaged.is_empty());
         assert!(status.untracked.is_empty());
+    }
+
+    #[test]
+    fn test_add_worktree_traversal() {
+        let _lock = CWD_MUTEX.lock().unwrap();
+        let temp_dir = std::env::temp_dir().join(format!("worktrees_traversal_test_{}", std::process::id()));
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let repo_dir = temp_dir.join("repo");
+        std::fs::create_dir(&repo_dir).unwrap();
+
+        let git_cmd = std::env::var("WORKTREES_GIT_PATH").unwrap_or_else(|_| "git".to_string());
+        Command::new(&git_cmd)
+            .args(["-C", &repo_dir.to_string_lossy(), "init", "-b", "main"])
+            .output()
+            .unwrap();
+        Command::new(&git_cmd)
+            .args(["-C", &repo_dir.to_string_lossy(), "config", "user.email", "test@example.com"])
+            .output()
+            .unwrap();
+        Command::new(&git_cmd)
+            .args(["-C", &repo_dir.to_string_lossy(), "config", "user.name", "Test User"])
+            .output()
+            .unwrap();
+        std::fs::write(repo_dir.join("a"), "a").unwrap();
+        Command::new(&git_cmd)
+            .args(["-C", &repo_dir.to_string_lossy(), "add", "a"])
+            .output()
+            .unwrap();
+        Command::new(&git_cmd)
+            .args(["-C", &repo_dir.to_string_lossy(), "commit", "-m", "init"])
+            .output()
+            .unwrap();
+
+        // Convert to bare hub
+        let repo = GitProjectRepository;
+        let original_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&repo_dir).unwrap();
+        let hub_dir = repo.convert_to_bare(Some("my-hub"), Some("main")).unwrap();
+
+        // Enter a valid worktree
+        std::env::set_current_dir(hub_dir.join("main")).unwrap();
+
+        // Attempt to add worktree "../outside"
+        // We use add_new_worktree with a new branch to avoid "already checked out" git error
+        let res = repo.add_new_worktree("../outside", "new-branch", "main");
+
+        // Also check add_worktree
+        let res2 = repo.add_worktree("../outside2", "main");
+
+        std::env::set_current_dir(original_cwd).unwrap();
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+
+        assert!(res.is_err(), "Should reject path traversal '../outside' in add_new_worktree");
+        assert!(res2.is_err(), "Should reject path traversal '../outside2' in add_worktree");
     }
 }
