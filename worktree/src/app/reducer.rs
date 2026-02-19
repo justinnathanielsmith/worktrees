@@ -1260,7 +1260,6 @@ mod tests {
     use anyhow::Result;
     use crossbeam_channel::Receiver;
 
-    use serial_test::serial;
     use std::sync::{Arc, Mutex};
 
     #[derive(Default)]
@@ -1787,24 +1786,6 @@ mod tests {
         assert!(calls.contains(&"list".to_string()));
         assert!(calls.contains(&"switch:dev|feature-y".to_string()));
         Ok(())
-    }
-
-    struct CwdGuard {
-        original: std::path::PathBuf,
-    }
-
-    impl CwdGuard {
-        fn new(target: &std::path::Path) -> Result<Self> {
-            let original = std::env::current_dir()?;
-            std::env::set_current_dir(target)?;
-            Ok(Self { original })
-        }
-    }
-
-    impl Drop for CwdGuard {
-        fn drop(&mut self) {
-            let _ = std::env::set_current_dir(&self.original);
-        }
     }
 
     // NOTE: Broken tests removed to allow compilation.
