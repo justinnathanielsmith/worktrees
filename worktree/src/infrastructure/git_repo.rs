@@ -17,6 +17,7 @@ use tracing::{debug, error, instrument};
 pub struct GitProjectRepository;
 
 impl GitProjectRepository {
+    #[allow(dead_code)]
     fn calculate_dir_size(path: &Path) -> u64 {
         let mut total_size = 0;
         if let Ok(entries) = std::fs::read_dir(path) {
