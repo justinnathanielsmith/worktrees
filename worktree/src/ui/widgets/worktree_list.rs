@@ -82,9 +82,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 .fg(theme.subtle)
                 .add_modifier(Modifier::DIM)
         } else {
-            Style::default()
-                .fg(mode_color)
-                .add_modifier(Modifier::BOLD)
+            Style::default().fg(mode_color).add_modifier(Modifier::BOLD)
         };
 
         let block = Block::default()
