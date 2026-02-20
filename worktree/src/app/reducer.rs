@@ -1832,6 +1832,48 @@ mod tests {
         Ok(())
     }
 
+        let repo = MockRepo::new(tracker.clone());
+        let reducer = Reducer::new(repo, false, false);
+
+        reducer
+            .handle(Intent::Teleport {
+                target: "dev".to_string(),
+            .handle(Intent::Convert {
+                name: None,
+                branch: None,
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let tracker_lock = tracker.lock().unwrap();
+        let calls = &tracker_lock.calls;
+
+        // Check Sequence
+        let relevant_calls: Vec<&String> = calls
+            .iter()
+            .filter(|c| {
+                c.starts_with("stash_save")
+                    || c.starts_with("apply_stash")
+                    || c.starts_with("drop_stash")
+            })
+            .collect();
+
+        assert_eq!(relevant_calls.len(), 3);
+        assert!(
+            relevant_calls[0].starts_with("stash_save")
+                && relevant_calls[0].contains(&main_path.to_string_lossy().to_string())
+        );
+        assert!(
+            relevant_calls[1].starts_with("apply_stash")
+                && relevant_calls[1].contains(&dev_path.to_string_lossy().to_string())
+        );
+        assert!(
+            relevant_calls[2].starts_with("drop_stash")
+                && relevant_calls[2].contains(&main_path.to_string_lossy().to_string())
+        );
+        Ok(())
+    }
+
     #[tokio::test]
     async fn test_reducer_handle_convert() -> Result<()> {
         let tracker = Arc::new(Mutex::new(CallTracker::default()));

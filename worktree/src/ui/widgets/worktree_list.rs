@@ -1,3 +1,4 @@
+use crate::app::model::AppMode;
 use crate::domain::repository::Worktree;
 use crate::ui::theme::{CyberTheme, Icons};
 use ratatui::{
@@ -16,6 +17,7 @@ pub struct WorktreeListWidget<'a> {
     is_dimmed: bool,
     spinner_tick: usize,
     filter_query: Option<&'a str>,
+    mode: Option<AppMode>,
 }
 
 impl<'a> WorktreeListWidget<'a> {
@@ -25,6 +27,7 @@ impl<'a> WorktreeListWidget<'a> {
             is_dimmed: false,
             spinner_tick: 0,
             filter_query: None,
+            mode: None,
         }
     }
 
@@ -42,6 +45,11 @@ impl<'a> WorktreeListWidget<'a> {
         self.filter_query = query;
         self
     }
+
+    pub const fn with_mode(mut self, mode: AppMode) -> Self {
+        self.mode = Some(mode);
+        self
+    }
 }
 
 impl StatefulWidget for WorktreeListWidget<'_> {
@@ -50,12 +58,23 @@ impl StatefulWidget for WorktreeListWidget<'_> {
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer, state: &mut Self::State) {
         let theme = CyberTheme::default();
 
+        let (mode_color, mode_title, border_color) = if let Some(mode) = self.mode {
+            match mode {
+                AppMode::Normal => (theme.primary, "ACTIVE WORKTREES", theme.border),
+                AppMode::Manage => (theme.secondary, "MANAGE WORKTREES", theme.secondary),
+                AppMode::Git => (theme.success, "GIT WORKTREES", theme.success),
+                AppMode::Filter => (theme.warning, "FILTERING...", theme.warning),
+            }
+        } else {
+            (theme.primary, "ACTIVE WORKTREES", theme.border)
+        };
+
         let border_style = if self.is_dimmed {
             Style::default()
                 .fg(theme.subtle)
                 .add_modifier(Modifier::DIM)
         } else {
-            Style::default().fg(theme.border)
+            Style::default().fg(border_color)
         };
 
         let title_style = if self.is_dimmed {
@@ -63,9 +82,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 .fg(theme.subtle)
                 .add_modifier(Modifier::DIM)
         } else {
-            Style::default()
-                .fg(theme.primary)
-                .add_modifier(Modifier::BOLD)
+            Style::default().fg(mode_color).add_modifier(Modifier::BOLD)
         };
 
         let block = Block::default()
@@ -73,7 +90,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
             .border_type(BorderType::Rounded)
             .border_style(border_style)
             .title(Span::styled(
-                format!(" ACTIVE WORKTREES ({}) ", self.worktrees.len()),
+                format!(" {} ({}) ", mode_title, self.worktrees.len()),
                 title_style,
             ));
 
@@ -384,5 +401,30 @@ mod tests {
         assert!(content.contains("No worktrees match 'foobar'."));
         assert!(content.contains("Press [Esc] to clear filter."));
         assert!(content.contains("ACTIVE WORKTREES (0)"));
+    }
+
+    #[test]
+    fn test_render_worktree_list_with_mode() {
+        let backend = TestBackend::new(40, 10);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut state = TableState::default();
+        let worktrees = vec![];
+        let widget = WorktreeListWidget::new(&worktrees).with_mode(AppMode::Manage);
+
+        terminal
+            .draw(|f| {
+                let area = f.area();
+                f.render_stateful_widget(widget, area, &mut state);
+            })
+            .unwrap();
+
+        let buffer = terminal.backend().buffer();
+        let content = buffer
+            .content()
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect::<String>();
+
+        assert!(content.contains("MANAGE WORKTREES (0)"));
     }
 }

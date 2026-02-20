@@ -50,7 +50,8 @@ pub fn render_listing(
             Some(filter_query)
         } else {
             None
-        });
+        })
+        .with_mode(mode);
 
     f.render_stateful_widget(table, list_area, table_state);
 
