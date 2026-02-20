@@ -249,7 +249,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 cell_style = cell_style.fg(theme.subtle);
             }
 
-            Row::new(vec![
+            Row::new([
                 Cell::from(Line::from(vec![Span::raw(prefix), Span::raw(icon)])),
                 Cell::from(intent_str).style(if is_selected {
                     branch_style
@@ -282,7 +282,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
             ],
         )
         .header(
-            Row::new(vec!["", "INTENT", "BRANCH", "STATUS", "SIZE", "COMMIT"])
+            Row::new(["", "INTENT", "BRANCH", "STATUS", "SIZE", "COMMIT"])
                 .style(if self.is_dimmed {
                     Style::default()
                         .fg(theme.subtle)
