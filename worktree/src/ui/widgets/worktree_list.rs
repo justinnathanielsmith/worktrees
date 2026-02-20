@@ -146,8 +146,24 @@ impl StatefulWidget for WorktreeListWidget<'_> {
             return;
         }
 
-        let rows = self.worktrees.iter().enumerate().map(|(i, wt)| {
-            let is_selected = Some(i) == state.selected();
+        // Optimization: Manual Virtualization (Windowing)
+        // Only render rows that are visible in the current area.
+        // This significantly reduces allocations for large lists.
+        let header_height = 2; // 1 for text + 1 bottom margin
+        let available_height = inner_area.height.saturating_sub(header_height) as usize;
+
+        let start_index = state.offset().min(self.worktrees.len().saturating_sub(1));
+        let end_index = (start_index + available_height).min(self.worktrees.len());
+
+        let visible_worktrees = if available_height > 0 && start_index < self.worktrees.len() {
+            &self.worktrees[start_index..end_index]
+        } else {
+            &[]
+        };
+
+        let rows = visible_worktrees.iter().enumerate().map(|(i, wt)| {
+            let actual_index = start_index + i;
+            let is_selected = Some(actual_index) == state.selected();
 
             let (icon, branch_style) = if wt.is_bare {
                 (
@@ -297,7 +313,18 @@ impl StatefulWidget for WorktreeListWidget<'_> {
         .block(block)
         .row_highlight_style(Style::default().add_modifier(Modifier::BOLD)); // Handled manually in row mapping, but keeping basic highlight
 
-        StatefulWidget::render(table, area, buf, state);
+        // Create a temporary state for rendering the slice
+        let mut temp_state = TableState::default();
+        if let Some(selected) = state.selected()
+            && selected >= start_index
+            && selected < end_index
+        {
+            temp_state.select(Some(selected - start_index));
+        }
+        // Offset is always 0 because we are feeding exactly what needs to be rendered from top
+        *temp_state.offset_mut() = 0;
+
+        StatefulWidget::render(table, area, buf, &mut temp_state);
 
         if self.worktrees.len() > inner_area.height as usize {
             let scrollbar = Scrollbar::default()
