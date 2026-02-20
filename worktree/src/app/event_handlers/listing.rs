@@ -121,6 +121,11 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
             // Normal and Specialized Modes
             match mode {
                 AppMode::Normal => match key_code {
+                    KeyCode::Char('?') => {
+                        return Ok(Some(AppState::Help {
+                            prev_state: Box::new(current_state.clone()),
+                        }));
+                    }
                     KeyCode::Char('/') => {
                         let mut new_state = current_state.clone();
                         if let AppState::ListingWorktrees {

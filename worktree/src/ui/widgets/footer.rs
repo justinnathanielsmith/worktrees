@@ -26,6 +26,7 @@ impl Widget for FooterWidget<'_> {
                         ("[m]", "MANAGE", theme.secondary),
                         ("[g]", "GIT", theme.secondary),
                         ("[/]", "FILTER", theme.warning),
+                        ("[?]", "HELP", theme.accent),
                     ],
                     vec![
                         ("[v]", "STATUS", theme.text),
@@ -141,5 +142,54 @@ impl Widget for FooterWidget<'_> {
             )
             .alignment(Alignment::Center)
             .render(area, buf);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::model::{AppMode, AppState, DashboardState, DashboardTab, RefreshType};
+    use ratatui::{Terminal, backend::TestBackend, widgets::TableState};
+
+    #[test]
+    fn test_footer_render_help_shortcut() {
+        let backend = TestBackend::new(100, 3);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let worktrees = vec![];
+        let state = AppState::ListingWorktrees {
+            worktrees: worktrees.clone(),
+            filtered_worktrees: worktrees.clone(),
+            table_state: TableState::default(),
+            refresh_needed: RefreshType::None,
+            selection_mode: false,
+            dashboard: DashboardState {
+                active_tab: DashboardTab::Info,
+                cached_status: None,
+                cached_history: None,
+                loading: false,
+            },
+            filter_query: String::new(),
+            is_filtering: false,
+            mode: AppMode::Normal,
+            last_selection_change: std::time::Instant::now(),
+        };
+
+        terminal
+            .draw(|f| {
+                let area = f.area();
+                let widget = FooterWidget { state: &state };
+                f.render_widget(widget, area);
+            })
+            .unwrap();
+
+        let buffer = terminal.backend().buffer();
+        let content = buffer
+            .content()
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect::<String>();
+
+        assert!(content.contains("[?]"));
+        assert!(content.contains("HELP"));
     }
 }
