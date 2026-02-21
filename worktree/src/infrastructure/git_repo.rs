@@ -34,6 +34,22 @@ impl GitProjectRepository {
         total_size
     }
 
+    fn is_safe_for_cleaning(path: &Path) -> bool {
+        // 1. Check for root (no parent)
+        if path.parent().is_none() {
+            return false;
+        }
+
+        // 2. Check for home dir (don't clean home dir directly)
+        if let Some(home) = dirs::home_dir()
+            && path == home
+        {
+            return false;
+        }
+
+        true
+    }
+
     fn validate_worktree_path(&self, path: &str) -> Result<()> {
         let path_obj = Path::new(path);
         if path_obj.is_absolute() {
@@ -991,6 +1007,14 @@ impl ProjectRepository for GitProjectRepository {
                 }
 
                 if !wt_path.exists() {
+                    continue;
+                }
+
+                if !Self::is_safe_for_cleaning(wt_path) {
+                    error!(
+                        path = ?wt_path,
+                        "Refusing to clean artifacts from unsafe path (root or home dir)"
+                    );
                     continue;
                 }
 
@@ -2396,5 +2420,37 @@ mod tests {
             mode, 0o600,
             "gradle.properties permissions should be 600, but were {mode:o}"
         );
+    }
+
+    #[test]
+    fn test_is_safe_for_cleaning() {
+        // Test root
+        #[cfg(unix)]
+        assert!(!GitProjectRepository::is_safe_for_cleaning(Path::new("/")));
+        #[cfg(windows)]
+        assert!(!GitProjectRepository::is_safe_for_cleaning(Path::new(
+            "C:\\"
+        )));
+
+        // Test home dir
+        if let Some(home) = dirs::home_dir() {
+            assert!(!GitProjectRepository::is_safe_for_cleaning(&home));
+        }
+
+        // Test normal path
+        #[cfg(unix)]
+        assert!(GitProjectRepository::is_safe_for_cleaning(Path::new(
+            "/tmp/some/project/path"
+        )));
+        #[cfg(windows)]
+        assert!(GitProjectRepository::is_safe_for_cleaning(Path::new(
+            "C:\\tmp\\some\\project\\path"
+        )));
+
+        // Test relative path (should be safe as it's not root/home usually,
+        // but clean_worktrees usually deals with absolute paths from git)
+        assert!(GitProjectRepository::is_safe_for_cleaning(Path::new(
+            "some/relative/path"
+        )));
     }
 }
