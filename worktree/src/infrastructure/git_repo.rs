@@ -124,11 +124,23 @@ impl GitProjectRepository {
             }
 
             // 3. Ensure Build Caching is enabled for Worktree performance
-            if let Ok(mut file) = OpenOptions::new()
+            #[cfg(unix)]
+            let open_result = {
+                use std::os::unix::fs::OpenOptionsExt;
+                OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .mode(0o600)
+                    .open(&dest_gradle)
+            };
+
+            #[cfg(not(unix))]
+            let open_result = OpenOptions::new()
                 .create(true)
                 .append(true)
-                .open(&dest_gradle)
-            {
+                .open(&dest_gradle);
+
+            if let Ok(mut file) = open_result {
                 // Check if already contains caching flag (simple check)
                 if std::fs::read_to_string(&dest_gradle)
                     .map(|c| !c.contains("org.gradle.caching"))
@@ -2328,6 +2340,61 @@ mod tests {
         assert!(
             res2.is_err(),
             "Should reject path traversal '../outside2' in add_worktree"
+        );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    #[serial_test::serial]
+    fn test_gradle_properties_secure_creation() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let _lock = CWD_MUTEX.lock().unwrap();
+        // Setup temp dir as project root
+        let temp_dir = std::env::temp_dir().join(format!(
+            "worktrees_gradle_perms_test_{}",
+            std::process::id()
+        ));
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        // Create build.gradle.kts to trigger KMP/Android detection
+        std::fs::write(temp_dir.join("build.gradle.kts"), "").unwrap();
+
+        // Create destination worktree directory
+        let dest_dir = temp_dir.join("wt_dest");
+        std::fs::create_dir(&dest_dir).unwrap();
+
+        // Set CWD to temp_dir (project root)
+        let original_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&temp_dir).unwrap();
+
+        let repo = GitProjectRepository;
+        // This should create gradle.properties in dest_dir and append caching config
+        repo.handle_context_files(dest_dir.to_str().unwrap());
+
+        std::env::set_current_dir(original_cwd).unwrap();
+
+        let gradle_props = dest_dir.join("gradle.properties");
+        assert!(gradle_props.exists(), "gradle.properties should be created");
+
+        // Verify content
+        let content = std::fs::read_to_string(&gradle_props).unwrap();
+        assert!(content.contains("org.gradle.caching=true"));
+
+        // Verify permissions
+        let metadata = std::fs::metadata(&gradle_props).unwrap();
+        let mode = metadata.permissions().mode() & 0o777;
+
+        // Cleanup
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+
+        // This assertion should FAIL before the fix (likely 644 or 664)
+        assert_eq!(
+            mode, 0o600,
+            "gradle.properties permissions should be 600, but were {mode:o}"
         );
     }
 }
