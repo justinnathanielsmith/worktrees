@@ -12,6 +12,7 @@ pub struct HeaderWidget<'a> {
     pub context: ProjectContext,
     pub project_name: &'a str,
     pub state: &'a AppState,
+    pub spinner_tick: usize,
 }
 
 impl Widget for HeaderWidget<'_> {
@@ -97,7 +98,7 @@ impl Widget for HeaderWidget<'_> {
             ProjectContext::KmpAndroid => "KMP_DROID",
         };
 
-        let status_info = Line::from(vec![
+        let mut spans = vec![
             Span::styled(format!(" {} ", time), Style::default().fg(theme.subtle)),
             Span::styled("| ", Style::default().fg(theme.subtle)),
             Span::styled("CTX: ", Style::default().fg(theme.subtle)),
@@ -114,7 +115,23 @@ impl Widget for HeaderWidget<'_> {
                     })
                     .add_modifier(Modifier::BOLD),
             ),
-        ]);
+        ];
+
+        if let AppState::ListingWorktrees { dashboard, .. } = self.state
+            && dashboard.loading
+        {
+            let spinner_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+            let spinner = spinner_chars[self.spinner_tick % spinner_chars.len()];
+            spans.push(Span::styled(" | ", Style::default().fg(theme.subtle)));
+            spans.push(Span::styled(
+                format!("{} SYNCING", spinner),
+                Style::default()
+                    .fg(theme.warning)
+                    .add_modifier(Modifier::BOLD),
+            ));
+        }
+
+        let status_info = Line::from(spans);
 
         Paragraph::new(status_info)
             .alignment(Alignment::Right)

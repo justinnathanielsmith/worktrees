@@ -920,6 +920,7 @@ impl View {
                 context,
                 project_name: &render_context.project_name,
                 state: display_state,
+                spinner_tick,
             },
             chunks[0],
         );
