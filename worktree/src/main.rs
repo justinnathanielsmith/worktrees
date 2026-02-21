@@ -124,7 +124,7 @@ fn render_tui_mode(
         table_state.select(Some(0));
     }
     let initial_state = AppState::ListingWorktrees {
-        filtered_worktrees: worktrees.clone(),
+        filtered_indices: (0..worktrees.len()).collect(),
         worktrees,
         table_state,
         refresh_needed: RefreshType::None,

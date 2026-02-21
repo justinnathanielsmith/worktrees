@@ -500,7 +500,7 @@ pub fn render_modals<R: ProjectRepository>(
             f.render_widget(DetailsWidget::new(None, &[], context), main_chunks[2]);
         }
         AppState::Error(msg, _) => {
-            let table = WorktreeListWidget::new(&[]);
+            let table = WorktreeListWidget::new(&[], None);
             f.render_stateful_widget(table, main_chunks[1], &mut TableState::default());
             f.render_widget(DetailsWidget::new(None, &[], context), main_chunks[2]);
 

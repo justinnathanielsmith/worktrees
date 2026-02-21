@@ -65,7 +65,7 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                             return Ok(Some(AppState::Error(
                                 e.to_string(),
                                 Box::new(AppState::ListingWorktrees {
-                                    filtered_worktrees: Vec::new(),
+                                    filtered_indices: Vec::new(),
                                     worktrees: Vec::new(),
                                     table_state: TableState::default(),
                                     refresh_needed: RefreshType::Full,
@@ -85,7 +85,7 @@ pub fn handle_prompt_events<R: ProjectRepository>(
                         }
 
                         return Ok(Some(AppState::ListingWorktrees {
-                            filtered_worktrees: Vec::new(),
+                            filtered_indices: Vec::new(),
                             worktrees: Vec::new(),
                             table_state: TableState::default(),
                             refresh_needed: RefreshType::Full,

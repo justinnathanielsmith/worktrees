@@ -158,7 +158,7 @@ mod tests {
         let worktrees = vec![];
         let state = AppState::ListingWorktrees {
             worktrees: worktrees.clone(),
-            filtered_worktrees: worktrees.clone(),
+            filtered_indices: Vec::new(),
             table_state: TableState::default(),
             refresh_needed: RefreshType::None,
             selection_mode: false,

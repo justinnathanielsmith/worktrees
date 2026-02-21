@@ -9,6 +9,7 @@ use ratatui::{Terminal, backend::Backend, widgets::TableState};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::helpers::{create_timed_state, move_selection};
+use std::borrow::Cow;
 
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::collapsible_if)]
@@ -31,16 +32,24 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
         }
     }
 
-    let (filter_query, mode, filtered_worktrees) = if let AppState::ListingWorktrees {
+    let (filter_query, mode, filtered_indices) = if let AppState::ListingWorktrees {
         filter_query,
         mode,
-        filtered_worktrees,
+        filtered_indices,
         ..
     } = current_state
     {
-        (filter_query.clone(), *mode, filtered_worktrees.as_slice())
+        (
+            filter_query.clone(),
+            *mode,
+            Cow::Borrowed(filtered_indices.as_slice()),
+        )
     } else {
-        (String::new(), AppMode::Normal, worktrees)
+        (
+            String::new(),
+            AppMode::Normal,
+            Cow::Owned((0..worktrees.len()).collect()),
+        )
     };
 
     match event {
@@ -74,11 +83,11 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         changed = true;
                     }
                     KeyCode::Down => {
-                        move_selection(table_state, filtered_worktrees.len(), 1);
+                        move_selection(table_state, filtered_indices.len(), 1);
                         selection_changed = true;
                     }
                     KeyCode::Up => {
-                        move_selection(table_state, filtered_worktrees.len(), -1);
+                        move_selection(table_state, filtered_indices.len(), -1);
                         selection_changed = true;
                     }
                     _ => {}
@@ -88,7 +97,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     let mut new_state = current_state.clone();
                     if let AppState::ListingWorktrees {
                         worktrees: raw_worktrees,
-                        filtered_worktrees: state_filtered,
+                        filtered_indices: state_filtered,
                         filter_query,
                         is_filtering,
                         refresh_needed,
@@ -154,7 +163,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         return Ok(Some(new_state));
                     }
                     KeyCode::Char('j') | KeyCode::Down => {
-                        move_selection(table_state, filtered_worktrees.len(), 1);
+                        move_selection(table_state, filtered_indices.len(), 1);
                         let mut new_state = current_state.clone();
                         if let AppState::ListingWorktrees {
                             table_state: ts,
@@ -170,7 +179,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         return Ok(Some(new_state));
                     }
                     KeyCode::Char('k') | KeyCode::Up => {
-                        move_selection(table_state, filtered_worktrees.len(), -1);
+                        move_selection(table_state, filtered_indices.len(), -1);
                         let mut new_state = current_state.clone();
                         if let AppState::ListingWorktrees {
                             table_state: ts,
@@ -187,7 +196,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     }
                     KeyCode::Enter => {
                         if let Some(i) = table_state.selected()
-                            && let Some(wt) = filtered_worktrees.get(i)
+                            && let Some(idx) = filtered_indices.get(i)
+                            && let Some(wt) = worktrees.get(*idx)
                         {
                             let branch = if wt.is_bare {
                                 "HUB".to_string()
@@ -251,7 +261,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     }
                     KeyCode::Char('v') => {
                         if let Some(i) = table_state.selected()
-                            && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
+                            && let Some(idx) = filtered_indices.get(i)
+                            && let Some(wt) = worktrees.get(*idx).filter(|wt| !wt.is_bare)
                         {
                             let repo_clone = repo.clone();
                             let path_clone = wt.path.clone();
@@ -274,7 +285,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     }
                     KeyCode::Char('l') => {
                         if let Some(i) = table_state.selected()
-                            && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
+                            && let Some(idx) = filtered_indices.get(i)
+                            && let Some(wt) = worktrees.get(*idx).filter(|wt| !wt.is_bare)
                         {
                             let repo_clone = repo.clone();
                             let path_clone = wt.path.clone();
@@ -298,7 +310,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     KeyCode::Char('1' | '2' | '3') => {
                         if let AppState::ListingWorktrees {
                             worktrees,
-                            filtered_worktrees,
+                            filtered_indices,
                             table_state,
                             selection_mode,
                             dashboard,
@@ -316,7 +328,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                             };
                             return Ok(Some(AppState::ListingWorktrees {
                                 worktrees: worktrees.to_vec(),
-                                filtered_worktrees: filtered_worktrees.to_vec(),
+                                filtered_indices: filtered_indices.to_vec(),
                                 table_state: table_state.clone(),
                                 refresh_needed: RefreshType::Dashboard,
                                 selection_mode: *selection_mode,
@@ -335,7 +347,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     }
                     KeyCode::Char('o') => {
                         if let Some(i) = table_state.selected()
-                            && let Some(wt) = filtered_worktrees.get(i)
+                            && let Some(idx) = filtered_indices.get(i)
+                            && let Some(wt) = worktrees.get(*idx)
                             && wt.is_bare
                         {
                             let repo_clone = repo.clone();
@@ -356,7 +369,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     }
                     KeyCode::Char('f') => {
                         if let Some(i) = table_state.selected()
-                            && let Some(wt) = filtered_worktrees.get(i)
+                            && let Some(idx) = filtered_indices.get(i)
+                            && let Some(wt) = worktrees.get(*idx)
                             && wt.is_bare
                         {
                             let repo_clone = repo.clone();
@@ -380,7 +394,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     }
                     KeyCode::Char('c') => {
                         if let Some(i) = table_state.selected()
-                            && let Some(wt) = filtered_worktrees.get(i)
+                            && let Some(idx) = filtered_indices.get(i)
+                            && let Some(wt) = worktrees.get(*idx)
                             && wt.is_bare
                         {
                             return Ok(Some(AppState::Confirming {
@@ -418,7 +433,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     KeyCode::Char('r' | 'd' | 'x' | 'D') => {
                         let is_force = matches!(key_code, KeyCode::Char('D'));
                         if let Some(i) = table_state.selected()
-                            && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
+                            && let Some(idx) = filtered_indices.get(i)
+                            && let Some(wt) = worktrees.get(*idx).filter(|wt| !wt.is_bare)
                         {
                             return Ok(Some(AppState::Confirming {
                                 title: if is_force {
@@ -473,7 +489,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     }
                     KeyCode::Char('s') => {
                         if let Some(i) = table_state.selected()
-                            && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
+                            && let Some(idx) = filtered_indices.get(i)
+                            && let Some(wt) = worktrees.get(*idx).filter(|wt| !wt.is_bare)
                         {
                             let branch = wt.branch.clone();
                             let path = wt.path.clone();
@@ -499,7 +516,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     }
                     KeyCode::Char('p') => {
                         if let Some(i) = table_state.selected()
-                            && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
+                            && let Some(idx) = filtered_indices.get(i)
+                            && let Some(wt) = worktrees.get(*idx).filter(|wt| !wt.is_bare)
                         {
                             let branch = wt.branch.clone();
                             let path = wt.path.clone();
@@ -525,7 +543,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     }
                     KeyCode::Char('P') => {
                         if let Some(i) = table_state.selected()
-                            && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
+                            && let Some(idx) = filtered_indices.get(i)
+                            && let Some(wt) = worktrees.get(*idx).filter(|wt| !wt.is_bare)
                         {
                             let branch = wt.branch.clone();
                             let path = wt.path.clone();
@@ -551,7 +570,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     }
                     KeyCode::Char('R') => {
                         if let Some(i) = table_state.selected()
-                            && let Some(wt) = filtered_worktrees.get(i).filter(|wt| !wt.is_bare)
+                            && let Some(idx) = filtered_indices.get(i)
+                            && let Some(wt) = worktrees.get(*idx).filter(|wt| !wt.is_bare)
                         {
                             let prev = Box::new(current_state.clone());
                             return Ok(Some(AppState::Confirming {
@@ -564,7 +584,8 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                     }
                     KeyCode::Char('f') => {
                         if let Some(i) = table_state.selected()
-                            && let Some(wt) = filtered_worktrees.get(i)
+                            && let Some(idx) = filtered_indices.get(i)
+                            && let Some(wt) = worktrees.get(*idx)
                         {
                             let repo_clone = repo.clone();
                             let path_clone = wt.path.clone();
@@ -600,10 +621,10 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
 
                     if x >= 1 && x <= 1 + list_width && y >= 5 {
                         let row_index = (y as i16 - 5) as usize;
-                        if row_index < filtered_worktrees.len() {
+                        if row_index < filtered_indices.len() {
                             table_state.select(Some(row_index));
                             if let AppState::ListingWorktrees {
-                                filtered_worktrees: state_filtered,
+                                filtered_indices: state_filtered,
                                 selection_mode,
                                 dashboard,
                                 filter_query,
@@ -614,7 +635,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                             {
                                 return Ok(Some(AppState::ListingWorktrees {
                                     worktrees: worktrees.to_vec(),
-                                    filtered_worktrees: state_filtered.to_vec(),
+                                    filtered_indices: state_filtered.to_vec(),
                                     table_state: table_state.clone(),
                                     refresh_needed: RefreshType::Dashboard,
                                     selection_mode: *selection_mode,
@@ -650,7 +671,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         if let Some(tab) = active_tab {
                             return Ok(Some(AppState::ListingWorktrees {
                                 worktrees: worktrees.to_vec(),
-                                filtered_worktrees: filtered_worktrees.to_vec(), // Use the current function's filtered_worktrees
+                                filtered_indices: filtered_indices.to_vec(), // Use the current function's filtered_indices
                                 table_state: table_state.clone(),
                                 refresh_needed: RefreshType::Dashboard,
                                 selection_mode: *selection_mode,
@@ -670,7 +691,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                 }
             }
             MouseEventKind::ScrollDown => {
-                move_selection(table_state, filtered_worktrees.len(), 1);
+                move_selection(table_state, filtered_indices.len(), 1);
                 if let AppState::ListingWorktrees { .. } = current_state {
                     let mut new_state = current_state.clone();
                     if let AppState::ListingWorktrees {
@@ -688,7 +709,7 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                 }
             }
             MouseEventKind::ScrollUp => {
-                move_selection(table_state, filtered_worktrees.len(), -1);
+                move_selection(table_state, filtered_indices.len(), -1);
                 if let AppState::ListingWorktrees { .. } = current_state {
                     let mut new_state = current_state.clone();
                     if let AppState::ListingWorktrees {
@@ -747,7 +768,7 @@ mod tests {
         let (async_tx, _async_rx) = mpsc::unbounded_channel();
 
         let current_state = AppState::ListingWorktrees {
-            filtered_worktrees: worktrees.clone(),
+            filtered_indices: vec![0],
             worktrees: worktrees.clone(),
             table_state: table_state.clone(),
             refresh_needed: RefreshType::None,

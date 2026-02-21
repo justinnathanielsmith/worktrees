@@ -63,7 +63,7 @@ impl View {
         match state {
             AppState::ListingWorktrees {
                 worktrees,
-                filtered_worktrees,
+                filtered_indices,
                 table_state,
                 dashboard,
                 filter_query,
@@ -74,7 +74,7 @@ impl View {
                 render_listing(
                     f,
                     worktrees.as_slice(),
-                    filtered_worktrees.as_slice(),
+                    filtered_indices.as_slice(),
                     &mut table_state.clone(),
                     context,
                     area,
@@ -191,10 +191,12 @@ impl View {
                             dashboard,
                             table_state,
                             worktrees,
+                            filtered_indices,
                             ..
                         } = state
                             && let Some(selected_idx) = table_state.selected()
-                            && let Some(wt) = worktrees.get(selected_idx)
+                            && let Some(idx) = filtered_indices.get(selected_idx)
+                            && let Some(wt) = worktrees.get(*idx)
                             && wt.path == path
                         {
                             dashboard.loading = false;
@@ -237,10 +239,12 @@ impl View {
                             dashboard,
                             table_state,
                             worktrees,
+                            filtered_indices,
                             ..
                         } = state
                             && let Some(selected_idx) = table_state.selected()
-                            && let Some(wt) = worktrees.get(selected_idx)
+                            && let Some(idx) = filtered_indices.get(selected_idx)
+                            && let Some(wt) = worktrees.get(*idx)
                             && wt.path == path
                         {
                             dashboard.loading = false;
@@ -553,7 +557,7 @@ impl View {
                     AsyncResult::WorktreesListed { result } => {
                         if let AppState::ListingWorktrees {
                             worktrees,
-                            filtered_worktrees,
+                            filtered_indices,
                             table_state,
                             dashboard,
                             filter_query,
@@ -562,7 +566,7 @@ impl View {
                         {
                             if let Ok(new_worktrees) = result {
                                 *worktrees = new_worktrees;
-                                *filtered_worktrees =
+                                *filtered_indices =
                                     crate::app::model::filter_worktrees(worktrees, filter_query);
                                 if table_state.selected().is_none() && !worktrees.is_empty() {
                                     table_state.select(Some(0));
@@ -594,7 +598,7 @@ impl View {
                 dashboard: _,
                 table_state: _,
                 worktrees: _,
-                filtered_worktrees: _,
+                filtered_indices: _,
                 filter_query: _,
                 is_filtering: _,
                 mode: _,
@@ -628,7 +632,8 @@ impl View {
             // Core debouncing logic - needs careful borrowing
             if let AppState::ListingWorktrees {
                 dashboard,
-                filtered_worktrees,
+                worktrees,
+                filtered_indices,
                 table_state,
                 last_selection_change,
                 ..
@@ -641,7 +646,8 @@ impl View {
                 {
                     Self::fetch_dashboard_data(
                         repo,
-                        filtered_worktrees,
+                        worktrees,
+                        Some(filtered_indices),
                         table_state.selected(),
                         dashboard,
                         &async_tx,
@@ -805,7 +811,9 @@ impl View {
                     | AppState::Unstaging { .. }
                     | AppState::SwitchingBranchTask { .. }
                     | AppState::GeneratingCommitMessage { .. }
-                    | AppState::LoadingDiff { .. } => {
+                    | AppState::LoadingDiff { .. }
+                    | AppState::LoadingStashes { .. }
+                    | AppState::StashAction { .. } => {
                         // Background loading states don't have secondary event handlers
                         // But can still be exited via global q/Esc handled below
                     }
@@ -832,41 +840,50 @@ impl View {
     fn fetch_dashboard_data<R: ProjectRepository + Clone + Send + Sync + 'static>(
         repo: &R,
         worktrees: &[Worktree],
+        filtered_indices: Option<&[usize]>,
         selected_index: Option<usize>,
         dashboard: &mut crate::app::model::DashboardState,
         async_tx: &UnboundedSender<AsyncResult>,
     ) {
-        if let Some(i) = selected_index
-            && let Some(wt) = worktrees.get(i).filter(|wt| !wt.is_bare)
-        {
-            // If we already have data or are loading, don't fetch again
-            // But if we switched tabs, we might need different data
-            match dashboard.active_tab {
-                crate::app::model::DashboardTab::Status => {
-                    if dashboard.cached_status.is_none() && !dashboard.loading {
-                        dashboard.loading = true;
-                        let repo_clone = repo.clone();
-                        let path = wt.path.clone();
-                        let tx = async_tx.clone();
-                        tokio::task::spawn_blocking(move || {
-                            let result = repo_clone.get_status(&path);
-                            let _ = tx.send(AsyncResult::StatusFetched { path, result });
-                        });
+        if let Some(i) = selected_index {
+            let wt_index = if let Some(indices) = filtered_indices {
+                indices.get(i).copied()
+            } else {
+                Some(i)
+            };
+
+            if let Some(idx) = wt_index
+                && let Some(wt) = worktrees.get(idx).filter(|wt| !wt.is_bare)
+            {
+                // If we already have data or are loading, don't fetch again
+                // But if we switched tabs, we might need different data
+                match dashboard.active_tab {
+                    crate::app::model::DashboardTab::Status => {
+                        if dashboard.cached_status.is_none() && !dashboard.loading {
+                            dashboard.loading = true;
+                            let repo_clone = repo.clone();
+                            let path = wt.path.clone();
+                            let tx = async_tx.clone();
+                            tokio::task::spawn_blocking(move || {
+                                let result = repo_clone.get_status(&path);
+                                let _ = tx.send(AsyncResult::StatusFetched { path, result });
+                            });
+                        }
                     }
-                }
-                crate::app::model::DashboardTab::Log => {
-                    if dashboard.cached_history.is_none() && !dashboard.loading {
-                        dashboard.loading = true;
-                        let repo_clone = repo.clone();
-                        let path = wt.path.clone();
-                        let tx = async_tx.clone();
-                        tokio::task::spawn_blocking(move || {
-                            let result = repo_clone.get_history(&path, 10);
-                            let _ = tx.send(AsyncResult::HistoryFetched { path, result });
-                        });
+                    crate::app::model::DashboardTab::Log => {
+                        if dashboard.cached_history.is_none() && !dashboard.loading {
+                            dashboard.loading = true;
+                            let repo_clone = repo.clone();
+                            let path = wt.path.clone();
+                            let tx = async_tx.clone();
+                            tokio::task::spawn_blocking(move || {
+                                let result = repo_clone.get_history(&path, 10);
+                                let _ = tx.send(AsyncResult::HistoryFetched { path, result });
+                            });
+                        }
                     }
+                    _ => {}
                 }
-                _ => {}
             }
         }
     }
@@ -910,7 +927,7 @@ impl View {
         match display_state {
             AppState::ListingWorktrees {
                 worktrees,
-                filtered_worktrees,
+                filtered_indices,
                 table_state,
                 dashboard,
                 filter_query,
@@ -921,7 +938,7 @@ impl View {
                 render_listing(
                     f,
                     worktrees.as_slice(),
-                    filtered_worktrees.as_slice(),
+                    filtered_indices.as_slice(),
                     table_state,
                     context,
                     chunks[1],
@@ -1288,7 +1305,7 @@ mod tests {
         table_state.select(Some(0));
 
         let mut state = AppState::ListingWorktrees {
-            filtered_worktrees: worktrees.clone(),
+            filtered_indices: vec![0, 1], // Updated
             worktrees,
             table_state,
             refresh_needed: RefreshType::None,

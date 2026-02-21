@@ -13,7 +13,7 @@ use ratatui::{
 pub fn render_listing(
     f: &mut Frame,
     worktrees: &[Worktree],
-    filtered_worktrees: &[Worktree],
+    filtered_indices: &[usize],
     table_state: &mut TableState,
     context: ProjectContext,
     area: Rect,
@@ -43,7 +43,7 @@ pub fn render_listing(
     // Dim the list if we are searching/filtering
     let is_dimmed = is_filtering;
 
-    let table = WorktreeListWidget::new(filtered_worktrees)
+    let table = WorktreeListWidget::new(worktrees, Some(filtered_indices))
         .dimmed(is_dimmed)
         .tick(spinner_tick)
         .with_filter(if !filter_query.is_empty() {
@@ -85,7 +85,8 @@ pub fn render_listing(
 
     let selected_worktree = table_state
         .selected()
-        .and_then(|i| filtered_worktrees.get(i));
+        .and_then(|i| filtered_indices.get(i))
+        .and_then(|&idx| worktrees.get(idx));
 
     // Auto-switch tabs based on mode
     let effective_tab = match mode {

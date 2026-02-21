@@ -14,6 +14,7 @@ use std::borrow::Cow;
 
 pub struct WorktreeListWidget<'a> {
     worktrees: &'a [Worktree],
+    indices: Option<&'a [usize]>,
     is_dimmed: bool,
     spinner_tick: usize,
     filter_query: Option<&'a str>,
@@ -21,9 +22,10 @@ pub struct WorktreeListWidget<'a> {
 }
 
 impl<'a> WorktreeListWidget<'a> {
-    pub const fn new(worktrees: &'a [Worktree]) -> Self {
+    pub const fn new(worktrees: &'a [Worktree], indices: Option<&'a [usize]>) -> Self {
         Self {
             worktrees,
+            indices,
             is_dimmed: false,
             spinner_tick: 0,
             filter_query: None,
@@ -85,18 +87,20 @@ impl StatefulWidget for WorktreeListWidget<'_> {
             Style::default().fg(mode_color).add_modifier(Modifier::BOLD)
         };
 
+        let total_count = self.indices.map_or(self.worktrees.len(), |i| i.len());
+
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(border_style)
             .title(Span::styled(
-                format!(" {} ({}) ", mode_title, self.worktrees.len()),
+                format!(" {} ({}) ", mode_title, total_count),
                 title_style,
             ));
 
         let inner_area = block.inner(area);
 
-        if self.worktrees.is_empty() {
+        if total_count == 0 {
             block.render(area, buf);
 
             let chunks = Layout::default()
@@ -152,17 +156,18 @@ impl StatefulWidget for WorktreeListWidget<'_> {
         let header_height = 2; // 1 for text + 1 bottom margin
         let available_height = inner_area.height.saturating_sub(header_height) as usize;
 
-        let start_index = state.offset().min(self.worktrees.len().saturating_sub(1));
-        let end_index = (start_index + available_height).min(self.worktrees.len());
+        let start_index = state.offset().min(total_count.saturating_sub(1));
+        let end_index = (start_index + available_height).min(total_count);
 
-        let visible_worktrees = if available_height > 0 && start_index < self.worktrees.len() {
-            &self.worktrees[start_index..end_index]
-        } else {
-            &[]
-        };
+        // Iterate over the visible range and retrieve worktrees either directly or via indices
+        let rows = (start_index..end_index).map(|i| {
+            let actual_index = start_index + (i - start_index); // Redundant but explicit
+            let wt_index = self.indices.map_or(actual_index, |idxs| idxs[actual_index]);
 
-        let rows = visible_worktrees.iter().enumerate().map(|(i, wt)| {
-            let actual_index = start_index + i;
+            // Safety: indices are derived from worktrees, so this should be valid.
+            // Fallback to safe get to prevent panic if indices are stale (though they shouldn't be).
+            let wt = self.worktrees.get(wt_index).expect("Invalid worktree index");
+
             let is_selected = Some(actual_index) == state.selected();
 
             let (icon, branch_style) = if wt.is_bare {
@@ -326,7 +331,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
 
         StatefulWidget::render(table, area, buf, &mut temp_state);
 
-        if self.worktrees.len() > inner_area.height as usize {
+        if total_count > inner_area.height as usize {
             let scrollbar = Scrollbar::default()
                 .orientation(ScrollbarOrientation::VerticalRight)
                 .begin_symbol(None)
@@ -341,7 +346,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                     Style::default().fg(theme.secondary)
                 });
 
-            let mut scrollbar_state = ScrollbarState::new(self.worktrees.len())
+            let mut scrollbar_state = ScrollbarState::new(total_count)
                 .position(state.offset())
                 .viewport_content_length(inner_area.height as usize);
 
@@ -382,7 +387,7 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let mut state = TableState::default();
         let worktrees = vec![];
-        let widget = WorktreeListWidget::new(&worktrees);
+        let widget = WorktreeListWidget::new(&worktrees, None);
 
         terminal
             .draw(|f| {
@@ -409,7 +414,7 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let mut state = TableState::default();
         let worktrees = vec![];
-        let widget = WorktreeListWidget::new(&worktrees).with_filter(Some("foobar"));
+        let widget = WorktreeListWidget::new(&worktrees, None).with_filter(Some("foobar"));
 
         terminal
             .draw(|f| {
@@ -436,7 +441,7 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let mut state = TableState::default();
         let worktrees = vec![];
-        let widget = WorktreeListWidget::new(&worktrees).with_mode(AppMode::Manage);
+        let widget = WorktreeListWidget::new(&worktrees, None).with_mode(AppMode::Manage);
 
         terminal
             .draw(|f| {

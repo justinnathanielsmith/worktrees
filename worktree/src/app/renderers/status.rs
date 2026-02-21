@@ -27,12 +27,17 @@ pub fn render_status(
     // Render background list from prev_state for context
     if let AppState::ListingWorktrees {
         worktrees,
+        filtered_indices,
         table_state,
         ..
     } = prev_state
     {
         let mut ts = table_state.clone();
-        f.render_stateful_widget(WorktreeListWidget::new(worktrees), body_chunks[0], &mut ts);
+        f.render_stateful_widget(
+            WorktreeListWidget::new(worktrees, Some(filtered_indices)),
+            body_chunks[0],
+            &mut ts,
+        );
     }
 
     let main_area = body_chunks[1];

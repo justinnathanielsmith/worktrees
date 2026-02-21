@@ -205,7 +205,7 @@ pub enum AppState {
     /// The primary state showing all active worktrees.
     ListingWorktrees {
         worktrees: Vec<Worktree>,
-        filtered_worktrees: Vec<Worktree>,
+        filtered_indices: Vec<usize>,
         table_state: TableState,
         refresh_needed: RefreshType,
         selection_mode: bool,
@@ -361,32 +361,33 @@ impl AppState {
     }
 }
 
-pub fn filter_worktrees(worktrees: &[Worktree], query: &str) -> Vec<Worktree> {
+pub fn filter_worktrees(worktrees: &[Worktree], query: &str) -> Vec<usize> {
     if query.is_empty() {
-        return worktrees.to_vec();
+        return (0..worktrees.len()).collect();
     }
 
     let matcher = SkimMatcherV2::default();
     let query = query.to_lowercase();
-    let mut scored_worktrees: Vec<(i64, Worktree)> = worktrees
+    let mut scored_indices: Vec<(i64, usize)> = worktrees
         .iter()
-        .filter_map(|wt| {
+        .enumerate()
+        .filter_map(|(i, wt)| {
             // Match against both branch and path, take the best score
             let branch_score = matcher.fuzzy_match(&wt.branch, &query);
             let path_score = matcher.fuzzy_match(&wt.path, &query);
 
             match (branch_score, path_score) {
-                (Some(s1), Some(s2)) => Some((s1.max(s2), wt.clone())),
-                (Some(s), None) | (None, Some(s)) => Some((s, wt.clone())),
+                (Some(s1), Some(s2)) => Some((s1.max(s2), i)),
+                (Some(s), None) | (None, Some(s)) => Some((s, i)),
                 (None, None) => None,
             }
         })
         .collect();
 
     // Sort by score descending
-    scored_worktrees.sort_by(|a, b| b.0.cmp(&a.0));
+    scored_indices.sort_by(|a, b| b.0.cmp(&a.0));
 
-    scored_worktrees.into_iter().map(|(_, wt)| wt).collect()
+    scored_indices.into_iter().map(|(_, i)| i).collect()
 }
 
 #[cfg(test)]
@@ -428,29 +429,30 @@ mod tests {
             },
         ];
 
-        // Empty query returns all
+        // Empty query returns all indices
         let filtered = filter_worktrees(&worktrees, "");
         assert_eq!(filtered.len(), 3);
+        assert_eq!(filtered, vec![0, 1, 2]);
 
         // Fuzzy match branch
         let filtered = filter_worktrees(&worktrees, "mn");
         assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered[0].branch, "main");
+        assert_eq!(worktrees[filtered[0]].branch, "main");
 
         // Partial match
         let filtered = filter_worktrees(&worktrees, "log");
         assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered[0].branch, "feature/login");
+        assert_eq!(worktrees[filtered[0]].branch, "feature/login");
 
         // Fuzzy match across path/branch
         let filtered = filter_worktrees(&worktrees, "featlog");
         assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered[0].branch, "feature/login");
+        assert_eq!(worktrees[filtered[0]].branch, "feature/login");
 
         // Case insensitive (handled by skim matcher)
         let filtered = filter_worktrees(&worktrees, "MAIN");
         assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered[0].branch, "main");
+        assert_eq!(worktrees[filtered[0]].branch, "main");
 
         // No match
         let filtered = filter_worktrees(&worktrees, "xyz");
