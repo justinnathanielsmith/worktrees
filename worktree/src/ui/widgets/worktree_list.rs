@@ -166,7 +166,10 @@ impl StatefulWidget for WorktreeListWidget<'_> {
 
             // Safety: indices are derived from worktrees, so this should be valid.
             // Fallback to safe get to prevent panic if indices are stale (though they shouldn't be).
-            let wt = self.worktrees.get(wt_index).expect("Invalid worktree index");
+            let wt = self
+                .worktrees
+                .get(wt_index)
+                .expect("Invalid worktree index");
 
             let is_selected = Some(actual_index) == state.selected();
 
