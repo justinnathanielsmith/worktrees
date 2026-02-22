@@ -73,6 +73,14 @@ pub fn handle_listing_events<R: ProjectRepository + Clone + Send + Sync + 'stati
                         stop_filtering = true;
                         changed = true;
                     }
+                    KeyCode::Char('u')
+                        if key
+                            .modifiers
+                            .contains(crossterm::event::KeyModifiers::CONTROL) =>
+                    {
+                        new_query.clear();
+                        changed = true;
+                    }
                     KeyCode::Backspace => {
                         if new_query.pop().is_some() {
                             changed = true;
@@ -838,5 +846,72 @@ mod tests {
         .unwrap();
 
         assert!(res.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_handle_listing_events_filter_ctrl_u() {
+        // 1. Setup
+        let hub_wt = Worktree {
+            path: "/path/to/hub".into(),
+            commit: "abcdef1".into(),
+            branch: "main".into(),
+            is_bare: true,
+            is_detached: false,
+            status_summary: None,
+            size_bytes: 0,
+            metadata: None,
+        };
+        let worktrees = vec![hub_wt.clone()];
+        let repo = MockRepoBuilder::default()
+            .with_worktrees(worktrees.clone())
+            .build();
+
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+        let mut table_state = TableState::default();
+        table_state.select(Some(0));
+
+        let (async_tx, _async_rx) = mpsc::unbounded_channel();
+
+        let current_state = AppState::ListingWorktrees {
+            filtered_indices: vec![0],
+            worktrees: worktrees.clone(),
+            table_state: table_state.clone(),
+            refresh_needed: RefreshType::None,
+            selection_mode: false,
+            dashboard: DashboardState {
+                active_tab: DashboardTab::Info,
+                cached_status: None,
+                cached_history: None,
+                loading: false,
+            },
+            filter_query: "some filter text".to_string(),
+            is_filtering: true,
+            mode: AppMode::Filter,
+            last_selection_change: std::time::Instant::now(),
+        };
+
+        // 2. Test Ctrl+U
+        let ctrl_u_event = Event::Key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::CONTROL));
+        let res = handle_listing_events(
+            &ctrl_u_event,
+            &repo,
+            &mut terminal,
+            &worktrees,
+            &mut table_state,
+            &current_state,
+            &0,
+            &async_tx,
+        )
+        .unwrap();
+
+        match res {
+            Some(AppState::ListingWorktrees { filter_query, .. }) => {
+                assert_eq!(
+                    filter_query, "",
+                    "Filter query should be empty after Ctrl+U"
+                );
+            }
+            _ => panic!("Expected ListingWorktrees state, got {:?}", res),
+        }
     }
 }
