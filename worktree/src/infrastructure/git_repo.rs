@@ -1446,7 +1446,7 @@ mod tests {
     use super::*;
     use std::sync::Mutex;
 
-    static CWD_MUTEX: Mutex<()> = Mutex::new(());
+    pub(crate) static CWD_MUTEX: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_parse_git_history_normal() {
@@ -2480,11 +2480,12 @@ mod security_tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
 
-    // Use serial_test because we modify CWD, which is global state
     #[test]
     #[cfg(unix)]
-    #[serial_test::serial]
     fn test_android_files_secure_copy() {
+        // Use the existing CWD_MUTEX to synchronize tests that modify global CWD state
+        let _lock = super::tests::CWD_MUTEX.lock().unwrap();
+
         let temp_dir = tempfile::tempdir().unwrap();
         let root = temp_dir.path();
 
@@ -2538,7 +2539,11 @@ mod security_tests {
         assert!(dest_gradle.exists(), "gradle.properties not copied");
 
         let mode_local = std::fs::metadata(&dest_local).unwrap().permissions().mode() & 0o777;
-        let mode_gradle = std::fs::metadata(&dest_gradle).unwrap().permissions().mode() & 0o777;
+        let mode_gradle = std::fs::metadata(&dest_gradle)
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777;
 
         assert_eq!(mode_local, 0o600, "local.properties should be 600 secure");
         assert_eq!(mode_gradle, 0o600, "gradle.properties should be 600 secure");
