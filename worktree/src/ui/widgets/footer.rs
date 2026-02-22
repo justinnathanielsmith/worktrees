@@ -58,7 +58,10 @@ impl Widget for FooterWidget<'_> {
                         ("[Typing...]", "SEARCH", theme.primary),
                         ("[ENT]", "DONE", theme.success),
                     ],
-                    vec![("[ESC]", "CLEAR", theme.error)],
+                    vec![
+                        ("[^U]", "CLEAR", theme.warning),
+                        ("[ESC]", "CANCEL", theme.error),
+                    ],
                 ],
             },
             AppState::ViewingStatus { .. } => vec![
@@ -191,5 +194,49 @@ mod tests {
 
         assert!(content.contains("[?]"));
         assert!(content.contains("HELP"));
+    }
+
+    #[test]
+    fn test_footer_render_filter_shortcuts() {
+        let backend = TestBackend::new(100, 3);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let worktrees = vec![];
+        let state = AppState::ListingWorktrees {
+            worktrees: worktrees.clone(),
+            filtered_indices: Vec::new(),
+            table_state: TableState::default(),
+            refresh_needed: RefreshType::None,
+            selection_mode: false,
+            dashboard: DashboardState {
+                active_tab: DashboardTab::Info,
+                cached_status: None,
+                cached_history: None,
+                loading: false,
+            },
+            filter_query: String::new(),
+            is_filtering: true,
+            mode: AppMode::Filter,
+            last_selection_change: std::time::Instant::now(),
+        };
+
+        terminal
+            .draw(|f| {
+                let area = f.area();
+                let widget = FooterWidget { state: &state };
+                f.render_widget(widget, area);
+            })
+            .unwrap();
+
+        let buffer = terminal.backend().buffer();
+        let content = buffer
+            .content()
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect::<String>();
+
+        assert!(content.contains("[^U]"));
+        assert!(content.contains("CLEAR"));
+        assert!(content.contains("[ESC]"));
+        assert!(content.contains("CANCEL"));
     }
 }
