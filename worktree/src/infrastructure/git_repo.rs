@@ -127,7 +127,17 @@ impl GitProjectRepository {
             if local_props.exists() {
                 let dest = Path::new(path).join("local.properties");
                 let _ =
-                    std::fs::copy(local_props, dest).context("Failed to copy local.properties.");
+                    std::fs::copy(local_props, &dest).context("Failed to copy local.properties.");
+
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    if let Ok(metadata) = std::fs::metadata(&dest) {
+                        let mut perms = metadata.permissions();
+                        perms.set_mode(0o600);
+                        let _ = std::fs::set_permissions(&dest, perms);
+                    }
+                }
             }
 
             // 2. Sync and Optimize gradle.properties
@@ -137,6 +147,16 @@ impl GitProjectRepository {
             if gradle_props.exists() {
                 let _ = std::fs::copy(gradle_props, &dest_gradle)
                     .context("Failed to copy gradle.properties.");
+
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    if let Ok(metadata) = std::fs::metadata(&dest_gradle) {
+                        let mut perms = metadata.permissions();
+                        perms.set_mode(0o600);
+                        let _ = std::fs::set_permissions(&dest_gradle, perms);
+                    }
+                }
             }
 
             // 3. Ensure Build Caching is enabled for Worktree performance
@@ -2452,5 +2472,75 @@ mod tests {
         assert!(GitProjectRepository::is_safe_for_cleaning(Path::new(
             "some/relative/path"
         )));
+    }
+}
+
+#[cfg(test)]
+mod security_tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    // Use serial_test because we modify CWD, which is global state
+    #[test]
+    #[cfg(unix)]
+    #[serial_test::serial]
+    fn test_android_files_secure_copy() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = temp_dir.path();
+
+        // 1. Create insecure source files (644)
+        let local_props = root.join("local.properties");
+        {
+            let file = std::fs::File::create(&local_props).unwrap();
+            let mut perms = file.metadata().unwrap().permissions();
+            perms.set_mode(0o644);
+            file.set_permissions(perms).unwrap();
+        }
+
+        let gradle_props = root.join("gradle.properties");
+        {
+            let file = std::fs::File::create(&gradle_props).unwrap();
+            let mut perms = file.metadata().unwrap().permissions();
+            perms.set_mode(0o644);
+            file.set_permissions(perms).unwrap();
+        }
+
+        // 2. Trigger KMP/Android detection
+        std::fs::write(root.join("build.gradle"), "").unwrap();
+
+        // 3. Create destination worktree dir
+        let worktree_dir = root.join("worktree_dest");
+        std::fs::create_dir(&worktree_dir).unwrap();
+        let worktree_dir_str = worktree_dir.to_str().unwrap().to_string();
+
+        // 4. Run handle_context_files inside the root context
+        // We must change CWD because handle_context_files uses detect_context(Path::new("."))
+        let original_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(root).unwrap();
+
+        // Use scopeguard-like pattern to ensure CWD restoration on panic
+        struct CwdGuard(std::path::PathBuf);
+        impl Drop for CwdGuard {
+            fn drop(&mut self) {
+                let _ = std::env::set_current_dir(&self.0);
+            }
+        }
+        let _guard = CwdGuard(original_cwd);
+
+        let repo = GitProjectRepository;
+        repo.handle_context_files(&worktree_dir_str);
+
+        // 5. Verify permissions in destination
+        let dest_local = worktree_dir.join("local.properties");
+        let dest_gradle = worktree_dir.join("gradle.properties");
+
+        assert!(dest_local.exists(), "local.properties not copied");
+        assert!(dest_gradle.exists(), "gradle.properties not copied");
+
+        let mode_local = std::fs::metadata(&dest_local).unwrap().permissions().mode() & 0o777;
+        let mode_gradle = std::fs::metadata(&dest_gradle).unwrap().permissions().mode() & 0o777;
+
+        assert_eq!(mode_local, 0o600, "local.properties should be 600 secure");
+        assert_eq!(mode_gradle, 0o600, "gradle.properties should be 600 secure");
     }
 }
