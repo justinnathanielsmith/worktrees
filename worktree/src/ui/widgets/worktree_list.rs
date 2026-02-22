@@ -11,6 +11,43 @@ use ratatui::{
     },
 };
 use std::borrow::Cow;
+use std::sync::OnceLock;
+
+static SPINNER_COMBINATIONS: OnceLock<Vec<String>> = OnceLock::new();
+
+fn get_spinner_icon(is_selected: bool, spinner_tick: usize, icon_idx: usize) -> &'static str {
+    // Cyber-style cursor animation
+    // ▊, ▋, ▌, ▍, ▎, ▏
+    const SPINNER_PREFIXES: [&str; 6] = [" ▊ ", " ▋ ", " ▌ ", " ▍ ", " ▌ ", " ▋ "];
+    const ICONS: [&str; 3] = [Icons::HUB, Icons::DETACHED, Icons::WORKTREE];
+
+    let combinations = SPINNER_COMBINATIONS.get_or_init(|| {
+        let mut v = Vec::with_capacity((SPINNER_PREFIXES.len() + 1) * ICONS.len());
+        // Add selected variations (prefix + icon)
+        for prefix in SPINNER_PREFIXES {
+            for icon_str in ICONS {
+                v.push(format!("{}{}", prefix, icon_str));
+            }
+        }
+        // Add unselected variations ("   " + icon)
+        for icon_str in ICONS {
+            v.push(format!("   {}", icon_str));
+        }
+        v
+    });
+
+    // Ensure icon_idx is valid, fallback to WORKTREE (index 2)
+    let safe_icon_idx = if icon_idx < ICONS.len() { icon_idx } else { 2 };
+
+    if is_selected {
+        let spinner_idx = (spinner_tick / 2) % SPINNER_PREFIXES.len();
+        let idx = spinner_idx * ICONS.len() + safe_icon_idx;
+        &combinations[idx]
+    } else {
+        let idx = SPINNER_PREFIXES.len() * ICONS.len() + safe_icon_idx;
+        &combinations[idx]
+    }
+}
 
 pub struct WorktreeListWidget<'a> {
     worktrees: &'a [Worktree],
@@ -173,9 +210,10 @@ impl StatefulWidget for WorktreeListWidget<'_> {
 
             let is_selected = Some(actual_index) == state.selected();
 
-            let (icon, branch_style) = if wt.is_bare {
+            // icon_idx: 0=HUB, 1=DETACHED, 2=WORKTREE
+            let (icon_idx, branch_style) = if wt.is_bare {
                 (
-                    Icons::HUB,
+                    0,
                     if self.is_dimmed {
                         Style::default().fg(theme.subtle)
                     } else {
@@ -185,10 +223,10 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                     },
                 )
             } else if wt.is_detached {
-                (Icons::DETACHED, Style::default().fg(theme.error))
+                (1, Style::default().fg(theme.error))
             } else {
                 (
-                    Icons::WORKTREE,
+                    2,
                     if self.is_dimmed {
                         Style::default().fg(theme.subtle)
                     } else {
@@ -228,17 +266,6 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 }
             }
 
-            // Cyber-style cursor animation
-            // ▊, ▋, ▌, ▍, ▎, ▏
-            let spinner_prefixes = [" ▊ ", " ▋ ", " ▌ ", " ▍ ", " ▌ ", " ▋ "];
-            let spinner_idx = (self.spinner_tick / 2) % spinner_prefixes.len();
-
-            let prefix = if is_selected {
-                spinner_prefixes[spinner_idx]
-            } else {
-                "   "
-            };
-
             let status_cell = wt.status_summary.as_ref().map_or_else(
                 || Cell::from("-"),
                 |summary| {
@@ -273,8 +300,11 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 cell_style = cell_style.fg(theme.subtle);
             }
 
+            // Optimization: Use cached spinner strings to avoid Vec allocation per row
+            let spinner_icon = get_spinner_icon(is_selected, self.spinner_tick, icon_idx);
+
             Row::new([
-                Cell::from(Line::from(vec![Span::raw(prefix), Span::raw(icon)])),
+                Cell::from(spinner_icon),
                 Cell::from(intent_str).style(if is_selected {
                     branch_style
                 } else {
