@@ -122,7 +122,7 @@ pub fn render_listing(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ratatui::{backend::TestBackend, Terminal, backend::Backend};
+    use ratatui::{Terminal, backend::Backend, backend::TestBackend};
 
     #[test]
     fn test_render_listing_sets_cursor_when_filtering() {
@@ -135,24 +135,26 @@ mod tests {
         let active_tab = DashboardTab::Info;
         let mode = crate::app::model::AppMode::Filter;
 
-        terminal.draw(|f| {
-            let area = f.area();
-            render_listing(
-                f,
-                &worktrees,
-                &filtered_indices,
-                &mut table_state,
-                context,
-                area,
-                active_tab,
-                None,
-                None,
-                "foo", // filter_query
-                true,  // is_filtering
-                mode,
-                0,
-            );
-        }).unwrap();
+        terminal
+            .draw(|f| {
+                let area = f.area();
+                render_listing(
+                    f,
+                    &worktrees,
+                    &filtered_indices,
+                    &mut table_state,
+                    context,
+                    area,
+                    active_tab,
+                    None,
+                    None,
+                    "foo", // filter_query
+                    true,  // is_filtering
+                    mode,
+                    0,
+                );
+            })
+            .unwrap();
 
         // Verify cursor position
         let pos = terminal.backend_mut().get_cursor_position().unwrap();
