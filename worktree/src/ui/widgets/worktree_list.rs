@@ -159,6 +159,19 @@ impl StatefulWidget for WorktreeListWidget<'_> {
         let start_index = state.offset().min(total_count.saturating_sub(1));
         let end_index = (start_index + available_height).min(total_count);
 
+        // Pre-compute spinner state once per frame (hoisted from loop)
+        // Cyber-style cursor animation: ▊, ▋, ▌, ▍, ▎, ▏
+        let spinner_prefixes = [" ▊ ", " ▋ ", " ▌ ", " ▍ ", " ▌ ", " ▋ "];
+        let spinner_idx = (self.spinner_tick / 2) % spinner_prefixes.len();
+        let selected_prefix = spinner_prefixes[spinner_idx];
+
+        // Pre-compute common strings to avoid allocations in the hot loop
+        let unselected_prefix = "   ";
+        let unselected_hub_str = format!("{}{}", unselected_prefix, Icons::HUB);
+        let unselected_detached_str = format!("{}{}", unselected_prefix, Icons::DETACHED);
+        let unselected_worktree_str = format!("{}{}", unselected_prefix, Icons::WORKTREE);
+        let clean_status_str = format!("{} CLEAN", Icons::CLEAN);
+
         // Iterate over the visible range and retrieve worktrees either directly or via indices
         let rows = (start_index..end_index).map(|i| {
             let actual_index = start_index + (i - start_index); // Redundant but explicit
@@ -228,43 +241,30 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 }
             }
 
-            // Cyber-style cursor animation
-            // ▊, ▋, ▌, ▍, ▎, ▏
-            let spinner_prefixes = [" ▊ ", " ▋ ", " ▌ ", " ▍ ", " ▌ ", " ▋ "];
-            let spinner_idx = (self.spinner_tick / 2) % spinner_prefixes.len();
-
-            let prefix = if is_selected {
-                spinner_prefixes[spinner_idx]
-            } else {
-                "   "
-            };
-
             let status_cell = wt.status_summary.as_ref().map_or_else(
                 || Cell::from("-"),
                 |summary| {
-                    let (color, icon) = if summary == "clean" {
-                        (theme.success, Icons::CLEAN)
+                    if summary == "clean" {
+                        let style = if self.is_dimmed && !is_selected {
+                            Style::default().fg(theme.subtle)
+                        } else {
+                            Style::default().fg(theme.success)
+                        };
+                        Cell::from(clean_status_str.as_str()).style(style)
                     } else {
-                        (theme.warning, Icons::DIRTY)
-                    };
+                        let style = if self.is_dimmed && !is_selected {
+                            Style::default().fg(theme.subtle)
+                        } else {
+                            Style::default().fg(theme.warning)
+                        };
 
-                    let style = if self.is_dimmed && !is_selected {
-                        Style::default().fg(theme.subtle)
-                    } else {
-                        Style::default().fg(color)
-                    };
-
-                    let summary_text = if summary == "clean" {
-                        "CLEAN"
-                    } else {
-                        summary.as_str()
-                    };
-                    Cell::from(Line::from(vec![
-                        Span::raw(icon),
-                        Span::raw(" "),
-                        Span::raw(summary_text),
-                    ]))
-                    .style(style)
+                        Cell::from(Line::from(vec![
+                            Span::raw(Icons::DIRTY),
+                            Span::raw(" "),
+                            Span::raw(summary.as_str()),
+                        ]))
+                        .style(style)
+                    }
                 },
             );
 
@@ -273,8 +273,21 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                 cell_style = cell_style.fg(theme.subtle);
             }
 
+            let first_cell = if is_selected {
+                Cell::from(Line::from(vec![
+                    Span::raw(selected_prefix),
+                    Span::raw(icon),
+                ]))
+            } else if wt.is_bare {
+                Cell::from(unselected_hub_str.as_str())
+            } else if wt.is_detached {
+                Cell::from(unselected_detached_str.as_str())
+            } else {
+                Cell::from(unselected_worktree_str.as_str())
+            };
+
             Row::new([
-                Cell::from(Line::from(vec![Span::raw(prefix), Span::raw(icon)])),
+                first_cell,
                 Cell::from(intent_str).style(if is_selected {
                     branch_style
                 } else {
