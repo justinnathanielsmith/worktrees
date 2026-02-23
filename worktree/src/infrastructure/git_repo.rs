@@ -47,6 +47,61 @@ impl GitProjectRepository {
             return false;
         }
 
+        // 3. Check for system directories (to prevent recursive deletion of /usr/bin etc)
+        // We use Path equality which handles trailing/redundant slashes correctly
+        #[cfg(unix)]
+        {
+            let system_roots = [
+                "/",
+                "/bin",
+                "/boot",
+                "/dev",
+                "/etc",
+                "/home",
+                "/lib",
+                "/lib64",
+                "/lost+found",
+                "/media",
+                "/mnt",
+                "/opt",
+                "/proc",
+                "/root",
+                "/run",
+                "/sbin",
+                "/srv",
+                "/sys",
+                "/tmp",
+                "/usr",
+                "/usr/local",
+                "/var",
+                // Mac specific
+                "/Applications",
+                "/Library",
+                "/System",
+                "/Users",
+                "/Volumes",
+            ];
+
+            if system_roots.iter().any(|r| path == Path::new(r)) {
+                return false;
+            }
+        }
+
+        #[cfg(windows)]
+        {
+            let system_roots = [
+                "C:\\Windows",
+                "C:\\Program Files",
+                "C:\\Program Files (x86)",
+                "C:\\Users",
+            ];
+            let path_str = path.to_string_lossy();
+            // Simple case-insensitive check covers common variations
+            if system_roots.iter().any(|r| path_str.eq_ignore_ascii_case(r)) {
+                return false;
+            }
+        }
+
         true
     }
 
@@ -2452,5 +2507,42 @@ mod tests {
         assert!(GitProjectRepository::is_safe_for_cleaning(Path::new(
             "some/relative/path"
         )));
+    }
+
+    #[test]
+    fn test_is_safe_for_cleaning_system_paths() {
+        // Critical system paths should be blocked
+        #[cfg(unix)]
+        {
+            let unsafe_paths = vec![
+                "/", "/bin", "/etc", "/usr", "/usr/local", "/var", "/tmp"
+            ];
+            for p in unsafe_paths {
+                assert!(
+                    !GitProjectRepository::is_safe_for_cleaning(Path::new(p)),
+                    "Path {} should be blocked", p
+                );
+            }
+        }
+
+        #[cfg(windows)]
+        {
+             let unsafe_paths = vec![
+                "C:\\Windows", "c:\\windows", "C:\\Program Files"
+            ];
+            for p in unsafe_paths {
+                assert!(
+                    !GitProjectRepository::is_safe_for_cleaning(Path::new(p)),
+                    "Path {} should be blocked", p
+                );
+            }
+        }
+
+        // Project paths should be safe
+        #[cfg(unix)]
+        {
+            assert!(GitProjectRepository::is_safe_for_cleaning(Path::new("/tmp/myproject")));
+            assert!(GitProjectRepository::is_safe_for_cleaning(Path::new("/usr/local/src/myproject")));
+        }
     }
 }
