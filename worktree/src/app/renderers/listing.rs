@@ -6,6 +6,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
+    text::Line,
     widgets::{Block, Borders, Paragraph, TableState},
 };
 
@@ -81,6 +82,17 @@ pub fn render_listing(
                 Style::default()
             });
         f.render_widget(search, area);
+
+        if is_filtering {
+            let width = Line::from(filter_query).width() as u16;
+            // Cursor position relative to the area
+            // x: area.x + 1 (border) + width of text
+            // y: area.y + 1 (border)
+            let max_width = area.width.saturating_sub(2);
+            let cursor_x = area.x + 1 + width.min(max_width);
+            let cursor_y = area.y + 1;
+            f.set_cursor_position((cursor_x, cursor_y));
+        }
     }
 
     let selected_worktree = table_state
@@ -105,4 +117,49 @@ pub fn render_listing(
         history,
         chunks[1],
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ratatui::{Terminal, backend::Backend, backend::TestBackend};
+
+    #[test]
+    fn test_render_listing_sets_cursor_when_filtering() {
+        let backend = TestBackend::new(100, 20);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut table_state = TableState::default();
+        let worktrees = vec![];
+        let filtered_indices = vec![];
+        let context = crate::domain::repository::ProjectContext::Standard;
+        let active_tab = DashboardTab::Info;
+        let mode = crate::app::model::AppMode::Filter;
+
+        terminal
+            .draw(|f| {
+                let area = f.area();
+                render_listing(
+                    f,
+                    &worktrees,
+                    &filtered_indices,
+                    &mut table_state,
+                    context,
+                    area,
+                    active_tab,
+                    None,
+                    None,
+                    "foo", // filter_query
+                    true,  // is_filtering
+                    mode,
+                    0,
+                );
+            })
+            .unwrap();
+
+        // Verify cursor position
+        let pos = terminal.backend_mut().get_cursor_position().unwrap();
+        // Default cursor is (0, 0)
+        assert_eq!(pos.x, 4, "Cursor X position mismatch");
+        assert_eq!(pos.y, 18, "Cursor Y position mismatch");
+    }
 }
