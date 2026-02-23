@@ -97,7 +97,10 @@ impl GitProjectRepository {
             ];
             let path_str = path.to_string_lossy();
             // Simple case-insensitive check covers common variations
-            if system_roots.iter().any(|r| path_str.eq_ignore_ascii_case(r)) {
+            if system_roots
+                .iter()
+                .any(|r| path_str.eq_ignore_ascii_case(r))
+            {
                 return false;
             }
         }
@@ -2514,26 +2517,24 @@ mod tests {
         // Critical system paths should be blocked
         #[cfg(unix)]
         {
-            let unsafe_paths = vec![
-                "/", "/bin", "/etc", "/usr", "/usr/local", "/var", "/tmp"
-            ];
+            let unsafe_paths = vec!["/", "/bin", "/etc", "/usr", "/usr/local", "/var", "/tmp"];
             for p in unsafe_paths {
                 assert!(
                     !GitProjectRepository::is_safe_for_cleaning(Path::new(p)),
-                    "Path {} should be blocked", p
+                    "Path {} should be blocked",
+                    p
                 );
             }
         }
 
         #[cfg(windows)]
         {
-             let unsafe_paths = vec![
-                "C:\\Windows", "c:\\windows", "C:\\Program Files"
-            ];
+            let unsafe_paths = vec!["C:\\Windows", "c:\\windows", "C:\\Program Files"];
             for p in unsafe_paths {
                 assert!(
                     !GitProjectRepository::is_safe_for_cleaning(Path::new(p)),
-                    "Path {} should be blocked", p
+                    "Path {} should be blocked",
+                    p
                 );
             }
         }
@@ -2541,8 +2542,12 @@ mod tests {
         // Project paths should be safe
         #[cfg(unix)]
         {
-            assert!(GitProjectRepository::is_safe_for_cleaning(Path::new("/tmp/myproject")));
-            assert!(GitProjectRepository::is_safe_for_cleaning(Path::new("/usr/local/src/myproject")));
+            assert!(GitProjectRepository::is_safe_for_cleaning(Path::new(
+                "/tmp/myproject"
+            )));
+            assert!(GitProjectRepository::is_safe_for_cleaning(Path::new(
+                "/usr/local/src/myproject"
+            )));
         }
     }
 }
