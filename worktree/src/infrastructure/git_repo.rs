@@ -126,17 +126,41 @@ impl GitProjectRepository {
             let local_props = Path::new("local.properties");
             if local_props.exists() {
                 let dest = Path::new(path).join("local.properties");
-                let _ =
-                    std::fs::copy(local_props, dest).context("Failed to copy local.properties.");
+                if std::fs::copy(local_props, &dest)
+                    .context("Failed to copy local.properties.")
+                    .is_ok()
+                {
+                    // Secure the file (600) to protect secrets
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::PermissionsExt;
+                        if let Ok(mut perms) = std::fs::metadata(&dest).map(|m| m.permissions()) {
+                            perms.set_mode(0o600);
+                            let _ = std::fs::set_permissions(&dest, perms);
+                        }
+                    }
+                }
             }
 
             // 2. Sync and Optimize gradle.properties
             let gradle_props = Path::new("gradle.properties");
             let dest_gradle = Path::new(path).join("gradle.properties");
 
-            if gradle_props.exists() {
-                let _ = std::fs::copy(gradle_props, &dest_gradle)
-                    .context("Failed to copy gradle.properties.");
+            if gradle_props.exists()
+                && std::fs::copy(gradle_props, &dest_gradle)
+                    .context("Failed to copy gradle.properties.")
+                    .is_ok()
+            {
+                // Secure the file (600) to protect secrets
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    if let Ok(mut perms) = std::fs::metadata(&dest_gradle).map(|m| m.permissions())
+                    {
+                        perms.set_mode(0o600);
+                        let _ = std::fs::set_permissions(&dest_gradle, perms);
+                    }
+                }
             }
 
             // 3. Ensure Build Caching is enabled for Worktree performance
@@ -2452,5 +2476,62 @@ mod tests {
         assert!(GitProjectRepository::is_safe_for_cleaning(Path::new(
             "some/relative/path"
         )));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    #[serial_test::serial]
+    fn test_handle_context_files_permissions_insecure() {
+        use std::os::unix::fs::PermissionsExt;
+        let _lock = CWD_MUTEX.lock().unwrap();
+
+        // Setup temp dir
+        let temp_dir = std::env::temp_dir().join(format!(
+            "worktrees_test_context_perms_{}",
+            std::process::id()
+        ));
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        // Setup insecure source file (644)
+        let source_props = temp_dir.join("local.properties");
+        std::fs::write(&source_props, "sdk.dir=/Users/me/Library/Android/sdk").unwrap();
+        let mut perms = std::fs::metadata(&source_props).unwrap().permissions();
+        perms.set_mode(0o644);
+        std::fs::set_permissions(&source_props, perms).unwrap();
+
+        // Trigger Android context detection
+        std::fs::write(temp_dir.join("build.gradle.kts"), "").unwrap();
+
+        // Setup destination dir
+        let dest_dir = temp_dir.join("wt_dest");
+        std::fs::create_dir(&dest_dir).unwrap();
+
+        // Run handle_context_files
+        let original_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&temp_dir).unwrap();
+
+        let repo = GitProjectRepository;
+        repo.handle_context_files(dest_dir.to_str().unwrap());
+
+        std::env::set_current_dir(original_cwd).unwrap();
+
+        // Verify destination file permissions
+        let dest_props = dest_dir.join("local.properties");
+        assert!(dest_props.exists(), "local.properties should be copied");
+
+        let mode = std::fs::metadata(&dest_props).unwrap().permissions().mode() & 0o777;
+
+        // Cleanup
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+
+        // This assertion ensures the file is secure (600)
+        // Before the fix, this should fail (it will likely be 644)
+        assert_eq!(
+            mode, 0o600,
+            "Copied local.properties permissions should be 600, but were {mode:o}"
+        );
     }
 }
