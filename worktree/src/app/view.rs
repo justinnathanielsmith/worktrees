@@ -1288,6 +1288,7 @@ mod tests {
                 is_detached: false,
                 status_summary: Some("clean".to_string()),
                 size_bytes: 1024,
+                size_display: "1.0 KB".to_string(),
                 metadata: None,
             },
             Worktree {
@@ -1298,6 +1299,7 @@ mod tests {
                 is_detached: false,
                 status_summary: Some("+2 ~1".to_string()),
                 size_bytes: 2048,
+                size_display: "2.0 KB".to_string(),
                 metadata: None,
             },
         ];

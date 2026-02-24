@@ -286,7 +286,7 @@ impl StatefulWidget for WorktreeListWidget<'_> {
                     cell_style
                 }),
                 status_cell,
-                Cell::from(format_size(wt.size_bytes)).style(Style::default().fg(theme.subtle)),
+                Cell::from(wt.size_display.as_str()).style(Style::default().fg(theme.subtle)),
                 Cell::from(&wt.commit[..wt.commit.len().min(7)])
                     .style(Style::default().fg(theme.subtle)),
             ])
@@ -356,27 +356,6 @@ impl StatefulWidget for WorktreeListWidget<'_> {
             StatefulWidget::render(scrollbar, inner_area, buf, &mut scrollbar_state);
         }
     }
-}
-
-fn format_size(bytes: u64) -> Cow<'static, str> {
-    const KB: u64 = 1024;
-    const MB: u64 = KB * 1024;
-    const GB: u64 = MB * 1024;
-
-    if bytes == 0 {
-        return Cow::Borrowed("0 B");
-    }
-
-    let s = if bytes >= GB {
-        format!("{:.1} GB", bytes as f64 / GB as f64)
-    } else if bytes >= MB {
-        format!("{:.1} MB", bytes as f64 / MB as f64)
-    } else if bytes >= KB {
-        format!("{:.1} KB", bytes as f64 / KB as f64)
-    } else {
-        format!("{bytes} B")
-    };
-    Cow::Owned(s)
 }
 
 #[cfg(test)]

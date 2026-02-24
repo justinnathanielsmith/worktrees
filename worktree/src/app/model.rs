@@ -405,6 +405,7 @@ mod tests {
                 is_detached: false,
                 status_summary: Some("clean".to_string()),
                 size_bytes: 0,
+                size_display: "0 B".to_string(),
                 metadata: None,
             },
             Worktree {
@@ -415,6 +416,7 @@ mod tests {
                 is_detached: false,
                 status_summary: Some("+1 ~2".to_string()),
                 size_bytes: 0,
+                size_display: "0 B".to_string(),
                 metadata: None,
             },
             Worktree {
@@ -425,6 +427,7 @@ mod tests {
                 is_detached: false,
                 status_summary: Some("clean".to_string()),
                 size_bytes: 0,
+                size_display: "0 B".to_string(),
                 metadata: None,
             },
         ];

@@ -34,6 +34,26 @@ impl GitProjectRepository {
         total_size
     }
 
+    fn format_size(bytes: u64) -> String {
+        const KB: u64 = 1024;
+        const MB: u64 = KB * 1024;
+        const GB: u64 = MB * 1024;
+
+        if bytes == 0 {
+            return "0 B".to_string();
+        }
+
+        if bytes >= GB {
+            format!("{:.1} GB", bytes as f64 / GB as f64)
+        } else if bytes >= MB {
+            format!("{:.1} MB", bytes as f64 / MB as f64)
+        } else if bytes >= KB {
+            format!("{:.1} KB", bytes as f64 / KB as f64)
+        } else {
+            format!("{bytes} B")
+        }
+    }
+
     fn is_safe_for_cleaning(path: &Path) -> bool {
         // 1. Check for root (no parent)
         if path.parent().is_none() {
@@ -370,6 +390,7 @@ impl GitProjectRepository {
                 is_detached: false,
                 status_summary: None,
                 size_bytes: 0,
+                size_display: "0 B".to_string(),
                 metadata: None,
             },
             |mut wt, line| {
@@ -601,6 +622,7 @@ impl ProjectRepository for GitProjectRepository {
 
                 if !wt.path.is_empty() {
                     wt.size_bytes = Self::calculate_dir_size(Path::new(&wt.path));
+                    wt.size_display = Self::format_size(wt.size_bytes);
                 }
 
                 if !wt.is_bare && !wt.path.is_empty() {
