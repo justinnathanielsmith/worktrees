@@ -146,21 +146,19 @@ impl GitProjectRepository {
             let gradle_props = Path::new("gradle.properties");
             let dest_gradle = Path::new(path).join("gradle.properties");
 
-            if gradle_props.exists() {
-                if std::fs::copy(gradle_props, &dest_gradle)
+            if gradle_props.exists()
+                && std::fs::copy(gradle_props, &dest_gradle)
                     .context("Failed to copy gradle.properties.")
                     .is_ok()
+            {
+                // Secure the file (600) to protect secrets
+                #[cfg(unix)]
                 {
-                    // Secure the file (600) to protect secrets
-                    #[cfg(unix)]
+                    use std::os::unix::fs::PermissionsExt;
+                    if let Ok(mut perms) = std::fs::metadata(&dest_gradle).map(|m| m.permissions())
                     {
-                        use std::os::unix::fs::PermissionsExt;
-                        if let Ok(mut perms) =
-                            std::fs::metadata(&dest_gradle).map(|m| m.permissions())
-                        {
-                            perms.set_mode(0o600);
-                            let _ = std::fs::set_permissions(&dest_gradle, perms);
-                        }
+                        perms.set_mode(0o600);
+                        let _ = std::fs::set_permissions(&dest_gradle, perms);
                     }
                 }
             }
