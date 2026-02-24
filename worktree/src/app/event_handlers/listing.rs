@@ -754,6 +754,7 @@ mod tests {
             is_detached: false,
             status_summary: None,
             size_bytes: 0,
+            size_display: "0 B".to_string(),
             metadata: None,
         };
         let worktrees = vec![hub_wt.clone()];

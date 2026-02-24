@@ -29,6 +29,8 @@ pub struct Worktree {
     pub status_summary: Option<String>,
     /// The size of the worktree directory on disk in bytes.
     pub size_bytes: u64,
+    /// The formatted size string (e.g., "1.2 MB").
+    pub size_display: String,
     /// Custom metadata for this worktree.
     pub metadata: Option<WorktreeMetadata>,
 }
