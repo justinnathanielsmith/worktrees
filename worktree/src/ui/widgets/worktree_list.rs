@@ -89,14 +89,20 @@ impl StatefulWidget for WorktreeListWidget<'_> {
 
         let total_count = self.indices.map_or(self.worktrees.len(), |i| i.len());
 
+        // Palette UX Improvement: Dynamically update title with filter query
+        // This provides instant visual feedback even when results are found.
+        let title_text = match (self.mode, self.filter_query) {
+            (Some(AppMode::Filter), Some(query)) if !query.is_empty() => {
+                format!(" FILTERING: '{}' ({}) ", query, total_count)
+            }
+            _ => format!(" {} ({}) ", mode_title, total_count),
+        };
+
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(border_style)
-            .title(Span::styled(
-                format!(" {} ({}) ", mode_title, total_count),
-                title_style,
-            ));
+            .title(Span::styled(title_text, title_style));
 
         let inner_area = block.inner(area);
 
